@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dewret"
+description = "DEclarative Workflow REndering Tool"
+version = "0.0.1"
+authors = [
+  {name = "Phil Weir", email = "phil.weir@flaxandteal.co.uk"},
+  {name = "Chris Nixon", email = "chris.nixon@sigma-sc.co.uk"},
+  {name = "Ellery Ames", email = "ellery.ames@flaxandteal.co.uk"},
+  {name = "Sharon Ingram", email = "sharon.ingram@flaxandteal.co.uk"},
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.11"
