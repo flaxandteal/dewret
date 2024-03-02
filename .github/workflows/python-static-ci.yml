@@ -10,7 +10,7 @@ jobs:
           python-version: '3.11'
       - uses: chartboost/ruff-action@v1
         with:
-          src: "./python"
+          src: "./src"
       - uses: python/mypy@v1.8.0
 
   audit:
