@@ -1,0 +1,30 @@
+[project]
+name = "dewret"
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64", "linux-aarch64", "osx-arm64"]
+
+[dependencies]
+python = ">=3.11"
+dask = ">=2022"
+
+[host-dependencies]
+pip = "*"
+
+[feature.test.dependencies]
+pytest = "*"
+[feature.test.tasks]
+test = "pytest"
+
+[feature.build.dependencies]
+build = "*"
+hatchling = "*"
+[feature.build.tasks]
+postinstall = "pip install --no-build-isolation --no-deps --disable-pip-version-check -e ."
+build-wheel = "python -m build --no-isolation --wheel ."
+
+[feature.prod.tasks]
+postinstall-production = "pip install --no-deps --disable-pip-version-check dist/docker_project-*.whl"
+
+[environments]
+default = ["test", "build"]
+prod = ["prod"]
