@@ -8,3 +8,9 @@ jobs:
       - uses: chartboost/ruff-action@v1
         with:
           src: "./python"
+      - uses: python/mypy@v1.8.0
+      - uses: pypa/gh-action-pip-audit@v1.0.8
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
