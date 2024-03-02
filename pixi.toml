@@ -18,6 +18,7 @@ test = "pytest"
 [feature.build.dependencies]
 build = "*"
 hatchling = "*"
+
 [feature.build.tasks]
 postinstall = "pip install --no-build-isolation --no-deps --disable-pip-version-check -e ."
 build-wheel = "python -m build --no-isolation --wheel ."
