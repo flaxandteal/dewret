@@ -6,6 +6,8 @@ platforms = ["win-64", "linux-64", "linux-aarch64", "osx-arm64"]
 [dependencies]
 python = ">=3.11"
 dask = ">=2022"
+pyyaml = ">=6.0.1,<6.1"
+attrs = ">=23.2.0,<23.3"
 
 [host-dependencies]
 pip = "*"

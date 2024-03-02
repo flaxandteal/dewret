@@ -1,5 +1,5 @@
 from dask import delayed
 
-task = delayed
-def run(task, *args, **kwargs):
-    return task(*args, **kwargs).compute()
+lazy = delayed
+def run(workflow, task):
+    return task.compute(__workflow__=workflow)
