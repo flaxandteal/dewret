@@ -38,8 +38,8 @@ jobs:
     #         target-platform: osx-arm64
     steps:
     - uses: actions/checkout@v4
-    # name: Template conda recipe
-    # run: pip install jinja2 toml && python .github/workflows/generate_recipe.py > ../recipe.yaml
+      name: Template conda recipe
+      run: pip install toml && python .github/workflows/generate_recipe.py
     - name: Build conda package
       uses: prefix-dev/rattler-build-action@v0.2.2
       env:

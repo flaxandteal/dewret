@@ -21,7 +21,8 @@ requirements:
     - pip
     - hatchling
     - python ${{ load_from_file("pyproject.toml").project["requires-python"] }}
-  run: ${{ load_from_file("pyproject.toml").project.dependencies }}
+  run:
+__PROJECT_DEPENDENCIES__
 
 tests:
   - python:
@@ -35,6 +36,6 @@ about:
   license_file: LICENSE
   summary: ${{ load_from_file("pyproject.toml").project.description }}
   description: |
-    {{ insert_readme() | indent }}
+__README__
   documentation: ${{ load_from_file("pyproject.toml").project.documentation }}
   repository: ${{ repository }}
