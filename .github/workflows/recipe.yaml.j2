@@ -19,9 +19,9 @@ build:
 requirements:
   host:
     - pip
-    - python {{ pyproject["project"]["requires_python"] }}
+    - python {{ pyproject["project"]["requires-python"] }}
   run:
-    - python {{ pyproject["project"]["requires_python"] -}}
+    - python {{ pyproject["project"]["requires-python"] -}}
 {% for dep in pyproject["project"]["dependencies"] %}
     - {{ dep -}}
 {% endfor %}
