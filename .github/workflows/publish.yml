@@ -46,9 +46,9 @@ jobs:
         CONDA_BLD_PATH: ../output
       with:
         # needs to be unique for each matrix entry
-        artifact-name: package-noarch #-${{ matrix.target-platform }}
+        #artifact-name: package-noarch #-${{ matrix.target-platform }}
         recipe-path: ../recipe.yaml
-        build-args: --target-platform noarch # ${{ matrix.target-platform }}${{ matrix.target-platform == 'linux-aarch64' && ' --no-test' || '' }}
+        #build-args: --target-platform noarch # ${{ matrix.target-platform }}${{ matrix.target-platform == 'linux-aarch64' && ' --no-test' || '' }}
   sdist:
     runs-on: ubuntu-latest
     steps:
