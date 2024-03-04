@@ -34,5 +34,5 @@ dependencies = [
   'pyyaml',
   'attrs',
   'click',
-  'pip >= 65.5.1'
+  'setuptools >= 65.5.1'
 ]
