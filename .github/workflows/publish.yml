@@ -21,20 +21,21 @@ permissions:
 jobs:
   build:
     name: Build package
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target-platform: linux-64
-          - os: ubuntu-latest
-            target-platform: linux-aarch64
-          - os: windows-latest
-            target-platform: win-64
-          - os: macos-latest
-            target-platform: osx-64
-          - os: macos-14
-            target-platform: osx-arm64
+    runs-on: ubuntu-latest # Currently, only need noarch
+    # runs-on: ${{ matrix.os }}
+    # strategy:
+    #   matrix:
+    #     include:
+    #       - os: ubuntu-latest
+    #         target-platform: linux-64
+    #       - os: ubuntu-latest
+    #         target-platform: linux-aarch64
+    #       - os: windows-latest
+    #         target-platform: win-64
+    #       - os: macos-latest
+    #         target-platform: osx-64
+    #       - os: macos-14
+    #         target-platform: osx-arm64
     steps:
     - uses: actions/checkout@v4
     - name: Template conda recipe
@@ -45,9 +46,9 @@ jobs:
         CONDA_BLD_PATH: ../output
       with:
         # needs to be unique for each matrix entry
-        artifact-name: package-${{ matrix.target-platform }}
+        artifact-name: package-noarch #-${{ matrix.target-platform }}
         recipe-path: ../recipe.yaml
-        build-args: --target-platform ${{ matrix.target-platform }}${{ matrix.target-platform == 'linux-aarch64' && ' --no-test' || '' }}
+        build-args: --target-platform noarch # ${{ matrix.target-platform }}${{ matrix.target-platform == 'linux-aarch64' && ' --no-test' || '' }}
   sdist:
     runs-on: ubuntu-latest
     steps:
