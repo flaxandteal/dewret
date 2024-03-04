@@ -33,5 +33,6 @@ dependencies = [
   'dask >= 2022',
   'pyyaml',
   'attrs',
-  'click'
+  'click',
+  'pip >= 65'
 ]
