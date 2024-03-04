@@ -44,7 +44,7 @@ jobs:
       uses: prefix-dev/rattler-build-action@v0.2.2
       env:
         CONDA_BLD_PATH: ../output
-        RATTLER_BUILD_EXPERIMENTAL: 1
+        RATTLER_BUILD_EXPERIMENTAL: "true"
       with:
         # needs to be unique for each matrix entry
         #artifact-name: package-noarch #-${{ matrix.target-platform }}
