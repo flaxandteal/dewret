@@ -8,7 +8,7 @@ package:
   version: {{ pyproject["project"]["version"] }}
 
 source:
-  - git_url: {{ pyproject["project"]["repository"] }}
+  - git: {{ pyproject["project"]["repository"] }}
 
 build:
   # Thanks to `noarch: python` this package works on all platforms
