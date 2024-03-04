@@ -17,6 +17,10 @@ extra_markdown_extensions = [
 [project]
 name = "dewret"
 description = "DEclarative Workflow REndering Tool"
+homepage = "https://github.com/flaxandteal/dewret"
+repository = "https://github.com/flaxandteal/dewret"
+documentation = "https://flaxandteal.github.io/dewret"
+readme = "README.md"
 version = "0.0.1"
 authors = [
   {name = "Phil Weir", email = "phil.weir@flaxandteal.co.uk"},
@@ -24,6 +28,7 @@ authors = [
   {name = "Ellery Ames", email = "ellery.ames@flaxandteal.co.uk"},
   {name = "Sharon Ingram", email = "sharon.ingram@flaxandteal.co.uk"},
 ]
+license = "Apache-2.0"
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
