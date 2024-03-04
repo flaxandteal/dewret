@@ -39,6 +39,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       name: Template conda recipe
+    - name: Tweak recipe
       run: pip install toml && python .github/workflows/generate_recipe.py
     - name: Build conda package
       uses: prefix-dev/rattler-build-action@v0.2.2
