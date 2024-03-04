@@ -1,0 +1,40 @@
+context:
+  name: ${{ load_from_file("pyproject.toml").project.name }}
+  version: ${{ load_from_file("pyproject.toml").project.version }}
+  repository: ${{ load_from_file("pyproject.toml").project.repository }}
+
+package:
+  name: ${{ load_from_file("pyproject.toml").project.version }}
+  version: ${{ load_from_file("pyproject.toml").project.version }}
+
+source:
+  - git: ${{ repository }}
+
+build:
+  # Thanks to `noarch: python` this package works on all platforms
+  noarch: python
+  script:
+    - python -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - pip
+    - hatchling
+    - python ${{ load_from_file("pyproject.toml").project["requires-python"] }}
+  run: ${{ load_from_file("pyproject.toml").project.dependencies }}
+
+tests:
+  - python:
+      imports:
+        - ${{ name }}
+      pip_check: true
+
+about:
+  homepage: ${{ load_from_file("pyproject.toml").project.homepage }}
+  license: ${{ load_from_file("pyproject.toml").project.license }}
+  license_file: LICENSE
+  summary: ${{ load_from_file("pyproject.toml").project.description }}
+  description: |
+    {{ insert_readme() | indent }}
+  documentation: ${{ load_from_file("pyproject.toml").project.documentation }}
+  repository: ${{ repository }}
