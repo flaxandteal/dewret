@@ -11,4 +11,4 @@ jobs:
       - name: install
         run: python -m pip install .
       - name: portray
-        run: pip install portray; python -m portray
+        run: pip install portray; python -m portray on_github_pages -f
