@@ -60,16 +60,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v3
-      - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.16.5
-      - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
-      - uses: actions/upload-artifact@v4
         with:
-          # name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
-          name: cibw-wheels-noarch
-          path: ./wheelhouse/*.whl
+          fetch-depth: 0
+      - uses: hynek/build-and-inspect-python-package@v2
   sdist:
     runs-on: ubuntu-latest
     steps:
