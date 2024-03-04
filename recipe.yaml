@@ -33,7 +33,6 @@ tests:
 about:
   homepage: ${{ load_from_file("pyproject.toml").project.homepage }}
   license: ${{ load_from_file("pyproject.toml").project.license }}
-  license_file: LICENSE
   summary: ${{ load_from_file("pyproject.toml").project.description }}
   description: |
 __README__
