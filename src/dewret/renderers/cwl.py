@@ -3,12 +3,16 @@ from collections.abc import Mapping
 
 from dewret.workflow import Reference, Raw, Workflow, Step, Task
 from dewret.tasks import run
+from dewret.utils import RawType
 
 @define
 class ReferenceDefinition:
     @classmethod
     def from_reference(cls, ref: Reference) -> "ReferenceDefinition":
         return cls()
+
+    def render(self) -> str:
+        raise NotImplementedError("Implement references")
 
 @define
 class StepDefinition:
@@ -17,7 +21,7 @@ class StepDefinition:
     in_: Mapping[str, ReferenceDefinition | Raw]
 
     @classmethod
-    def from_step(cls, step: Step):
+    def from_step(cls, step: Step) -> "StepDefinition":
         return cls(
             id=step.id,
             run=step.task.name,
@@ -30,7 +34,7 @@ class StepDefinition:
             }
         )
 
-    def render(self):
+    def render(self) -> dict[str, RawType]:
         return {
             "run": self.run,
             "in": {
@@ -47,7 +51,7 @@ class WorkflowDefinition:
     steps: list[StepDefinition]
 
     @classmethod
-    def from_workflow(cls, workflow: Workflow):
+    def from_workflow(cls, workflow: Workflow) -> "WorkflowDefinition":
         return cls(
             steps=[
                 StepDefinition.from_step(step)
@@ -55,7 +59,7 @@ class WorkflowDefinition:
             ]
         )
 
-    def render(self):
+    def render(self) -> dict[str, RawType]:
         return {
             "cwlVersion": 1.2,
             "class": "Workflow",
@@ -65,7 +69,7 @@ class WorkflowDefinition:
             }
         }
 
-def render(task: Task):
+def render(task: Task) -> dict[str, RawType]:
     output = run(task)
     workflow = output.__workflow__
     return WorkflowDefinition.from_workflow(workflow).render()

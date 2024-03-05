@@ -11,7 +11,7 @@ from .renderers.cwl import render as cwl_render
 @click.argument("workflow_py")
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
-def render(workflow_py, task, arguments, pretty):
+def render(workflow_py: str, task: str, arguments: list[str], pretty: bool) -> None:
     """Render a workflow.
 
     WORKFLOW_PY is the Python file containing workflow.
