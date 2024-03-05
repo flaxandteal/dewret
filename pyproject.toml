@@ -14,6 +14,12 @@ extra_markdown_extensions = [
   "pymdownx.highlight",
 ]
 
+[tool.ruff.lint]
+select = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
 [project]
 name = "dewret"
 description = "DEclarative Workflow REndering Tool"
