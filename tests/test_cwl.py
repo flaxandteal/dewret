@@ -1,14 +1,20 @@
 import yaml
-from dewret.tasks import task
+from dewret.tasks import task, run
 from dewret.renderers.cwl import render
 from dewret.utils import hasher
+from dewret.workflow import Workflow
 
 @task()
-def increment(num: int):
+def increment(num: int) -> int:
+    """Increment an integer."""
     return num + 1
 
-def test_cwl():
-    rendered = render(increment(num=3))
+def test_cwl() -> None:
+    """Check whether we can produce simple CWL.
+    """
+    result = increment(num=3)
+    workflow = run(result)
+    rendered = render(workflow)
     hsh = hasher(('increment', ('num', 'int|3')))
 
     assert rendered == yaml.safe_load(f"""

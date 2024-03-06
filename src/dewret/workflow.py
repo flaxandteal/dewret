@@ -17,18 +17,49 @@
 Basic constructs for describing a workflow.
 """
 
-from collections.abc import Mapping, MutableMapping, Callable
+from __future__ import annotations
+from collections.abc import Mapping, MutableMapping, Callable, Awaitable
 import base64
 from attrs import define
 from typing import Protocol, Any
 
 from .utils import hasher, RawType, is_raw
 
+@define
+class Raw:
+    """Value object for any raw types.
+
+    This is able to hash raw types consistently and provides
+    a single type for validating type-consistency.
+
+    Attributes:
+        value: the real value, e.g. a `str`, `int`, ...
+    """
+    value: RawType
+
+    def __hash__(self) -> int:
+        """Provide a hash that is unique to the `value` member."""
+        return hash(repr(self))
+
+    def __repr__(self) -> str:
+        """Convert to a consistent, string representation."""
+        value: str
+        if isinstance(self.value, bytes):
+            value = base64.b64encode(self.value).decode("ascii")
+        else:
+            value = str(self.value)
+        return f"{type(self.value).__name__}|{value}"
+
 class Lazy(Protocol):
     """Requirements for a lazy-evaluatable function."""
-    ...
+    __name__: str
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """When called this should return a reference."""
+        ...
 
 Target = Callable[..., Any]
+StepExecution = Callable[..., Lazy]
 LazyFactory = Callable[[Target], Lazy]
 
 class Task:
@@ -43,9 +74,9 @@ class Task:
     """
 
     name: str
-    target: Target | None
+    target: Lazy
 
-    def __init__(self, name: str, target: Target | None= None):
+    def __init__(self, name: str, target: Lazy):
         """Initialize the Task.
 
         Argument:
@@ -75,16 +106,22 @@ class Workflow:
             built as they are evaluated.
         tasks: the mapping of names used in the `steps` to the actual
             `Task` wrappers they represent.
+        output: target reference to evaluate, if yet present.
     """
     steps: list["Step"]
     tasks: MutableMapping[str, "Task"]
 
     def __init__(self) -> None:
-        """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
+        """Initialize a Workflow, by setting `steps` and `tasks` to empty containers.
+
+        Argument:
+            output: target reference to evaluate.
+        """
         self.steps = []
         self.tasks = {}
+        self.output: StepReference | None = None
 
-    def register_task(self, fn: Target) -> Task:
+    def register_task(self, fn: Lazy) -> Task:
         """Note the existence of a lazy-evaluatable function, and wrap it as a `Task`.
 
         Argument:
@@ -101,6 +138,39 @@ class Workflow:
         task = Task(name, fn)
         self.tasks[name] = task
         return task
+
+    def add_step(self, fn: Lazy, kwargs: dict[str, Raw | Reference]) -> StepReference:
+        """Append a step.
+
+        Adds a step, for running a target with key-value arguments,
+        to the workflow.
+
+        Argument:
+            fn: the target function to turn into a step.
+            kwargs: any key-value arguments to pass in the call.
+        """
+        task = self.register_task(fn)
+        step = Step(
+            self,
+            task,
+            kwargs
+        )
+        self.steps.append(step)
+        return StepReference(self, step)
+
+    @staticmethod
+    def from_result(result: StepReference) -> Workflow:
+        """Create from a desired result.
+
+        Starts from a result, and builds a workflow to output it.
+        """
+        step = result.step
+        workflow = result.__workflow__
+        workflow.set_output(result)
+        return workflow
+
+    def set_output(self, output: "StepReference") -> None:
+        self.output = output
 
 
 class WorkflowComponent:
@@ -124,31 +194,6 @@ class WorkflowComponent:
 class Reference(WorkflowComponent):
     """Superclass for all symbolic references to values."""
     ...
-
-@define
-class Raw:
-    """Value object for any raw types.
-
-    This is able to hash raw types consistently and provides
-    a single type for validating type-consistency.
-
-    Attributes:
-        value: the real value, e.g. a `str`, `int`, ...
-    """
-    value: RawType
-
-    def __hash__(self) -> int:
-        """Provide a hash that is unique to the `value` member."""
-        return hash(repr(self))
-
-    def __repr__(self) -> str:
-        """Convert to a consistent, string representation."""
-        value: str
-        if isinstance(self.value, bytes):
-            value = base64.b64encode(self.value).decode("ascii")
-        else:
-            value = str(self.value)
-        return f"{type(self.value).__name__}|{value}"
 
 class Step(WorkflowComponent):
     """Lazy-evaluated function call.

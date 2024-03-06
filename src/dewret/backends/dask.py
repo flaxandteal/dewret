@@ -32,7 +32,7 @@ class Delayed(Protocol):
     More info: https://github.com/dask/dask/issues/7779
     """
 
-    def compute(self, __workflow__: Workflow) -> StepReference:
+    def compute(self, __workflow__: Workflow | None) -> StepReference:
         """Evaluate this `dask.delayed`.
 
         Evaluate a delayed (dask lazy-evaluated) function. dewret
@@ -41,7 +41,7 @@ class Delayed(Protocol):
         so the signature here is simple.
 
         Argument:
-            __workflow__: `Workflow` that this is tied to.
+            __workflow__: `Workflow` that this is tied to, if applicable.
 
         Returns:
             Reference to the final output step.
@@ -49,7 +49,7 @@ class Delayed(Protocol):
         ...
 
 lazy = delayed
-def run(workflow: Workflow, task: Lazy) -> StepReference:
+def run(workflow: Workflow | None, task: Lazy) -> StepReference:
     """Execute a task as the output of a workflow.
 
     Runs a task with dask.

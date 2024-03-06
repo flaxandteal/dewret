@@ -32,7 +32,7 @@ from functools import cached_property
 from collections.abc import Callable
 from typing import Any
 
-from .workflow import Step, StepReference, Workflow, Lazy, Target, LazyFactory, Reference, Raw
+from .workflow import Step, StepReference, Workflow, Lazy, Target, LazyFactory, Reference, Raw, StepExecution, Task
 from .backends._base import BackendModule
 
 class Backend(Enum):
@@ -103,7 +103,7 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def __call__(self, task: Lazy, **kwargs: Any) -> StepReference:
+    def __call__(self, task: Lazy, **kwargs: Any) -> Workflow:
         """Execute the lazy evalution.
 
         Arguments:
@@ -114,13 +114,14 @@ class TaskManager:
             A reusable reference to this individual step.
         """
         workflow = Workflow()
-        return self.backend.run(workflow, task, **kwargs)
+        result = self.backend.run(workflow, task, **kwargs)
+        return Workflow.from_result(result)
 
 _manager = TaskManager()
 lazy = _manager.make_lazy
 run = _manager
 
-def task() -> Callable[[Target], Lazy]:
+def task() -> Callable[[Target], StepExecution]:
     """Decorator factory abstracting backend's own task decorator.
 
     Returns:
@@ -139,18 +140,11 @@ def task() -> Callable[[Target], Lazy]:
         `dask.delayed` will still be called, for example, in the dask case.
     """
 
-    def _task(fn: Target) -> Lazy:
+    def _task(fn: Target) -> StepExecution:
         def _fn(__workflow__: Workflow | None = None, **kwargs: Reference | Raw) -> StepReference:
             if __workflow__ is None:
                 __workflow__ = Workflow()
-            task = __workflow__.register_task(fn)
-            step = Step(
-                __workflow__,
-                task,
-                kwargs
-            )
-            __workflow__.steps.append(step)
-            return StepReference(__workflow__, step)
+            return __workflow__.add_step(fn, kwargs)
         return lazy()(_fn)
     return _task
 

@@ -153,7 +153,7 @@ class WorkflowDefinition:
             }
         }
 
-def render(task: Task) -> dict[str, RawType]:
+def render(workflow: Workflow) -> dict[str, RawType]:
     """Render to a dict-like structure.
 
     Argument:
@@ -163,6 +163,4 @@ def render(task: Task) -> dict[str, RawType]:
         Reduced form as a native Python dict structure for
         serialization.
     """
-    output = run(task)
-    workflow = output.__workflow__
     return WorkflowDefinition.from_workflow(workflow).render()
