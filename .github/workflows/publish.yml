@@ -48,7 +48,7 @@ jobs:
       with:
         # needs to be unique for each matrix entry
         #artifact-name: package-noarch #-${{ matrix.target-platform }}
-        recipe-path: ./recipe.yaml
+        recipe-path: ./conda.recipe/recipe.yaml
         #build-args: --target-platform noarch # ${{ matrix.target-platform }}${{ matrix.target-platform == 'linux-aarch64' && ' --no-test' || '' }}
   build_wheel:
     name: Build wheels on ${{ matrix.os }}
