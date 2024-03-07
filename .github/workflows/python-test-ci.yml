@@ -25,19 +25,19 @@ jobs:
     - uses: actions/checkout@v4
     - name: Prepare to build conda package
       run: pip install toml && python .github/workflows/generate_recipe.py
-    - name: Make an output folder
-      run: rm -rf /tmp/build && mkdir -p /tmp/build && cp pyproject.toml recipe.yaml /tmp/build && cd /tmp/build
     - name: Build conda package
       uses: prefix-dev/rattler-build-action@v0.2.2
       env:
-        CONDA_BLD_PATH: ../output
+        CONDA_BLD_PATH: /tmp/output
         RATTLER_BUILD_EXPERIMENTAL: "true"
       with:
         recipe-path: ./recipe.yaml
     - name: Install built package
       run: |
-        ls ../output/noarch/*.conda
-        conda install ../output/noarch/*.conda
+        ls /tmp/output
+        ls /tmp/output/noarch
+        ls /tmp/output/noarch/*.conda
+        conda install /tmp/output/noarch/*.conda
     - name: Test with pytest
       run: |
         conda install pytest
