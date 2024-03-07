@@ -38,7 +38,7 @@ jobs:
         ls /tmp/output
         ls /tmp/output/noarch
         ls /tmp/output/noarch/*.conda
-        conda install --use-local /tmp/output/noarch/*.conda
+        conda install --update-deps /tmp/output/noarch/*.conda
         conda install pytest
         #conda install pytest attrs pyyaml dask
         conda list
