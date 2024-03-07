@@ -8,7 +8,7 @@ package:
   version: ${{ load_from_file("pyproject.toml").project.version }}
 
 source:
-  - git: ${{ repository }}
+  - path: ./src
     rev: __GIT_REVISION__
 
 build:
