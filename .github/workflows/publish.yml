@@ -43,12 +43,12 @@ jobs:
     - name: Build conda package
       uses: prefix-dev/rattler-build-action@v0.2.2
       env:
-        CONDA_BLD_PATH: output
+        CONDA_BLD_PATH: ../output
         RATTLER_BUILD_EXPERIMENTAL: "true"
       with:
         # needs to be unique for each matrix entry
         #artifact-name: package-noarch #-${{ matrix.target-platform }}
-        recipe-path: ./conda.recipe/recipe.yaml
+        recipe-path: ./recipe.yaml
         #build-args: --target-platform noarch # ${{ matrix.target-platform }}${{ matrix.target-platform == 'linux-aarch64' && ' --no-test' || '' }}
   build_wheel:
     name: Build wheels on ${{ matrix.os }}
