@@ -32,6 +32,7 @@ jobs:
         RATTLER_BUILD_EXPERIMENTAL: "true"
       with:
         recipe-path: ./recipe.yaml
+    - uses: s-weigand/setup-conda@v1
     - name: Install built package
       run: |
         ls /tmp/output
