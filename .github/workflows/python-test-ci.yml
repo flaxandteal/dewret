@@ -38,7 +38,5 @@ jobs:
         ls /tmp/output/noarch
         ls /tmp/output/noarch/*.conda
         conda install /tmp/output/noarch/*.conda
-    - name: Test with pytest
-      run: |
         conda install pytest
         $CONDA/bin/pytest
