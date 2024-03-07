@@ -17,4 +17,4 @@ jobs:
       run: |
         pip install pytest pytest-cov
         pip install --no-build-isolation --no-deps --disable-pip-version-check -e .
-        python -m pytest
+        python -m pytest --doctest-modules
