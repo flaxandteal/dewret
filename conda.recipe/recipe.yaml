@@ -14,7 +14,7 @@ build:
   # Thanks to `noarch: python` this package works on all platforms
   noarch: python
   script:
-    - cd .. && python -m pip install . -vv --no-deps --no-build-isolation
+    - cd .. && pwd && ls -l && python -m pip install . -vv --no-deps --no-build-isolation
 
 requirements:
   host:
