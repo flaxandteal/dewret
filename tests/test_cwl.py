@@ -1,3 +1,5 @@
+"""Verify CWL output is OK."""
+
 import yaml
 from dewret.tasks import task, run
 from dewret.renderers.cwl import render
@@ -11,6 +13,8 @@ def increment(num: int) -> int:
 
 def test_cwl() -> None:
     """Check whether we can produce simple CWL.
+
+    Produces simplest possible CWL from a workflow.
     """
     result = increment(num=3)
     workflow = run(result)

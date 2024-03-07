@@ -169,7 +169,16 @@ class Workflow:
         workflow.set_output(result)
         return workflow
 
-    def set_output(self, output: "StepReference") -> None:
+    def set_output(self, output: StepReference) -> None:
+        """Choose the output step.
+
+        Sets a step as being the output for the entire workflow.
+
+        Argument:
+            output: reference to the chosen step.
+        """
+        if output.step.__workflow__ != self:
+            raise RuntimeError("Output must be from a step in this workflow.")
         self.output = output
 
 
