@@ -8,7 +8,7 @@ package:
   version: ${{ load_from_file("pyproject.toml").project.version }}
 
 source:
-  - path: ./src
+  - path: .
 
 build:
   # Thanks to `noarch: python` this package works on all platforms
