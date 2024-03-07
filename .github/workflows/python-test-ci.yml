@@ -38,7 +38,7 @@ jobs:
         ls /tmp/output
         ls /tmp/output/noarch
         ls /tmp/output/noarch/*.conda
-        conda install /tmp/output/noarch/*.conda
+        conda install /tmp/output/noarch/*.conda pytest
+        conda list
         python -c "import dewret; print(dewret.__dict__)"
-        conda install pytest
         $CONDA/bin/pytest
