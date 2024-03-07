@@ -10,7 +10,7 @@ with open("README.md") as f:
 
 readme_string = textwrap.indent(readme_string, "    ")
 
-with open("conda.recipe/recipe.yaml") as f:
+with open("recipe.yaml") as f:
     TEMPLATE = f.read()
 
 deps = pyproject["project"]["dependencies"]
