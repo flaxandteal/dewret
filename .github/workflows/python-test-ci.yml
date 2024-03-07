@@ -39,7 +39,7 @@ jobs:
         ls /tmp/output/noarch
         ls /tmp/output/noarch/*.conda
         conda install /tmp/output/noarch/*.conda
-        conda install pytest attrs pyyaml
+        conda install pytest attrs pyyaml dask
         conda list
         python -c "import dewret; print(dewret.__dict__)"
         $CONDA/bin/pytest
