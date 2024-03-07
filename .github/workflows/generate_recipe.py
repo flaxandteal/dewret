@@ -19,6 +19,5 @@ for dep in deps:
     deps_string += f"    - {dep}\n"
 TEMPLATE = TEMPLATE.replace("__PROJECT_DEPENDENCIES__", deps_string)
 TEMPLATE = TEMPLATE.replace("__README__", readme_string)
-TEMPLATE = TEMPLATE.replace("__GIT_REVISION__", os.environ["GITHUB_SHA"])
 with open("recipe.yaml", "w") as f:
     f.write(TEMPLATE)
