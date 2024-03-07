@@ -1,11 +1,11 @@
 context:
-  name: ${{ load_from_file("../pyproject.toml").project.name }}
-  version: ${{ load_from_file("../pyproject.toml").project.version }}
-  repository: ${{ load_from_file("../pyproject.toml").project.repository }}
+  name: ${{ load_from_file("pyproject.toml").project.name }}
+  version: ${{ load_from_file("pyproject.toml").project.version }}
+  repository: ${{ load_from_file("pyproject.toml").project.repository }}
 
 package:
-  name: ${{ load_from_file("../pyproject.toml").project.name }}
-  version: ${{ load_from_file("../pyproject.toml").project.version }}
+  name: ${{ load_from_file("pyproject.toml").project.name }}
+  version: ${{ load_from_file("pyproject.toml").project.version }}
 
 source:
   - path: .
@@ -20,7 +20,7 @@ requirements:
   host:
     - pip
     - hatchling
-    - python ${{ load_from_file("../pyproject.toml").project["requires-python"] }}
+    - python ${{ load_from_file("pyproject.toml").project["requires-python"] }}
   run:
 __PROJECT_DEPENDENCIES__
 
@@ -35,10 +35,10 @@ tests:
         - dewret.workflow
 
 about:
-  homepage: ${{ load_from_file("../pyproject.toml").project.homepage }}
-  license: ${{ load_from_file("../pyproject.toml").project.license }}
-  summary: ${{ load_from_file("../pyproject.toml").project.description }}
+  homepage: ${{ load_from_file("pyproject.toml").project.homepage }}
+  license: ${{ load_from_file("pyproject.toml").project.license }}
+  summary: ${{ load_from_file("pyproject.toml").project.description }}
   description: |
 __README__
-  documentation: ${{ load_from_file("../pyproject.toml").project.documentation }}
+  documentation: ${{ load_from_file("pyproject.toml").project.documentation }}
   repository: ${{ repository }}
