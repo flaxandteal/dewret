@@ -4,11 +4,12 @@ context:
   repository: ${{ load_from_file("pyproject.toml").project.repository }}
 
 package:
-  name: ${{ load_from_file("pyproject.toml").project.version }}
+  name: ${{ load_from_file("pyproject.toml").project.name }}
   version: ${{ load_from_file("pyproject.toml").project.version }}
 
 source:
   - git: ${{ repository }}
+    rev: __GIT_REVISION__
 
 build:
   # Thanks to `noarch: python` this package works on all platforms
