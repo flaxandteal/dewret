@@ -49,7 +49,15 @@ jobs:
         # needs to be unique for each matrix entry
         #artifact-name: package-noarch #-${{ matrix.target-platform }}
         recipe-path: ./recipe.yaml
+        upload-artifact: false
         #build-args: --target-platform noarch # ${{ matrix.target-platform }}${{ matrix.target-platform == 'linux-aarch64' && ' --no-test' || '' }}
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: conda-package
+        path: |
+          ../output/**/*.tar.bz2
+          ../output/**/*.conda
   build_wheel:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ubuntu-latest # Currently, only need noarch
