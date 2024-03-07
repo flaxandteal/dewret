@@ -2,7 +2,7 @@
 
 from typing import cast
 from dewret.workflow import Lazy
-from dewret.backends.dask import lazy, run
+from dewret.backends.backend_dask import lazy, run
 
 def inc_task(base: int) -> int:
     """Increments a value by one and returns it."""

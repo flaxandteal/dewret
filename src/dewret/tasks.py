@@ -21,9 +21,9 @@ decorator for the current backend.
 
 Typical usage example:
 
-  @task()
-  def increment(num: int) -> int:
-      return num + 1
+  >>> @task()
+  ... def increment(num: int) -> int:
+  ...     return num + 1
 """
 
 import importlib
@@ -40,11 +40,6 @@ class Backend(Enum):
     DASK = "dask"
 
 DEFAULT_BACKEND = Backend.DASK
-
-def get_dask_backend() -> BackendModule:
-    """Initialize the dask backend."""
-    from .backends import dask
-    return dask
 
 class TaskManager:
     """Overarching backend-agnostic task manager.
@@ -92,7 +87,7 @@ class TaskManager:
         if backend is None:
             backend = self.set_backend(DEFAULT_BACKEND)
 
-        backend_mod = importlib.import_module(f".backends.{backend.value}", "dewret")
+        backend_mod = importlib.import_module(f".backends.backend_{backend.value}", "dewret")
         return backend_mod
 
     def make_lazy(self) -> LazyFactory:
@@ -128,9 +123,9 @@ def task() -> Callable[[Target], StepExecution]:
         Decorator for the current backend to mark lazy-executable tasks.
         For example:
 
-            @task()
-            def increment(num: int) -> int:
-                return num + 1
+        >>> @task()
+        ... def increment(num: int) -> int:
+        ...     return num + 1
 
         If the backend is `dask` (the default), it is will evaluate this
         as a `dask.delayed`. Note that, with any backend, dewret will
