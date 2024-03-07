@@ -29,6 +29,9 @@ tests:
       imports:
         - ${{ name }}
       pip_check: true
+  - package_contents:
+      site_packages:
+        - dewret.workflow
 
 about:
   homepage: ${{ load_from_file("pyproject.toml").project.homepage }}
