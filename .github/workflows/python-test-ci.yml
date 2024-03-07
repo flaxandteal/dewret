@@ -18,4 +18,4 @@ jobs:
         pip install pytest pytest-cov
         pip install --no-build-isolation --no-deps --disable-pip-version-check -e .
         python -m pytest --doctest-modules
-        python -m doctest -v docs/**/*.md
+        python -m doctest -v docs/*.md
