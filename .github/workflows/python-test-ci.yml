@@ -33,9 +33,6 @@ jobs:
       with:
         recipe-path: ./recipe.yaml
     - uses: s-weigand/setup-conda@v1
-    - name: Ensure blank environment
-      run: |
-        conda clean -a
     - name: Install built package
       run: |
         conda install -c /tmp/output/noarch/*.conda --update-deps --use-local dewret
