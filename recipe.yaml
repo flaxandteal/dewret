@@ -9,7 +9,6 @@ package:
 
 source:
   - path: ./src
-    rev: __GIT_REVISION__
 
 build:
   # Thanks to `noarch: python` this package works on all platforms
