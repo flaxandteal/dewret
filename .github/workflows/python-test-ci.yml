@@ -19,3 +19,23 @@ jobs:
         pip install --no-build-isolation --no-deps --disable-pip-version-check -e .
         python -m pytest --doctest-modules
         python -m doctest -v docs/*.md
+  unit-conda:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Prepare to build conda package
+      run: pip install toml && python .github/workflows/generate_recipe.py
+    - name: Build conda package
+      uses: prefix-dev/rattler-build-action@v0.2.2
+      env:
+        CONDA_BLD_PATH: ../output
+        RATTLER_BUILD_EXPERIMENTAL: "true"
+      with:
+        recipe-path: ./recipe.yaml
+    - name: Install built package
+      run: |
+        conda install ../output/noarch/*.conda
+    - name: Test with pytest
+      run: |
+        conda install pytest
+        $CONDA/bin/pytest
