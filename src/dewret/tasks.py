@@ -32,7 +32,19 @@ from functools import cached_property
 from collections.abc import Callable
 from typing import Any
 
-from .workflow import Step, StepReference, Workflow, Lazy, Target, LazyFactory, Reference, Raw, StepExecution, Task
+from .workflow import (
+    Step,
+    StepReference,
+    Workflow,
+    Lazy,
+    Target,
+    LazyFactory,
+    Reference,
+    Raw,
+    StepExecution,
+    Task,
+    merge_workflows
+)
 from .backends._base import BackendModule
 
 class Backend(Enum):
@@ -137,9 +149,18 @@ def task() -> Callable[[Target], StepExecution]:
 
     def _task(fn: Target) -> StepExecution:
         def _fn(__workflow__: Workflow | None = None, **kwargs: Reference | Raw) -> StepReference:
-            if __workflow__ is None:
-                __workflow__ = Workflow()
-            return __workflow__.add_step(fn, kwargs)
+            workflows = [
+                reference.__workflow__
+                for reference in kwargs.values()
+                if hasattr(reference, "__workflow__") and reference.__workflow__ is not None
+            ]
+            if __workflow__ is not None:
+                workflows.insert(0, __workflow__)
+            if workflows:
+                workflow = merge_workflows(*workflows)
+            else:
+                workflow = Workflow()
+            return workflow.add_step(fn, kwargs)
         return lazy()(_fn)
     return _task
 

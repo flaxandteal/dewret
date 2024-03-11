@@ -31,6 +31,7 @@ class ReferenceDefinition:
 
     Normally points to a value or a step.
     """
+    source: str
 
     @classmethod
     def from_reference(cls, ref: Reference) -> "ReferenceDefinition":
@@ -41,7 +42,7 @@ class ReferenceDefinition:
         Args:
             ref: reference to convert.
         """
-        return cls()
+        return cls(source=str(ref))
 
     def render(self) -> dict[str, RawType]:
         """Render to a dict-like structure.
@@ -50,7 +51,9 @@ class ReferenceDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
-        raise NotImplementedError("Implement references")
+        return {
+            "source": self.source
+        }
 
 @define
 class StepDefinition:
@@ -105,7 +108,8 @@ class StepDefinition:
                     if isinstance(ref, ReferenceDefinition) else
                     {"default": ref.value}
                 ) for key, ref in self.in_.items()
-            }
+            },
+            "out": ["out"]
         }
 
 @define

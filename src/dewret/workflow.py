@@ -19,9 +19,14 @@ Basic constructs for describing a workflow.
 
 from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Callable, Awaitable
+from collections import OrderedDict
 import base64
 from attrs import define
 from typing import Protocol, Any
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 from .utils import hasher, RawType, is_raw
 
@@ -94,6 +99,19 @@ class Task:
         """Represent the Task, currently by returning the `name`."""
         return self.name
 
+    def __eq__(self, other: object) -> bool:
+        """Is this the same task?
+
+        At present, we naively compare the name and target. In
+        future, this may be more nuanced.
+        """
+        if not isinstance(other, Task):
+            return False
+        return (
+            self.name == other.name and
+            self.target == other.target
+        )
+
 class Workflow:
     """Overarching workflow concept.
 
@@ -111,6 +129,61 @@ class Workflow:
     steps: list["Step"]
     tasks: MutableMapping[str, "Task"]
     result: StepReference | None
+
+    @property
+    def _indexed_steps(self) -> dict[str, Step]:
+        """Steps mapped by ID.
+
+        Forces generation of IDs. Note that this effectively
+        freezes the steps, so it should not be used until we
+        are confident the steps are all ready to be hashed.
+
+        Returns:
+            Mapping of steps by ID.
+        """
+        return {
+            step.id: step for step in self.steps
+        }
+
+    @classmethod
+    def assimilate(cls, left: Workflow, right: Workflow) -> "Workflow":
+        """Combine Workflows into one Workflow.
+
+        Takes two workflows and unifies them by combining steps
+        and tasks. If it sees mismatched identifiers for the same
+        component, it will error.
+        This could happen if the hashing function is flawed
+        or some Python magic to do with Targets being passed.
+
+        Argument:
+            left: workflow to use as base
+            right: workflow to combine on top
+        """
+        new = cls()
+
+        left_steps = left._indexed_steps
+        right_steps = right._indexed_steps
+        for step_id in (left_steps.keys() & right_steps.keys()):
+            if left_steps[step_id] != right_steps[step_id]:
+                print(left_steps[step_id].parameters)
+                print(right_steps[step_id].parameters)
+                print(left_steps[step_id].parameters ==
+                right_steps[step_id].parameters)
+                print(left_steps[step_id].task)
+                print(right_steps[step_id].task)
+                print(left_steps[step_id].task ==
+                right_steps[step_id].task)
+                raise RuntimeError(f"Two steps have same ID but do not match: {step_id}")
+
+        for task_id in (left.tasks.keys() & right.tasks.keys()):
+            if left.tasks[task_id] != right.tasks[task_id]:
+                raise RuntimeError("Two tasks have same name but do not match")
+
+        new.steps += list(left_steps.values())
+        new.steps += list(right_steps.values())
+        new.tasks.update(left.tasks)
+        new.tasks.update(right.tasks)
+        return new
 
     def __init__(self) -> None:
         """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
@@ -231,13 +304,27 @@ class Step(WorkflowComponent):
         self.task = task
         self.parameters = {}
         for key, value in parameters.items():
-            if isinstance(value, Reference | Raw | RawType):
+            if (
+               isinstance(value, Reference) or
+               isinstance(value, Raw) or
+               is_raw(value)
+            ):
                 # Avoid recursive type issues
                 if not isinstance(value, Reference) and not isinstance(value, Raw) and is_raw(value):
                     value = Raw(value)
                 self.parameters[key] = value
             else:
                 raise RuntimeError(f"Non-references must be a serializable type: {key}>{value}")
+
+    def __eq__(self, other: object) -> bool:
+        """Is this the same step?
+
+        At present, we naively compare the task and parameters. In
+        future, this may be more nuanced.
+        """
+        if not isinstance(other, Step):
+            return False
+        return self.task == other.task and self.parameters == other.parameters
 
     @property
     def id(self) -> str:
@@ -258,6 +345,7 @@ class Step(WorkflowComponent):
             components.append((key, repr(param)))
 
         comp_tup: tuple[str | tuple[str, str], ...] = tuple(components)
+
         return f"{self.task}-{hasher(comp_tup)}"
 
 class StepReference(Reference):
@@ -270,6 +358,7 @@ class StepReference(Reference):
         step: `Step` referred to.
     """
     step: Step
+    field: str
 
     def __init__(self, workflow: Workflow, step: Step):
         """Initialize the reference.
@@ -280,3 +369,28 @@ class StepReference(Reference):
         """
         super().__init__(workflow)
         self.step = step
+        self.field = "out"
+
+    def __str__(self) -> str:
+        """Global description of the reference."""
+        return f"{self.step.id}/{self.field}"
+
+    def __repr__(self) -> str:
+        """Hashable reference to the step (and field)."""
+        return f"{self.step.id}/{self.field}"
+
+def merge_workflows(*workflows: Workflow) -> Workflow:
+    """Combine several workflows into one.
+
+    Merges a series of workflows by combining steps and tasks.
+
+    Argument:
+        *workflows: series of workflows to combine.
+
+    Returns:
+        One workflow with all steps.
+    """
+    base = list(workflows).pop()
+    for workflow in workflows:
+        base = Workflow.assimilate(base, workflow)
+    return base

@@ -35,7 +35,7 @@ def is_raw(var: Any) -> bool:
     does not. Instead, we explicitly make the full union in the statement below.
     """
     # isinstance(var, RawType | list[RawType] | dict[str, RawType])
-    return isinstance(var, str | float | bool | bytes | int | None | list[RawType] | dict[str, RawType])
+    return isinstance(var, str | float | bool | bytes | int | None | list | dict)
 
 def hasher(construct: FirmType) -> str:
     """Consistently hash a RawType or tuple structure.
