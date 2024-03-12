@@ -38,7 +38,7 @@ class ReferenceDefinition:
 
         Converts a `dewret.workflow.Reference` into a CWL-rendering object.
 
-        Argument:
+        Args:
             ref: reference to convert.
         """
         return cls()
@@ -75,7 +75,7 @@ class StepDefinition:
 
         Converts a `dewret.workflow.Step` into a CWL-rendering object.
 
-        Argument:
+        Args:
             step: step to convert.
         """
         return cls(
@@ -127,7 +127,7 @@ class WorkflowDefinition:
 
         Converts a `dewret.workflow.Workflow` into a CWL-rendering object.
 
-        Argument:
+        Args:
             workflow: workflow to convert.
         """
         return cls(
@@ -156,8 +156,8 @@ class WorkflowDefinition:
 def render(workflow: Workflow) -> dict[str, RawType]:
     """Render to a dict-like structure.
 
-    Argument:
-        task: task to evaluate output as a workflow.
+    Args:
+        workflow: workflow to evaluate result.
 
     Returns:
         Reduced form as a native Python dict structure for

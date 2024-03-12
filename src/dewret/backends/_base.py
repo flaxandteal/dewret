@@ -35,7 +35,7 @@ class BackendModule(Protocol):
     def run(self, workflow: Workflow, task: Lazy) -> StepReference:
         """Execute a lazy task for this `Workflow`.
 
-        Argument:
+        Args:
             workflow: `Workflow` that is being executed.
             task: task that forms the output.
 

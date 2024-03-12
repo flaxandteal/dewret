@@ -40,7 +40,7 @@ class Delayed(Protocol):
         and all arguments will already be known to the wrapped `delayed`
         so the signature here is simple.
 
-        Argument:
+        Args:
             __workflow__: `Workflow` that this is tied to, if applicable.
 
         Returns:
@@ -54,7 +54,7 @@ def run(workflow: Workflow | None, task: Lazy) -> StepReference:
 
     Runs a task with dask.
 
-    Argument:
+    Args:
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
     """

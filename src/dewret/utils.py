@@ -43,7 +43,7 @@ def hasher(construct: FirmType) -> str:
     Turns a possibly nested structure of basic types, dicts, lists and tuples
     into a consistent hash.
 
-    Argument:
+    Args:
         construct: structure to hash.
 
     Returns:

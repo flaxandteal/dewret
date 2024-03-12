@@ -79,7 +79,7 @@ class Task:
     def __init__(self, name: str, target: Lazy):
         """Initialize the Task.
 
-        Argument:
+        Args:
             name: Name of wrapped function.
             target: Actual function being wrapped (optional).
         """
@@ -121,7 +121,7 @@ class Workflow:
     def register_task(self, fn: Lazy) -> Task:
         """Note the existence of a lazy-evaluatable function, and wrap it as a `Task`.
 
-        Argument:
+        Args:
             fn: the wrapped function.
 
         Returns:
@@ -142,7 +142,7 @@ class Workflow:
         Adds a step, for running a target with key-value arguments,
         to the workflow.
 
-        Argument:
+        Args:
             fn: the target function to turn into a step.
             kwargs: any key-value arguments to pass in the call.
         """
@@ -175,7 +175,7 @@ class Workflow:
         Similarly, in the static case, we need to have a result that
         drives the calculation.
 
-        Argument:
+        Args:
             result: reference to the chosen step.
         """
         if result.step.__workflow__ != self:
@@ -196,7 +196,7 @@ class WorkflowComponent:
 
         All subclasses must call this.
 
-        Argument:
+        Args:
             workflow: the `Workflow` to tie to.
         """
         self.__workflow__ = workflow
@@ -222,7 +222,7 @@ class Step(WorkflowComponent):
     def __init__(self, workflow: Workflow, task: Task, parameters: Mapping[str, Reference | Raw]):
         """Initialize a step.
 
-        Argument:
+        Args:
             workflow: `Workflow` that this is tied to.
             task: the lazy-evaluatable function that this wraps.
             parameters: key-value pairs to pass to the function.
@@ -274,7 +274,7 @@ class StepReference(Reference):
     def __init__(self, workflow: Workflow, step: Step):
         """Initialize the reference.
 
-        Argument:
+        Args:
             workflow: `Workflow` that this is tied to.
             step: `Step` that this refers to.
         """
