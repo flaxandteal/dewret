@@ -32,6 +32,8 @@ steps:
     in:
       num:
         default: 3
+    out:
+    - out
     run: increment
 ```
 
@@ -62,6 +64,8 @@ steps:
     in:
       num:
         default: 3
+    out:
+    - out
     run: increment
 
 ```
