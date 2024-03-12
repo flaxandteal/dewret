@@ -81,7 +81,7 @@ class Task:
 
         Argument:
             name: Name of wrapped function.
-            callable: Actual function being wrapped (optional).
+            target: Actual function being wrapped (optional).
         """
         self.name = name
         self.target = target
@@ -106,20 +106,17 @@ class Workflow:
             built as they are evaluated.
         tasks: the mapping of names used in the `steps` to the actual
             `Task` wrappers they represent.
-        output: target reference to evaluate, if yet present.
+        result: target reference to evaluate, if yet present.
     """
     steps: list["Step"]
     tasks: MutableMapping[str, "Task"]
+    result: StepReference | None
 
     def __init__(self) -> None:
-        """Initialize a Workflow, by setting `steps` and `tasks` to empty containers.
-
-        Argument:
-            output: target reference to evaluate.
-        """
+        """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
         self.steps = []
         self.tasks = {}
-        self.output: StepReference | None = None
+        self.result: StepReference | None = None
 
     def register_task(self, fn: Lazy) -> Task:
         """Note the existence of a lazy-evaluatable function, and wrap it as a `Task`.
@@ -166,20 +163,24 @@ class Workflow:
         """
         step = result.step
         workflow = result.__workflow__
-        workflow.set_output(result)
+        workflow.set_result(result)
         return workflow
 
-    def set_output(self, output: StepReference) -> None:
-        """Choose the output step.
+    def set_result(self, result: StepReference) -> None:
+        """Choose the result step.
 
-        Sets a step as being the output for the entire workflow.
+        Sets a step as being the result for the entire workflow.
+        When we evaluate a dynamic workflow, the engine (e.g. dask)
+        creates a graph to realize the result of a single collection.
+        Similarly, in the static case, we need to have a result that
+        drives the calculation.
 
         Argument:
-            output: reference to the chosen step.
+            result: reference to the chosen step.
         """
-        if output.step.__workflow__ != self:
+        if result.step.__workflow__ != self:
             raise RuntimeError("Output must be from a step in this workflow.")
-        self.output = output
+        self.result = result
 
 
 class WorkflowComponent:

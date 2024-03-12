@@ -14,8 +14,9 @@
 
 """CLI for dewret.
 
-Simple CLI for running a workflow. It is more likely to use this
-tool programmatically, but for CI and toy examples, this may be of use.
+Simple CLI for running a workflow (dynamic->static) conversion. It is
+more likely to use this tool programmatically, but for CI and toy examples,
+this may be of use.
 """
 
 import importlib
