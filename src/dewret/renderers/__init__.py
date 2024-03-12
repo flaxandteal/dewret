@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""dewret: DEclarative Workflow REndering Tool.
+"""Renderers for outputting static workflow representations.
 
-Dewret allows certain workflows written in a dynamic
-style to be rendered to a static representation.
+Take a `Workflow` and output a static representation in the desired
+format.
 """

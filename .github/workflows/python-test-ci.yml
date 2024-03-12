@@ -17,22 +17,26 @@ jobs:
       run: |
         pip install pytest pytest-cov
         pip install --no-build-isolation --no-deps --disable-pip-version-check -e .
-        python -m pytest
-  unit-pixi:
+        python -m pytest --doctest-modules
+        python -m doctest -v docs/*.md
+  unit-conda:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Prepare to build conda package
+      run: pip install toml && python .github/workflows/generate_recipe.py
+    - name: Build conda package
+      uses: prefix-dev/rattler-build-action@v0.2.2
+      env:
+        CONDA_BLD_PATH: /tmp/output
+        RATTLER_BUILD_EXPERIMENTAL: "true"
       with:
-        python-version: '3.11'
-    - uses: prefix-dev/setup-pixi@v0.2.0
-      with:
-        cache: true
-    - name: Install dependencies
+        recipe-path: ./recipe.yaml
+        upload-artifact: false
+    - uses: s-weigand/setup-conda@v1
+    - name: Install built package
       run: |
-        pixi install
-        pixi run postinstall
-    - name: Test with pytest
-      run: |
-        pixi run test
+        conda install -c /tmp/output/noarch/*.conda --update-deps --use-local dewret
+        conda install pytest
+        $CONDA/bin/pytest
+        python -m doctest -v docs/*.md

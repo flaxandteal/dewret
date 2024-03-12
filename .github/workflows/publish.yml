@@ -19,30 +19,59 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        target: [x86_64, aarch64]
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  build_conda:
+    name: Build package
+    runs-on: ubuntu-latest # Currently, only need noarch
+    # runs-on: ${{ matrix.os }}
+    # strategy:
+    #   matrix:
+    #     include:
+    #       - os: ubuntu-latest
+    #         target-platform: linux-64
+    #       - os: ubuntu-latest
+    #         target-platform: linux-aarch64
+    #       - os: windows-latest
+    #         target-platform: win-64
+    #       - os: macos-latest
+    #         target-platform: osx-64
+    #       - os: macos-14
+    #         target-platform: osx-arm64
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-        name: Build wheels
-      - uses: prefix-dev/setup-pixi@v0.2.0
-        with:
-          cache: true
-        #- run: pip install cowpy
-        #- run: pixi run cowpy "Thanks for using pixi"
-      - run: pixi run build-wheel
+    - uses: actions/checkout@v4
+    - name: Tweak recipe
+      run: pip install toml && python .github/workflows/generate_recipe.py
+    - name: Build conda package
+      uses: prefix-dev/rattler-build-action@v0.2.2
+      env:
+        CONDA_BLD_PATH: ../output
+        RATTLER_BUILD_EXPERIMENTAL: "true"
+      with:
+        # needs to be unique for each matrix entry
+        #artifact-name: package-noarch #-${{ matrix.target-platform }}
+        recipe-path: ./recipe.yaml
+        upload-artifact: false
+        #build-args: --target-platform noarch # ${{ matrix.target-platform }}${{ matrix.target-platform == 'linux-aarch64' && ' --no-test' || '' }}
+    - run: mv ../output .
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: conda-package
+        path: |
+          output/**/*.tar.bz2
+          output/**/*.conda
+  build_wheel:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ubuntu-latest # Currently, only need noarch
+    # runs-on: ${{ matrix.os }}
+    # strategy:
+    #   matrix:
+    #     os: [ubuntu-latest, windows-latest, macos-13, macos-14]
 
-      - uses: actions/upload-artifact@v4
-        name: Upload wheels
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: wheels
-          path: dist
+          fetch-depth: 0
+      - uses: hynek/build-and-inspect-python-package@v2
   sdist:
     runs-on: ubuntu-latest
     steps:

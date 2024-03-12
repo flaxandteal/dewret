@@ -1,0 +1,44 @@
+{% macro insert_readme() %}{% include pyproject["project"]["readme"] %}{% endmacro %}
+
+context:
+  version: {{ pyproject["project"]["version"] }}
+
+package:
+  name: {{ pyproject["project"]["version"] }}
+  version: {{ pyproject["project"]["version"] }}
+
+source:
+  - git: {{ pyproject["project"]["repository"] }}
+
+build:
+  # Thanks to `noarch: python` this package works on all platforms
+  noarch: python
+  script:
+    - python -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - pip
+    - hatchling
+    - python {{ pyproject["project"]["requires-python"] }}
+  run:
+    - python {{ pyproject["project"]["requires-python"] -}}
+{% for dep in pyproject["project"]["dependencies"] %}
+    - {{ dep -}}
+{% endfor %}
+
+tests:
+  - python:
+      imports:
+        - {{ pyproject["project"]["name"] }}
+      pip_check: true
+
+about:
+  homepage: {{ pyproject["project"]["homepage"] }}
+  license: {{ pyproject["project"]["license"] }}
+  license_file: LICENSE
+  summary: {{ pyproject["project"]["description"] }}
+  description: |
+    {{ insert_readme() | indent }}
+  documentation: {{ pyproject["project"]["documentation"] }}
+  repository: {{ pyproject["project"]["repository"] }}
