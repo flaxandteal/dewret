@@ -291,7 +291,7 @@ class Workflow:
 
 
 class WorkflowComponent:
-    """Base class for anything tied to an individual `Workflow`.
+    """Base class for anything directly tied to an individual `Workflow`.
 
     Attributes:
         __workflow__: the `Workflow` that this is tied to.
@@ -309,7 +309,7 @@ class WorkflowComponent:
         self.__workflow__ = workflow
 
 class WorkflowLinkedComponent(Protocol):
-    """Base class for classes dynamically tied to a `Workflow`."""
+    """Protocol for objects dynamically tied to a `Workflow`."""
 
     @property
     def __workflow__(self) -> Workflow:
