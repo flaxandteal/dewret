@@ -88,10 +88,6 @@ def test_complex_cwl_references() -> None:
     )
     workflow = run(result, simplify_ids=True)
     rendered = render(workflow)
-    hsh_increment = hasher(("increment", ("num", "int|23")))
-    hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}/out")))
-    hsh_mod10 = hasher(("mod10", ("num", f"increment-{hsh_increment}/out")))
-    hsh_sum = hasher(("sum", ("left", f"double-{hsh_double}/out"), ("right", f"mod10-{hsh_mod10}/out")))
 
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
