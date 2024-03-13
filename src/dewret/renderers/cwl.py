@@ -122,15 +122,28 @@ class OutputsDefinition:
         outputs: sequence of results from a workflow.
     """
 
+    outputs: dict[str, "OutputReferenceDefinition"]
+
     @define
     class OutputReferenceDefinition:
+        """CWL-renderable reference to a specific output.
+
+        Attributes:
+            vartype: type of variable
+            name: fully-qualified name of the referenced step output.
+        """
         vartype: str
         name: str
 
-    outputs: dict[str, OutputReferenceDefinition]
-
     @classmethod
     def from_results(cls, results: dict[str, StepReference]) -> "OutputsDefinition":
+        """Takes a mapping of results into a CWL structure.
+
+        [TODO] For now, it assumes the output type is a string.
+
+        Returns:
+            CWL-like structure representing all workflow outputs.
+        """
         return cls(
             outputs={
                 key: cls.OutputReferenceDefinition(
