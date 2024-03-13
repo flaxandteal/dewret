@@ -86,7 +86,7 @@ def test_complex_cwl_references() -> None:
         left=double(num=increment(num=23)),
         right=mod10(num=increment(num=23))
     )
-    workflow = run(result)
+    workflow = run(result, simplify_ids=True)
     rendered = render(workflow)
     hsh_increment = hasher(("increment", ("num", "int|23")))
     hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}/out")))
@@ -97,30 +97,30 @@ def test_complex_cwl_references() -> None:
         cwlVersion: 1.2
         class: Workflow
         steps:
-          increment-{hsh_increment}:
+          increment-1:
             run: increment
             in:
                 num:
                     default: 23
             out: [out]
-          double-{hsh_double}:
+          double-1:
             run: double
             in:
                 num:
-                    source: increment-{hsh_increment}/out
+                    source: increment-1/out
             out: [out]
-          mod10-{hsh_mod10}:
+          mod10-1:
             run: mod10
             in:
                 num:
-                    source: increment-{hsh_increment}/out
+                    source: increment-1/out
             out: [out]
-          sum-{hsh_sum}:
+          sum-1:
             run: sum
             in:
                 left:
-                    source: double-{hsh_double}/out
+                    source: double-1/out
                 right:
-                    source: mod10-{hsh_mod10}/out
+                    source: mod10-1/out
             out: [out]
     """)

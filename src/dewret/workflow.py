@@ -23,6 +23,7 @@ from collections import OrderedDict
 import base64
 from attrs import define
 from typing import Protocol, Any
+from collections import Counter
 import logging
 
 logger = logging.getLogger(__name__)
@@ -99,6 +100,10 @@ class Task:
         """Represent the Task, currently by returning the `name`."""
         return self.name
 
+    def __hash__(self) -> int:
+        """Hashes for finding."""
+        return hash(self.name)
+
     def __eq__(self, other: object) -> bool:
         """Is this the same task?
 
@@ -129,6 +134,7 @@ class Workflow:
     steps: list["Step"]
     tasks: MutableMapping[str, "Task"]
     result: StepReference | None
+    _remapping: dict[str, str] | None
 
     @property
     def _indexed_steps(self) -> dict[str, Step]:
@@ -164,25 +170,24 @@ class Workflow:
         left_steps = left._indexed_steps
         right_steps = right._indexed_steps
         for step_id in (left_steps.keys() & right_steps.keys()):
+            left_steps[step_id].__workflow__ = new
+            right_steps[step_id].__workflow__ = new
             if left_steps[step_id] != right_steps[step_id]:
-                print(left_steps[step_id].parameters)
-                print(right_steps[step_id].parameters)
-                print(left_steps[step_id].parameters ==
-                right_steps[step_id].parameters)
-                print(left_steps[step_id].task)
-                print(right_steps[step_id].task)
-                print(left_steps[step_id].task ==
-                right_steps[step_id].task)
                 raise RuntimeError(f"Two steps have same ID but do not match: {step_id}")
 
         for task_id in (left.tasks.keys() & right.tasks.keys()):
             if left.tasks[task_id] != right.tasks[task_id]:
                 raise RuntimeError("Two tasks have same name but do not match")
 
-        new.steps += list(left_steps.values())
-        new.steps += list(right_steps.values())
+        indexed_steps = dict(left_steps)
+        indexed_steps.update(right_steps)
+        new.steps += list(indexed_steps.values())
         new.tasks.update(left.tasks)
         new.tasks.update(right.tasks)
+
+        for step in new.steps:
+            step.__workflow__ = new
+
         return new
 
     def __init__(self) -> None:
@@ -190,6 +195,33 @@ class Workflow:
         self.steps = []
         self.tasks = {}
         self.result: StepReference | None = None
+        self._remapping = None
+
+    def remap(self, step_id: str) -> str:
+        """Apply name simplification if requested.
+
+        Args:
+            step_id: step to check.
+
+        Returns:
+            Same ID or a remapped name.
+        """
+        return (
+            self._remapping.get(step_id, step_id)
+            if self._remapping else
+            step_id
+        )
+
+    def simplify_ids(self) -> None:
+        """Work out mapping to simple ints from hashes.
+
+        Goes through and numbers each step by the order of use of its task.
+        """
+        counter = Counter[Task]()
+        self._remapping = {}
+        for step in self.steps:
+            counter[step.task] += 1
+            self._remapping[step.id] = f"{step.task}-{counter[step.task]}"
 
     def register_task(self, fn: Lazy) -> Task:
         """Note the existence of a lazy-evaluatable function, and wrap it as a `Task`.
@@ -229,7 +261,7 @@ class Workflow:
         return StepReference(self, step)
 
     @staticmethod
-    def from_result(result: StepReference) -> Workflow:
+    def from_result(result: StepReference, simplify_ids: bool = False) -> Workflow:
         """Create from a desired result.
 
         Starts from a result, and builds a workflow to output it.
@@ -237,6 +269,8 @@ class Workflow:
         step = result.step
         workflow = result.__workflow__
         workflow.set_result(result)
+        if simplify_ids:
+            workflow.simplify_ids()
         return workflow
 
     def set_result(self, result: StepReference) -> None:
@@ -274,9 +308,28 @@ class WorkflowComponent:
         """
         self.__workflow__ = workflow
 
-class Reference(WorkflowComponent):
+class WorkflowLinkedComponent(Protocol):
+    """Base class for classes dynamically tied to a `Workflow`."""
+
+    @property
+    def __workflow__(self) -> Workflow:
+        """Workflow currently tied to.
+
+        Usually a proxy for another object that it should
+        consistently follow.
+
+        Returns:
+            workflow: the `Workflow` to tie to.
+        """
+        ...
+
+class Reference:
     """Superclass for all symbolic references to values."""
-    ...
+
+    @property
+    def name(self) -> str:
+        """Referral name for this reference."""
+        raise NotImplementedError("Reference must provide a name")
 
 class Step(WorkflowComponent):
     """Lazy-evaluated function call.
@@ -324,7 +377,20 @@ class Step(WorkflowComponent):
         """
         if not isinstance(other, Step):
             return False
-        return self.task == other.task and self.parameters == other.parameters
+        return (
+            self.__workflow__ == other.__workflow__ and
+            self.task == other.task and
+            self.parameters == other.parameters
+        )
+
+    @property
+    def name(self) -> str:
+        """Name for this step.
+
+        May be remapped by the workflow to something nicer
+        than the ID.
+        """
+        return self.__workflow__.remap(self.id)
 
     @property
     def id(self) -> str:
@@ -367,7 +433,6 @@ class StepReference(Reference):
             workflow: `Workflow` that this is tied to.
             step: `Step` that this refers to.
         """
-        super().__init__(workflow)
         self.step = step
         self.field = "out"
 
@@ -378,6 +443,24 @@ class StepReference(Reference):
     def __repr__(self) -> str:
         """Hashable reference to the step (and field)."""
         return f"{self.step.id}/{self.field}"
+
+    @property
+    def name(self) -> str:
+        """Reference based on the named step.
+
+        May be remapped by the workflow to something nicer
+        than the ID.
+        """
+        return f"{self.step.name}/{self.field}"
+
+    @property
+    def __workflow__(self) -> Workflow:
+        """Related workflow.
+
+        Returns:
+            Workflow that the referee is related to.
+        """
+        return self.step.__workflow__
 
 def merge_workflows(*workflows: Workflow) -> Workflow:
     """Combine several workflows into one.

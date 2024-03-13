@@ -42,7 +42,7 @@ class ReferenceDefinition:
         Args:
             ref: reference to convert.
         """
-        return cls(source=str(ref))
+        return cls(source=ref.name)
 
     def render(self) -> dict[str, RawType]:
         """Render to a dict-like structure.
@@ -63,12 +63,12 @@ class StepDefinition:
     needed for valid CWL.
 
     Attributes:
-        id: identifier to call this step by.
+        name: identifier to call this step by.
         run: task to execute for this step.
         in_: inputs from values or other steps.
     """
 
-    id: str
+    name: str
     run: str
     in_: Mapping[str, ReferenceDefinition | Raw]
 
@@ -82,7 +82,7 @@ class StepDefinition:
             step: step to convert.
         """
         return cls(
-            id=step.id,
+            name=step.name,
             run=step.task.name,
             in_={
                 key: (
@@ -152,7 +152,7 @@ class WorkflowDefinition:
             "cwlVersion": 1.2,
             "class": "Workflow",
             "steps": {
-                step.id: step.render()
+                step.name: step.render()
                 for step in self.steps
             }
         }

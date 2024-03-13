@@ -110,11 +110,12 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def __call__(self, task: Lazy, **kwargs: Any) -> Workflow:
+    def __call__(self, task: Lazy, simplify_ids: bool = False, **kwargs: Any) -> Workflow:
         """Execute the lazy evalution.
 
         Arguments:
             task: the task to evaluate.
+            simplify_ids: when we finish running, make nicer step names?
             **kwargs: any arguments to pass to the task.
 
         Returns:
@@ -122,7 +123,7 @@ class TaskManager:
         """
         workflow = Workflow()
         result = self.backend.run(workflow, task, **kwargs)
-        return Workflow.from_result(result)
+        return Workflow.from_result(result, simplify_ids=simplify_ids)
 
 _manager = TaskManager()
 lazy = _manager.make_lazy
