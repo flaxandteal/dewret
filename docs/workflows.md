@@ -52,6 +52,10 @@ In code, this would be:
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
+outputs:
+  out:
+    outputSource: sum-1/out
+    type: string
 steps:
   double-1:
     in:

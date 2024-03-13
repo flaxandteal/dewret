@@ -21,7 +21,7 @@ current workflow.
 from attrs import define
 from collections.abc import Mapping
 
-from dewret.workflow import Reference, Raw, Workflow, Step, Task
+from dewret.workflow import Reference, Raw, Workflow, Step, Task, StepReference
 from dewret.tasks import run
 from dewret.utils import RawType
 
@@ -113,6 +113,48 @@ class StepDefinition:
         }
 
 @define
+class OutputsDefinition:
+    """CWL-renderable set of workflow outputs.
+
+    Turns dewret results into a CWL output block.
+
+    Attributes:
+        outputs: sequence of results from a workflow.
+    """
+
+    @define
+    class OutputReferenceDefinition:
+        vartype: str
+        name: str
+
+    outputs: dict[str, OutputReferenceDefinition]
+
+    @classmethod
+    def from_results(cls, results: dict[str, StepReference]) -> "OutputsDefinition":
+        return cls(
+            outputs={
+                key: cls.OutputReferenceDefinition(
+                    vartype="string", # TODO: pull from signature
+                    name=result.name
+                ) for key, result in results.items()
+            }
+        )
+
+    def render(self) -> dict[str, RawType]:
+        """Render to a dict-like structure.
+
+        Returns:
+            Reduced form as a native Python dict structure for
+            serialization.
+        """
+        return {
+            key: {
+                "type": output.vartype,
+                "outputSource": output.name
+            } for key, output in self.outputs.items()
+        }
+
+@define
 class WorkflowDefinition:
     """CWL-renderable workflow.
 
@@ -124,6 +166,7 @@ class WorkflowDefinition:
     """
 
     steps: list[StepDefinition]
+    outputs: OutputsDefinition
 
     @classmethod
     def from_workflow(cls, workflow: Workflow) -> "WorkflowDefinition":
@@ -138,7 +181,10 @@ class WorkflowDefinition:
             steps=[
                 StepDefinition.from_step(step)
                 for step in workflow.steps
-            ]
+            ],
+            outputs=OutputsDefinition.from_results({
+                "out": workflow.result
+            } if workflow.result else {})
         )
 
     def render(self) -> dict[str, RawType]:
@@ -151,6 +197,7 @@ class WorkflowDefinition:
         return {
             "cwlVersion": 1.2,
             "class": "Workflow",
+            "outputs": self.outputs.render(),
             "steps": {
                 step.name: step.render()
                 for step in self.steps

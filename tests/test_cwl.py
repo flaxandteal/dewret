@@ -39,6 +39,10 @@ def test_cwl() -> None:
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
         class: Workflow
+        outputs:
+          out:
+            outputSource: increment-{hsh}/out
+            type: string
         steps:
           increment-{hsh}:
             run: increment
@@ -51,7 +55,7 @@ def test_cwl() -> None:
 def test_cwl_references() -> None:
     """Check whether we can link between steps.
 
-    Produces CWL that can has references between steps.
+    Produces CWL that has references between steps.
     """
     result = double(num=increment(num=3))
     workflow = run(result)
@@ -62,6 +66,10 @@ def test_cwl_references() -> None:
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
         class: Workflow
+        outputs:
+          out:
+            outputSource: double-{hsh_double}/out
+            type: string
         steps:
           increment-{hsh_increment}:
             run: increment
@@ -80,7 +88,7 @@ def test_cwl_references() -> None:
 def test_complex_cwl_references() -> None:
     """Check whether we can link between multiple steps.
 
-    Produces CWL that can has references between steps.
+    Produces CWL that has references between multiple steps.
     """
     result = sum(
         left=double(num=increment(num=23)),
@@ -92,6 +100,10 @@ def test_complex_cwl_references() -> None:
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
         class: Workflow
+        outputs:
+          out:
+            outputSource: sum-1/out
+            type: string
         steps:
           increment-1:
             run: increment
@@ -120,3 +132,37 @@ def test_complex_cwl_references() -> None:
                     source: mod10-1/out
             out: [out]
     """)
+
+def test_cwl_configuration() -> None:
+    """Check whether we can link back to static configuration.
+
+    Produces CWL that references static configuration symbolically.
+    """
+    result = double(num=increment(num=3))
+    workflow = run(result)
+    rendered = render(workflow)
+    hsh_increment = hasher(("increment", ("num", "int|3")))
+    hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}/out")))
+
+    assert rendered == yaml.safe_load(f"""
+        cwlVersion: 1.2
+        class: Workflow
+        outputs:
+          out:
+            outputSource: double-{hsh_double}/out
+            type: string
+        steps:
+          increment-{hsh_increment}:
+            run: increment
+            in:
+                num:
+                    default: 3
+            out: [out]
+          double-{hsh_double}:
+            run: double
+            in:
+                num:
+                    source: increment-{hsh_increment}/out
+            out: [out]
+    """)
+

@@ -27,6 +27,10 @@ $ python -m dewret --pretty workflow.py increment num:3
 ```yaml
 class: Workflow
 cwlVersion: 1.2
+outputs:
+  out:
+    outputSource: increment-012ef3b3ffb9d15c3f2837aa4bb20a8d/out
+    type: string
 steps:
   increment-012ef3b3ffb9d15c3f2837aa4bb20a8d:
     in:
@@ -59,6 +63,10 @@ and backends, as well as bespoke serialization or formatting.
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
+outputs:
+  out:
+    outputSource: increment-012ef3b3ffb9d15c3f2837aa4bb20a8d/out
+    type: string
 steps:
   increment-012ef3b3ffb9d15c3f2837aa4bb20a8d:
     in:
