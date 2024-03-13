@@ -7,7 +7,6 @@ packages = ["src/dewret"]
 
 [tool.portray]
 modules = ["dewret"]
-config_file_path = "mkdocs.yml"
 extra_markdown_extensions = [
   "pymdownx.inlinehilite",
   "pymdownx.snippets",
