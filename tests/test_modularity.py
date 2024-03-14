@@ -37,7 +37,7 @@ def test_nested_task() -> None:
         outputs:
           out:
             outputSource: sum-1/out
-            type: string
+            type: [int, double]
         steps:
           increase-1:
             run: increase

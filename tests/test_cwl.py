@@ -30,7 +30,7 @@ def test_cwl() -> None:
         outputs:
           out:
             outputSource: increment-{hsh}/out
-            type: string
+            type: int
         steps:
           increment-{hsh}:
             run: increment
@@ -58,7 +58,7 @@ def test_cwl_references() -> None:
         outputs:
           out:
             outputSource: double-{hsh_double}/out
-            type: string
+            type: [int, double]
         steps:
           increment-{hsh_increment}:
             run: increment
@@ -93,7 +93,7 @@ def test_complex_cwl_references() -> None:
         outputs:
           out:
             outputSource: sum-1/out
-            type: string
+            type: [int, double]
         steps:
           increment-1:
             run: increment

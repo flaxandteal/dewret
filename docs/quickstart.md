@@ -30,7 +30,7 @@ cwlVersion: 1.2
 outputs:
   out:
     outputSource: increment-012ef3b3ffb9d15c3f2837aa4bb20a8d/out
-    type: string
+    type: int
 steps:
   increment-012ef3b3ffb9d15c3f2837aa4bb20a8d:
     in:
@@ -54,7 +54,7 @@ and backends, as well as bespoke serialization or formatting.
 >>> from dewret.renderers.cwl import render
 >>> 
 >>> @task()
-... def increment(num: int):
+... def increment(num: int) -> int:
 ...     return num + 1
 >>>
 >>> result = increment(num=3)
@@ -67,7 +67,7 @@ inputs: {}
 outputs:
   out:
     outputSource: increment-012ef3b3ffb9d15c3f2837aa4bb20a8d/out
-    type: string
+    type: int
 steps:
   increment-012ef3b3ffb9d15c3f2837aa4bb20a8d:
     in:
