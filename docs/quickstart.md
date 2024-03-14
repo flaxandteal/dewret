@@ -63,6 +63,7 @@ and backends, as well as bespoke serialization or formatting.
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
+inputs: {}
 outputs:
   out:
     outputSource: increment-012ef3b3ffb9d15c3f2837aa4bb20a8d/out

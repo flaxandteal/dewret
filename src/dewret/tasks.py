@@ -26,15 +26,18 @@ Typical usage example:
   ...     return num + 1
 """
 
+import inspect
 import importlib
 from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
-from typing import Any
+from typing import Any, get_type_hints, ParamSpec, TypeVar, cast
 
+from .utils import is_raw
 from .workflow import (
     Step,
     StepReference,
+    ParameterReference,
     Workflow,
     Lazy,
     Target,
@@ -43,7 +46,10 @@ from .workflow import (
     Raw,
     StepExecution,
     Task,
-    merge_workflows
+    merge_workflows,
+    Parameter,
+    param,
+    is_task
 )
 from .backends._base import BackendModule
 
@@ -110,7 +116,34 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def __call__(self, task: Lazy, simplify_ids: bool = False, **kwargs: Any) -> Workflow:
+    def evaluate(self, task: Lazy, __workflow__: Workflow, **kwargs: Any) -> Any:
+        """Evaluate a single task for a known workflow.
+
+        Args:
+            task: the task to evaluate.
+            __workflow__: workflow within which this exists.
+            **kwargs: any arguments to pass to the task.
+        """
+        return self.backend.run(__workflow__, task, **kwargs)
+
+    def ensure_lazy(self, task: Any) -> Lazy | None:
+        """Evaluate a single task for a known workflow.
+
+        As we mask our lazy-evaluable functions to appear as their original
+        types to the type system (see `dewret.tasks.task`), we must cast them
+        back, to allow the type-checker to comb the remainder of the code.
+
+        Args:
+            task: the suspected task to check.
+
+        Returns:
+            Original task, cast to a Lazy, or None.
+        """
+        if (task := self.ensure_lazy(task)) is None:
+            raise RuntimeError(f"Task passed to be evaluated, must be lazy-evaluatable, not {type(task)}.")
+        return cast(task, Lazy) if self.backend.is_lazy(task) else None
+
+    def __call__(self, task: Any, simplify_ids: bool = False, **kwargs: Any) -> Workflow:
         """Execute the lazy evalution.
 
         Arguments:
@@ -122,15 +155,46 @@ class TaskManager:
             A reusable reference to this individual step.
         """
         workflow = Workflow()
-        result = self.backend.run(workflow, task, **kwargs)
+        result = self.evaluate(task, workflow, **kwargs)
         return Workflow.from_result(result, simplify_ids=simplify_ids)
 
 _manager = TaskManager()
 lazy = _manager.make_lazy
+ensure_lazy = _manager.ensure_lazy
+evaluate = _manager.evaluate
 run = _manager
 
-def task() -> Callable[[Target], StepExecution]:
+def nested_task() -> Callable[[Target], StepExecution]:
+    """Shortcut for marking a task as nested.
+
+    A nested task is one which calls other tasks and does not
+    do anything else important. It will _not_ actually get called
+    at runtime, but should map entirely into the graph. As such,
+    arithmetic operations on results, etc. will cause errors at
+    render-time. Combining tasks is acceptable, and intended. The
+    effect of the nested task will be considered equivalent to whatever
+    reaching whatever step reference is returned at the end.
+
+    >>> @task()
+    ... def increment(num: int) -> int:
+    ...     return num + 1
+
+    >>> @nested_task()
+    ... def double_increment(num: int) -> int:
+    ...     return increment(increment(num=num))
+
+    Returns:
+        Task that runs at render, not execution, time.
+    """
+    return task(nested=True)
+
+Param = ParamSpec("Param")
+RetType = TypeVar("RetType")
+def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Decorator factory abstracting backend's own task decorator.
+
+    Args:
+        nested: whether this should be executed to find other tasks.
 
     Returns:
         Decorator for the current backend to mark lazy-executable tasks.
@@ -148,8 +212,8 @@ def task() -> Callable[[Target], StepExecution]:
         `dask.delayed` will still be called, for example, in the dask case.
     """
 
-    def _task(fn: Target) -> StepExecution:
-        def _fn(__workflow__: Workflow | None = None, **kwargs: Reference | Raw) -> StepReference:
+    def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
+        def _fn(__workflow__: Workflow | None = None, **kwargs: Param.kwargs) -> RetType:
             workflows = [
                 reference.__workflow__
                 for reference in kwargs.values()
@@ -161,7 +225,28 @@ def task() -> Callable[[Target], StepExecution]:
                 workflow = merge_workflows(*workflows)
             else:
                 workflow = Workflow()
-            return workflow.add_step(fn, kwargs)
+            original_kwargs = dict(kwargs)
+            for var, value in inspect.getclosurevars(fn).globals.items():
+                if var in kwargs:
+                    raise RuntimeError("Captured parameter (global variable in task) shadows an argument")
+                if isinstance(value, Parameter):
+                    kwargs[var] = ParameterReference(workflow, value)
+                elif is_raw(value):
+                    parameter = param(var, value)
+                    kwargs[var] = ParameterReference(workflow, parameter)
+                elif is_task(value):
+                    if not nested:
+                        raise RuntimeError("You reference a task inside another task, but it is not a nested_task - this will not be found!")
+                else:
+                    raise NotImplementedError(f"Tasks must now only refer to global parameters/raw (or tasks if nested), not objects: {var}")
+            if nested:
+                lazy_fn = cast(Lazy, fn(**original_kwargs))
+                step_reference = evaluate(lazy_fn, __workflow__=workflow)
+                if isinstance(step_reference, StepReference):
+                    return cast(RetType, step_reference)
+                raise RuntimeError("Nested tasks must return a step reference, to ensure graph makes sense.")
+            return cast(RetType, workflow.add_step(fn, kwargs))
+        setattr(_fn, "__step_expression__", True)
         return lazy()(_fn)
     return _task
 

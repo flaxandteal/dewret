@@ -18,6 +18,7 @@ Basic constructs for describing a workflow.
 """
 
 from __future__ import annotations
+import inspect
 from collections.abc import Mapping, MutableMapping, Callable, Awaitable
 from collections import OrderedDict
 import base64
@@ -67,6 +68,51 @@ class Lazy(Protocol):
 Target = Callable[..., Any]
 StepExecution = Callable[..., Lazy]
 LazyFactory = Callable[[Target], Lazy]
+
+from typing import TypeVar, Generic, cast, Any
+import numpy as np
+import numpy.typing as np_typing
+from attrs import define
+from sympy import Symbol
+
+T = TypeVar("T")
+
+class Parameter(Generic[T], Symbol): # type: ignore[no-untyped-call]
+    """Global parameter.
+
+    Independent parameter that will be used when a task is spotted
+    reaching outside its scope. This wraps the variable it uses.
+
+    To allow for potential arithmetic operations, etc. it is a Sympy
+    symbol.
+
+    Attributes:
+        __name__: name of the parameter.
+        __default__: captured default value from the original value.
+    """
+    __name__: str
+    __default__: T
+
+    def __init__(self, name: str, default: T):
+        """Construct a parameter.
+
+        Args:
+            name: name of the parameter.
+            default: value to infer type, etc. from.
+        """
+        Symbol.__init__(name)
+        self.__name__ = name
+        self.__default__ = default
+
+def param(name: str, default: T) -> T:
+    """Create a parameter.
+
+    Will cast so it looks like the original type.
+
+    Returns:
+        Parameter class cast to the type of the supplied default.
+    """
+    return cast(T, Parameter(name, default=default))
 
 class Task:
     """Named wrapper of a lazy-evaluatable function.
@@ -133,8 +179,29 @@ class Workflow:
     """
     steps: list["Step"]
     tasks: MutableMapping[str, "Task"]
-    result: StepReference | None
+    result: StepReference[Any] | None
     _remapping: dict[str, str] | None
+
+    def __init__(self) -> None:
+        """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
+        self.steps = []
+        self.tasks = {}
+        self.result: StepReference[Any] | None = None
+        self._remapping = None
+
+    def find_parameters(self) -> set[ParameterReference]:
+        """Crawl steps for parameter references.
+
+        As the workflow does not hold its own list of parameters, this
+        dynamically finds them.
+
+        Returns:
+            Set of all references to parameters across the steps.
+        """
+        return set().union(*({
+            arg for arg in step.arguments.values()
+            if isinstance(arg, ParameterReference)
+        } for step in self.steps))
 
     @property
     def _indexed_steps(self) -> dict[str, Step]:
@@ -170,8 +237,8 @@ class Workflow:
         left_steps = left._indexed_steps
         right_steps = right._indexed_steps
         for step_id in (left_steps.keys() & right_steps.keys()):
-            left_steps[step_id].__workflow__ = new
-            right_steps[step_id].__workflow__ = new
+            left_steps[step_id].set_workflow(new)
+            right_steps[step_id].set_workflow(new)
             if left_steps[step_id] != right_steps[step_id]:
                 raise RuntimeError(f"Two steps have same ID but do not match: {step_id}")
 
@@ -189,13 +256,6 @@ class Workflow:
             step.__workflow__ = new
 
         return new
-
-    def __init__(self) -> None:
-        """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
-        self.steps = []
-        self.tasks = {}
-        self.result: StepReference | None = None
-        self._remapping = None
 
     def remap(self, step_id: str) -> str:
         """Apply name simplification if requested.
@@ -241,7 +301,7 @@ class Workflow:
         self.tasks[name] = task
         return task
 
-    def add_step(self, fn: Lazy, kwargs: dict[str, Raw | Reference]) -> StepReference:
+    def add_step(self, fn: Lazy, kwargs: dict[str, Raw | Reference]) -> StepReference[Any]:
         """Append a step.
 
         Adds a step, for running a target with key-value arguments,
@@ -258,10 +318,11 @@ class Workflow:
             kwargs
         )
         self.steps.append(step)
-        return StepReference(self, step)
+        return_type = inspect.signature(inspect.unwrap(fn)).return_annotation
+        return StepReference(self, step, return_type)
 
     @staticmethod
-    def from_result(result: StepReference, simplify_ids: bool = False) -> Workflow:
+    def from_result(result: StepReference[Any], simplify_ids: bool = False) -> Workflow:
         """Create from a desired result.
 
         Starts from a result, and builds a workflow to output it.
@@ -273,7 +334,7 @@ class Workflow:
             workflow.simplify_ids()
         return workflow
 
-    def set_result(self, result: StepReference) -> None:
+    def set_result(self, result: StepReference[Any]) -> None:
         """Choose the result step.
 
         Sets a step as being the result for the entire workflow.
@@ -339,24 +400,24 @@ class Step(WorkflowComponent):
 
     Attributes:
         task: the `Task` being called in this step.
-        parameters: key-value pairs of arguments to this step.
+        arguments: key-value pairs of arguments to this step.
     """
     _id: str | None = None
     task: Task
-    parameters: Mapping[str, Reference | Raw]
+    arguments: Mapping[str, Reference | Raw]
 
-    def __init__(self, workflow: Workflow, task: Task, parameters: Mapping[str, Reference | Raw]):
+    def __init__(self, workflow: Workflow, task: Task, arguments: Mapping[str, Reference | Raw]):
         """Initialize a step.
 
         Args:
             workflow: `Workflow` that this is tied to.
             task: the lazy-evaluatable function that this wraps.
-            parameters: key-value pairs to pass to the function.
+            arguments: key-value pairs to pass to the function.
         """
         super().__init__(workflow)
         self.task = task
-        self.parameters = {}
-        for key, value in parameters.items():
+        self.arguments = {}
+        for key, value in arguments.items():
             if (
                isinstance(value, Reference) or
                isinstance(value, Raw) or
@@ -365,14 +426,14 @@ class Step(WorkflowComponent):
                 # Avoid recursive type issues
                 if not isinstance(value, Reference) and not isinstance(value, Raw) and is_raw(value):
                     value = Raw(value)
-                self.parameters[key] = value
+                self.arguments[key] = value
             else:
                 raise RuntimeError(f"Non-references must be a serializable type: {key}>{value}")
 
     def __eq__(self, other: object) -> bool:
         """Is this the same step?
 
-        At present, we naively compare the task and parameters. In
+        At present, we naively compare the task and arguments. In
         future, this may be more nuanced.
         """
         if not isinstance(other, Step):
@@ -380,8 +441,25 @@ class Step(WorkflowComponent):
         return (
             self.__workflow__ == other.__workflow__ and
             self.task == other.task and
-            self.parameters == other.parameters
+            self.arguments == other.arguments
         )
+
+    def set_workflow(self, workflow: Workflow) -> None:
+        """Move the step reference to another workflow.
+
+        Primarily intended to be called by its step, as a cascade.
+        It will attempt to update its arguments, similarly.
+
+        Args:
+            workflow: the new target workflow.
+        """
+        self.__workflow__ = workflow
+        for argument in self.arguments.values():
+            if hasattr(argument, "__workflow__"):
+                try:
+                    argument.__workflow__ = workflow
+                except AttributeError:
+                    ...
 
     @property
     def name(self) -> str:
@@ -407,34 +485,111 @@ class Step(WorkflowComponent):
     def _generate_id(self) -> str:
         """Generate the ID once."""
         components: list[str | tuple[str, str]] = [repr(self.task)]
-        for key, param in self.parameters.items():
+        for key, param in self.arguments.items():
             components.append((key, repr(param)))
 
         comp_tup: tuple[str | tuple[str, str], ...] = tuple(components)
 
         return f"{self.task}-{hasher(comp_tup)}"
 
-class StepReference(Reference):
+class ParameterReference(Reference):
+    """Reference to an individual `Parameter`.
+
+    Allows us to refer to the outputs of a `Parameter` in subsequent `Parameter`
+    arguments.
+
+    Attributes:
+        parameter: `Parameter` referred to.
+    """
+    parameter: Parameter[RawType]
+    workflow: Workflow
+
+    def __init__(self, workflow: Workflow, parameter: Parameter[RawType]):
+        """Initialize the reference.
+
+        Args:
+            workflow: `Workflow` that this is tied to.
+            parameter: `Parameter` that this refers to.
+        """
+        self.parameter = parameter
+        self.workflow = workflow
+
+    def __str__(self) -> str:
+        """Global description of the reference."""
+        return self.parameter.__name__
+
+    def __repr__(self) -> str:
+        """Hashable reference to the step (and field)."""
+        return f":param:{self.parameter.__name__}"
+
+    @property
+    def name(self) -> str:
+        """Reference based on the named step.
+
+        May be remapped by the workflow to something nicer
+        than the ID.
+        """
+        return self.parameter.__name__
+
+    @property
+    def __workflow__(self) -> Workflow:
+        """Related workflow.
+
+        In this case, as Parameters are generic but ParameterReferences are
+        specific, this carries the actual workflow reference.
+
+        Returns:
+            Workflow that the referee is related to.
+        """
+        return self.workflow
+
+    def __hash__(self) -> int:
+        """Hash to parameter.
+
+        Returns:
+            Unique hash corresponding to the parameter.
+        """
+        return hash(self.parameter)
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two references.
+
+        We ignore the workflow itself, as equality here is usually
+        to test mergeability of the "same" reference in two workflows.
+
+        Returns:
+            True if the other parameter reference is materially the same, otherwise False.
+        """
+        return (
+            isinstance(other, ParameterReference) and
+            self.parameter == other.parameter
+        )
+
+U = TypeVar("U")
+class StepReference(Generic[U], Reference):
     """Reference to an individual `Step`.
 
     Allows us to refer to the outputs of a `Step` in subsequent `Step`
-    parameters.
+    arguments.
 
     Attributes:
         step: `Step` referred to.
     """
     step: Step
     field: str
+    typ: type[U]
 
-    def __init__(self, workflow: Workflow, step: Step):
+    def __init__(self, workflow: Workflow, step: Step, typ: type[U]):
         """Initialize the reference.
 
         Args:
             workflow: `Workflow` that this is tied to.
             step: `Step` that this refers to.
+            typ: the type that the step will output.
         """
         self.step = step
         self.field = "out"
+        self.type = typ
 
     def __str__(self) -> str:
         """Global description of the reference."""
@@ -443,6 +598,14 @@ class StepReference(Reference):
     def __repr__(self) -> str:
         """Hashable reference to the step (and field)."""
         return f"{self.step.id}/{self.field}"
+
+    def return_type(self) -> type[U]:
+        """Type that this step reference will resolve to.
+
+        Returns:
+            Python type indicating the final result type.
+        """
+        return self.typ
 
     @property
     def name(self) -> str:
@@ -477,3 +640,23 @@ def merge_workflows(*workflows: Workflow) -> Workflow:
     for workflow in workflows:
         base = Workflow.assimilate(base, workflow)
     return base
+
+def is_task(task: Lazy) -> bool:
+    """Decide whether this is a task.
+
+    Checks whether the wrapped function has the magic
+    attribute `__step_expression__` set to True, which is
+    done within task creation.
+
+    Args:
+        task: lazy-evaluated value, suspected to be a task.
+
+    Returns:
+        True if `task` is indeed a task.
+    """
+    try:
+        func = inspect.unwrap(task)
+        return bool(func.__step_expression__)
+    except:
+        ...
+    return False

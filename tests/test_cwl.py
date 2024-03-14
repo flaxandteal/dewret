@@ -6,25 +6,12 @@ from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.workflow import Workflow
 
-@task()
-def increment(num: int) -> int:
-    """Increment an integer."""
-    return num + 1
-
-@task()
-def double(num: int) -> int:
-    """Double an integer."""
-    return 2 * num
-
-@task()
-def mod10(num: int) -> int:
-    """Double an integer."""
-    return num % 10
-
-@task()
-def sum(left: int, right: int) -> int:
-    """Add two integers."""
-    return left + right
+from ._lib.extra import (
+    increment,
+    double,
+    mod10,
+    sum
+)
 
 def test_cwl() -> None:
     """Check whether we can produce simple CWL.
@@ -39,6 +26,7 @@ def test_cwl() -> None:
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
         class: Workflow
+        inputs: {{}}
         outputs:
           out:
             outputSource: increment-{hsh}/out
@@ -66,6 +54,7 @@ def test_cwl_references() -> None:
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
         class: Workflow
+        inputs: {{}}
         outputs:
           out:
             outputSource: double-{hsh_double}/out
@@ -100,6 +89,7 @@ def test_complex_cwl_references() -> None:
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
         class: Workflow
+        inputs: {{}}
         outputs:
           out:
             outputSource: sum-1/out
@@ -132,37 +122,3 @@ def test_complex_cwl_references() -> None:
                     source: mod10-1/out
             out: [out]
     """)
-
-def test_cwl_configuration() -> None:
-    """Check whether we can link back to static configuration.
-
-    Produces CWL that references static configuration symbolically.
-    """
-    result = double(num=increment(num=3))
-    workflow = run(result)
-    rendered = render(workflow)
-    hsh_increment = hasher(("increment", ("num", "int|3")))
-    hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}/out")))
-
-    assert rendered == yaml.safe_load(f"""
-        cwlVersion: 1.2
-        class: Workflow
-        outputs:
-          out:
-            outputSource: double-{hsh_double}/out
-            type: string
-        steps:
-          increment-{hsh_increment}:
-            run: increment
-            in:
-                num:
-                    default: 3
-            out: [out]
-          double-{hsh_double}:
-            run: double
-            in:
-                num:
-                    source: increment-{hsh_increment}/out
-            out: [out]
-    """)
-

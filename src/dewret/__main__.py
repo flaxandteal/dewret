@@ -20,13 +20,14 @@ this may be of use.
 """
 
 import importlib
+from pathlib import Path
 import yaml
 import sys
 import click
 import json
 
 from .renderers.cwl import render as cwl_render
-from .tasks import set_backend, Backend
+from .tasks import set_backend, Backend, run
 
 @click.command()
 @click.option("--pretty", is_flag=True, show_default=True, default=False, help="Pretty-print output where possible.")
@@ -41,6 +42,7 @@ def render(workflow_py: str, task: str, arguments: list[str], pretty: bool, back
     TASK is the name of (decorated) task in workflow module.
     ARGUMENTS is zero or more pairs representing constant arguments to pass to the task, in the format `key:val` where val is a JSON basic type.
     """
+    sys.path.append(str(Path(workflow_py).parent))
     loader = importlib.machinery.SourceFileLoader("workflow", workflow_py)
     workflow = loader.load_module()
     task_fn = getattr(workflow, task)
@@ -51,7 +53,7 @@ def render(workflow_py: str, task: str, arguments: list[str], pretty: bool, back
         key, val = arg.split(":", 1)
         kwargs[key] = json.loads(val)
 
-    cwl = cwl_render(task_fn(**kwargs))
+    cwl = cwl_render(run(task_fn(**kwargs), simplify_ids=True))
     if pretty:
         yaml.dump(cwl, sys.stdout, indent=2)
     else:

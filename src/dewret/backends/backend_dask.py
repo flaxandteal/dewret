@@ -19,7 +19,7 @@ Lazy-evaluation via `dask.delayed`.
 
 from dask.delayed import delayed
 from dewret.workflow import Workflow, Lazy, StepReference
-from typing import Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable, Any
 
 @runtime_checkable
 class Delayed(Protocol):
@@ -32,7 +32,7 @@ class Delayed(Protocol):
     More info: https://github.com/dask/dask/issues/7779
     """
 
-    def compute(self, __workflow__: Workflow | None) -> StepReference:
+    def compute(self, __workflow__: Workflow | None) -> StepReference[Any]:
         """Evaluate this `dask.delayed`.
 
         Evaluate a delayed (dask lazy-evaluated) function. dewret
@@ -48,8 +48,9 @@ class Delayed(Protocol):
         """
         ...
 
+is_lazy = lambda task: isinstance(task, Delayed)
 lazy = delayed
-def run(workflow: Workflow | None, task: Lazy) -> StepReference:
+def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
     """Execute a task as the output of a workflow.
 
     Runs a task with dask.
@@ -58,6 +59,6 @@ def run(workflow: Workflow | None, task: Lazy) -> StepReference:
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
     """
-    if not isinstance(task, Delayed):
+    if not is_lazy(task):
         raise RuntimeError("Cannot mix backends")
     return task.compute(__workflow__=workflow)
