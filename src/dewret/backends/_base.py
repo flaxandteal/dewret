@@ -17,7 +17,7 @@
 Definition of a protocol that valid backend modules must fulfil.
 """
 
-from typing import Protocol
+from typing import Protocol, Any
 from dewret.workflow import LazyFactory, Lazy, Workflow, StepReference
 
 class BackendModule(Protocol):
@@ -32,7 +32,7 @@ class BackendModule(Protocol):
     """
     lazy: LazyFactory
 
-    def run(self, workflow: Workflow, task: Lazy) -> StepReference:
+    def run(self, workflow: Workflow, task: Lazy) -> StepReference[Any]:
         """Execute a lazy task for this `Workflow`.
 
         Args:
@@ -41,5 +41,16 @@ class BackendModule(Protocol):
 
         Returns:
             Reference to the final output step.
+        """
+        ...
+
+    def is_lazy(self, lazy: Any) -> bool:
+        """Confirm whether this is a lazy-evaluatable function.
+
+        Args:
+            lazy: suspected lazy-evaluatable function to check.
+
+        Returns:
+            True if this is a lazy-evaluatable function for this backend, otherwise False.
         """
         ...
