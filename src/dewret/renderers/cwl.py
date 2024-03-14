@@ -20,7 +20,7 @@ current workflow.
 
 from attrs import define
 from collections.abc import Mapping
-from typing import TypedDict, NotRequired, get_args, Union, cast
+from typing import TypedDict, NotRequired, get_args, Union, cast, Any
 
 from dewret.workflow import Reference, Raw, Workflow, Step, Task, StepReference, Parameter
 from dewret.tasks import run
@@ -276,7 +276,7 @@ class OutputsDefinition:
         name: str
 
     @classmethod
-    def from_results(cls, results: dict[str, StepReference]) -> "OutputsDefinition":
+    def from_results(cls, results: dict[str, StepReference[Any]]) -> "OutputsDefinition":
         """Takes a mapping of results into a CWL structure.
 
         [TODO] For now, it assumes the output type is a string.

@@ -48,7 +48,9 @@ class Delayed(Protocol):
         """
         ...
 
-is_lazy = lambda task: isinstance(task, Delayed)
+def is_lazy(task: Any) -> bool:
+    return isinstance(task, Delayed)
+
 lazy = delayed
 def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
     """Execute a task as the output of a workflow.
@@ -59,6 +61,6 @@ def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
     """
-    if not is_lazy(task):
+    if not isinstance(task, Delayed):
         raise RuntimeError("Cannot mix backends")
     return task.compute(__workflow__=workflow)
