@@ -145,6 +145,14 @@ you can use nested tasks. These are run at _render_ time, not
 execution time. In other words, they do not appear in the
 final graph, and so must only combine other tasks.
 
+Note that, as with all dewret calculations, only the steps
+necessary to achieve the ultimate output are included in the final
+graph. Therefore, nested tasks must return a step execution
+(task that is being called) that forces any other calculations
+you wish to happen. __In other words, if an task in a
+nested task does not have an impact on the return value,
+it will disappear__.
+
 For example:
 ```python
 >>> from dewret.tasks import nested_task
