@@ -3,7 +3,7 @@ from dewret.tasks import task, run
 JUMP: float = 1.0
 
 @task()
-def increase(num: int) -> float:
+def increase(num: int | float) -> float:
     """Add 1 to a number."""
     return num + JUMP
 
