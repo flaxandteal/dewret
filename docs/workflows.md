@@ -9,6 +9,7 @@ We can pull in dewret tools to produce CWL with a small number of imports.
 >>> import yaml
 >>> from dewret.tasks import task, run
 >>> from dewret.renderers.cwl import render
+
 ```
 
 ## Dependencies
@@ -62,7 +63,7 @@ inputs: {}
 outputs:
   out:
     outputSource: sum-1/out
-    type: string
+    type: int
 steps:
   double-1:
     in:
@@ -125,7 +126,7 @@ inputs:
 outputs:
   out:
     outputSource: rotate-1/out
-    type: string
+    type: int
 steps:
   rotate-1:
     in:
@@ -175,7 +176,7 @@ inputs:
 outputs:
   out:
     outputSource: rotate-2/out
-    type: string
+    type: int
 steps:
   rotate-1:
     in:

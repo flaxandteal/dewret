@@ -319,6 +319,8 @@ class Workflow:
         )
         self.steps.append(step)
         return_type = inspect.signature(inspect.unwrap(fn)).return_annotation
+        if return_type is inspect._empty:
+            raise TypeError(f"All tasks should have a type annotation.")
         return StepReference(self, step, return_type)
 
     @staticmethod
@@ -599,13 +601,14 @@ class StepReference(Generic[U], Reference):
         """Hashable reference to the step (and field)."""
         return f"{self.step.id}/{self.field}"
 
+    @property
     def return_type(self) -> type[U]:
         """Type that this step reference will resolve to.
 
         Returns:
             Python type indicating the final result type.
         """
-        return self.typ
+        return self.type
 
     @property
     def name(self) -> str:

@@ -21,6 +21,7 @@ current workflow.
 from attrs import define
 from collections.abc import Mapping
 from typing import TypedDict, NotRequired, get_args, Union, cast, Any
+from types import UnionType
 
 from dewret.workflow import Reference, Raw, Workflow, Step, Task, StepReference, Parameter
 from dewret.tasks import run
@@ -113,15 +114,19 @@ class StepDefinition:
             "out": ["out"]
         }
 
-def to_cwl_type(typ: type) -> str:
+def to_cwl_type(typ: type) -> str | list[RawType]:
     """Map Python types to CWL types.
 
     Args:
         typ: a Python basic type.
 
     Returns:
-        CWL specification type name.
+        CWL specification type name, or a list
+        if a union.
     """
+    if isinstance(typ, UnionType):
+        return [to_cwl_type(item) for item in get_args(typ)]
+
     if typ == int:
         return "int"
     elif typ == bool:
@@ -135,7 +140,7 @@ def to_cwl_type(typ: type) -> str:
     elif typ == str:
         return "string"
     else:
-        raise TypeError("Cannot render complex type to CWL")
+        raise TypeError(f"Cannot render complex type ({typ}) to CWL")
 
 class CommandInputSchema(TypedDict):
     """Structure for referring to a raw type in CWL.
@@ -279,7 +284,7 @@ class OutputsDefinition:
     def from_results(cls, results: dict[str, StepReference[Any]]) -> "OutputsDefinition":
         """Takes a mapping of results into a CWL structure.
 
-        [TODO] For now, it assumes the output type is a string.
+        Pulls the result type from the signature, ultimately, if possible.
 
         Returns:
             CWL-like structure representing all workflow outputs.
@@ -287,7 +292,7 @@ class OutputsDefinition:
         return cls(
             outputs={
                 key: cls.OutputReferenceDefinition(
-                    vartype="string", # TODO: pull from signature
+                    vartype=to_cwl_type(result.return_type),
                     name=result.name
                 ) for key, result in results.items()
             }
