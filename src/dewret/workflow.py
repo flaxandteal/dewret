@@ -657,9 +657,11 @@ def is_task(task: Lazy) -> bool:
     Returns:
         True if `task` is indeed a task.
     """
+    from .tasks import unwrap
     try:
-        func = inspect.unwrap(task)
-        return bool(func.__step_expression__)
-    except:
+        func = unwrap(task)
+        if hasattr(func, "__step_expression__"):
+            return bool(func.__step_expression__)
+    except Exception as e:
         ...
     return False

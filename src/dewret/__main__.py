@@ -43,6 +43,7 @@ def render(workflow_py: str, task: str, arguments: list[str], pretty: bool, back
     ARGUMENTS is zero or more pairs representing constant arguments to pass to the task, in the format `key:val` where val is a JSON basic type.
     """
     sys.path.append(str(Path(workflow_py).parent))
+    print(sys.path)
     loader = importlib.machinery.SourceFileLoader("workflow", workflow_py)
     workflow = loader.load_module()
     task_fn = getattr(workflow, task)

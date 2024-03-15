@@ -1,11 +1,15 @@
 """Complex workflow.
 
 Useful as an example of a simple workflow.
+
+```sh
+$ python -m dewret workflow_complex.py --pretty run
+```
 """
 
 from dewret.workflow import Lazy
 from dewret.tasks import nested_task
-from lib.extra import sum, double, increase
+from extra import sum, double, increase
 
 STARTING_NUMBER: int = 23
 
