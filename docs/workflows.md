@@ -158,6 +158,15 @@ nested task does not have an impact on the return value,
 it will disappear__.
 
 For example:
+
+```mermaid
+graph TD
+    A[rotate] --> B[rotate]
+    B[rotate] --> C[double_rotate]
+```
+
+As code:
+
 ```python
 >>> from dewret.tasks import nested_task
 >>> @nested_task()
@@ -214,6 +223,16 @@ specific output field in CWL.
 
 Note that in the example below, `shuffle` is still
 only seen once in the graph:
+
+```mermaid
+graph TD
+    A[shuffle] --> B[hearts]
+    A[shuffle] --> C[diamonds]
+    B[hearts] --> D[sum]
+    C[diamonds] --> D[sum]
+```
+
+As code:
 
 ```python
 >>> from attrs import define
