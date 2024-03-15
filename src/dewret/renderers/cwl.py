@@ -25,7 +25,9 @@ from types import UnionType
 
 from dewret.workflow import Reference, Raw, Workflow, Step, Task, StepReference, Parameter
 from dewret.tasks import run
-from dewret.utils import RawType
+from dewret.utils import RawType, flatten
+
+InputSchemaType = Union[str, "CommandInputSchema", list[str], list["InputSchemaType"]]
 
 @define
 class ReferenceDefinition:
@@ -114,7 +116,7 @@ class StepDefinition:
             "out": ["out"]
         }
 
-def to_cwl_type(typ: type) -> str | list[RawType]:
+def to_cwl_type(typ: type) -> str | list[str]:
     """Map Python types to CWL types.
 
     Args:
@@ -154,12 +156,12 @@ class CommandInputSchema(TypedDict):
         fields: (for `record`) individual fields in a dict-like structure.
         items: (for `array`) type that each field will have.
     """
-    type: str
+    type: InputSchemaType
     label: str
     fields: NotRequired[dict[str, "CommandInputSchema"]]
-    items: NotRequired[Union[str, "CommandInputSchema"]]
+    items: NotRequired[InputSchemaType]
 
-def raw_to_command_input_schema(label: str, value: RawType) -> CommandInputSchema | str:
+def raw_to_command_input_schema(label: str, value: RawType) -> InputSchemaType:
     """Infer the CWL input structure for this value.
 
     Inspects the value, to work out an appropriate structure
@@ -217,7 +219,7 @@ class InputsDefinition:
             type: type of variable
             name: fully-qualified name of the input.
         """
-        type: str | CommandInputSchema
+        type: InputSchemaType
         label: str
 
     @classmethod
@@ -277,7 +279,7 @@ class OutputsDefinition:
             vartype: type of variable
             name: fully-qualified name of the referenced step output.
         """
-        vartype: str
+        type: InputSchemaType
         name: str
 
     @classmethod
@@ -292,7 +294,7 @@ class OutputsDefinition:
         return cls(
             outputs={
                 key: cls.OutputReferenceDefinition(
-                    vartype=to_cwl_type(result.return_type),
+                    type=to_cwl_type(result.return_type),
                     name=result.name
                 ) for key, result in results.items()
             }
@@ -307,7 +309,7 @@ class OutputsDefinition:
         """
         return {
             key: {
-                "type": output.vartype,
+                "type": flatten(output.type),
                 "outputSource": output.name
             } for key, output in self.outputs.items()
         }

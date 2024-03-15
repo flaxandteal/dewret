@@ -19,23 +19,56 @@ General types and functions to centralize common logic.
 
 import hashlib
 import json
-from typing import Any, cast
-from collections.abc import Sequence
+from typing import Any, cast, TypedDict, Union, cast
+from collections.abc import Sequence, Mapping
 
 BasicType = str | float | bool | bytes | int | None
-RawType = BasicType | list["RawType"] | dict[str, "RawType"]
+RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
 FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
 
+def flatten(value: Any) -> RawType:
+    """Takes a Raw-like structure and makes it RawType.
 
-def is_raw(var: Any) -> bool:
+    Particularly useful for squashing any TypedDicts.
+
+    Args:
+        value: value to squash
+    """
+    if value is None:
+        return value
+    if isinstance(value, str) or isinstance(value, bytes):
+        return value
+    if isinstance(value, Mapping):
+        return {key: flatten(item) for key, item in value.items()}
+    if isinstance(value, Sequence):
+        return [flatten(item) for item in value]
+    if (raw := ensure_raw(value)) is not None:
+        return raw
+    raise RuntimeError("Could not flatten")
+
+
+def is_raw(value: Any) -> bool:
     """Check if a variable counts as "raw".
 
     This works around a checking issue that isinstance of a union of types
     assigned to a variable, such as `RawType`, may throw errors even though Python 3.11+
     does not. Instead, we explicitly make the full union in the statement below.
     """
+    # Ideally this would be:
+    # isinstance(value, RawType | list[RawType] | dict[str, RawType])
+    # but recursive types are problematic.
+    return isinstance(value, str | float | bool | bytes | int | None | list | dict)
+
+def ensure_raw(value: Any) -> RawType | None:
+    """Check if a variable counts as "raw".
+
+    This works around a checking issue that isinstance of a union of types
+    assigned to a variable, such as `RawType`, may throw errors even though Python 3.11+
+    does not. Instead, we explicitly make the full union in the statement below.
+    """
+    # See is_raw:
     # isinstance(var, RawType | list[RawType] | dict[str, RawType])
-    return isinstance(var, str | float | bool | bytes | int | None | list | dict)
+    return cast(value, RawType) if is_raw(value) else None
 
 def hasher(construct: FirmType) -> str:
     """Consistently hash a RawType or tuple structure.

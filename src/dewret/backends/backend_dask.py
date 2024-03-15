@@ -49,6 +49,14 @@ class Delayed(Protocol):
         ...
 
 def is_lazy(task: Any) -> bool:
+    """Checks if a task is really a lazy-evaluated function for this backend.
+
+    Args:
+        task: suspected lazy-evaluated function.
+
+    Returns:
+        True if so, False otherwise.
+    """
     return isinstance(task, Delayed)
 
 lazy = delayed
@@ -61,6 +69,7 @@ def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
     """
-    if not isinstance(task, Delayed):
+    # We need isinstance to reassure type-checker.
+    if not isinstance(task, Delayed) or not is_lazy(task):
         raise RuntimeError("Cannot mix backends")
     return task.compute(__workflow__=workflow)
