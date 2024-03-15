@@ -35,7 +35,7 @@ In code, this would be:
 >>> 
 >>> @task()
 ... def mod10(num: int) -> int:
-...     """Double an integer."""
+...     """Take num mod 10."""
 ...     return num % 10
 >>> 
 >>> @task()
