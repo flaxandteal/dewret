@@ -17,9 +17,9 @@
 Lazy-evaluation via `dask.delayed`.
 """
 
-from dask.delayed import delayed
-from dewret.workflow import Workflow, Lazy, StepReference
-from typing import Protocol, runtime_checkable, Any
+from dask.delayed import delayed, DelayedLeaf
+from dewret.workflow import Workflow, Lazy, StepReference, Target
+from typing import Protocol, runtime_checkable, Any, cast
 
 @runtime_checkable
 class Delayed(Protocol):
@@ -47,6 +47,27 @@ class Delayed(Protocol):
             Reference to the final output step.
         """
         ...
+
+def unwrap(task: Lazy) -> Target:
+    """Unwraps a lazy-evaluated function to get the function.
+
+    In recent dask (>=2024.3) this works with inspect.wraps, but earlier
+    versions do not have the `__wrapped__` property.
+
+    Args:
+        task: task to be unwrapped.
+
+    Returns:
+        Original target.
+
+    Raises:
+        RuntimeError: if the task is not a wrapped function.
+    """
+    if not isinstance(task, DelayedLeaf):
+        raise RuntimeError("Task is not for this backend")
+    if not callable(task):
+        raise RuntimeError("Task is not actually a callable")
+    return cast(Target, task._obj)
 
 def is_lazy(task: Any) -> bool:
     """Checks if a task is really a lazy-evaluated function for this backend.

@@ -126,6 +126,24 @@ class TaskManager:
         """
         return self.backend.run(__workflow__, task, **kwargs)
 
+    def unwrap(self, task: Lazy) -> Target:
+        """Unwraps a lazy-evaluated function to get the function.
+
+        Ideally, we could use the `__wrapped__` property but not all
+        workflow engines support this, and most importantly, dask has
+        only done so as of 2024.03.
+
+        Args:
+            task: task to be unwrapped.
+
+        Returns:
+            Original target.
+
+        Raises:
+            RuntimeError: if the task is not a wrapped function.
+        """
+        return self.backend.unwrap(task)
+
     def ensure_lazy(self, task: Any) -> Lazy | None:
         """Evaluate a single task for a known workflow.
 
@@ -161,6 +179,7 @@ class TaskManager:
 _manager = TaskManager()
 lazy = _manager.make_lazy
 ensure_lazy = _manager.ensure_lazy
+unwrap = _manager.unwrap
 evaluate = _manager.evaluate
 run = _manager
 
