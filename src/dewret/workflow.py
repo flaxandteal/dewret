@@ -22,7 +22,7 @@ import inspect
 from collections.abc import Mapping, MutableMapping, Callable, Awaitable
 from collections import OrderedDict
 import base64
-from attrs import define
+from attrs import define, has as attr_has, resolve_types, fields
 from typing import Protocol, Any
 from collections import Counter
 import logging
@@ -72,7 +72,6 @@ LazyFactory = Callable[[Target], Lazy]
 from typing import TypeVar, Generic, cast, Any
 import numpy as np
 import numpy.typing as np_typing
-from attrs import define
 from sympy import Symbol
 
 T = TypeVar("T")
@@ -318,7 +317,7 @@ class Workflow:
             kwargs
         )
         self.steps.append(step)
-        return_type = inspect.signature(inspect.unwrap(fn)).return_annotation
+        return_type = step.return_type
         if return_type is inspect._empty:
             raise TypeError(f"All tasks should have a type annotation.")
         return StepReference(self, step, return_type)
@@ -464,6 +463,10 @@ class Step(WorkflowComponent):
                     ...
 
     @property
+    def return_type(self) -> Any:
+        return inspect.signature(inspect.unwrap(self.task.target)).return_annotation
+
+    @property
     def name(self) -> str:
         """Name for this step.
 
@@ -578,10 +581,14 @@ class StepReference(Generic[U], Reference):
         step: `Step` referred to.
     """
     step: Step
-    field: str
+    _field: str | None
     typ: type[U]
 
-    def __init__(self, workflow: Workflow, step: Step, typ: type[U]):
+    @property
+    def field(self) -> str:
+        return self._field or "out"
+
+    def __init__(self, workflow: Workflow, step: Step, typ: type[U], field: str | None = None):
         """Initialize the reference.
 
         Args:
@@ -590,8 +597,8 @@ class StepReference(Generic[U], Reference):
             typ: the type that the step will output.
         """
         self.step = step
-        self.field = "out"
-        self.type = typ
+        self._field = field
+        self.typ = typ
 
     def __str__(self) -> str:
         """Global description of the reference."""
@@ -601,6 +608,17 @@ class StepReference(Generic[U], Reference):
         """Hashable reference to the step (and field)."""
         return f"{self.step.id}/{self.field}"
 
+    def __getattr__(self, attr: str) -> "StepReference"[Any]:
+        if self._field is not None or not attr_has(self.typ):
+            raise RuntimeError("Can only get attribute of a StepReference representing an attrs-class")
+        resolve_types(self.typ)
+        return self.__class__(
+            workflow=self.__workflow__,
+            step=self.step,
+            typ=getattr(fields(self.typ), attr).type,
+            field=attr
+        )
+
     @property
     def return_type(self) -> type[U]:
         """Type that this step reference will resolve to.
@@ -608,7 +626,7 @@ class StepReference(Generic[U], Reference):
         Returns:
             Python type indicating the final result type.
         """
-        return self.type
+        return self.typ
 
     @property
     def name(self) -> str:

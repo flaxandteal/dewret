@@ -29,6 +29,7 @@ def test_cwl() -> None:
         inputs: {{}}
         outputs:
           out:
+            label: out
             outputSource: increment-{hsh}/out
             type: int
         steps:
@@ -57,6 +58,7 @@ def test_cwl_references() -> None:
         inputs: {{}}
         outputs:
           out:
+            label: out
             outputSource: double-{hsh_double}/out
             type: [int, double]
         steps:
@@ -92,6 +94,7 @@ def test_complex_cwl_references() -> None:
         inputs: {{}}
         outputs:
           out:
+            label: out
             outputSource: sum-1/out
             type: [int, double]
         steps:

@@ -62,6 +62,7 @@ cwlVersion: 1.2
 inputs: {}
 outputs:
   out:
+    label: out
     outputSource: sum-1/out
     type: int
 steps:
@@ -125,6 +126,7 @@ inputs:
     type: int
 outputs:
   out:
+    label: out
     outputSource: rotate-1/out
     type: int
 steps:
@@ -175,6 +177,7 @@ inputs:
     type: int
 outputs:
   out:
+    label: out
     outputSource: rotate-2/out
     type: int
 steps:
@@ -196,5 +199,87 @@ steps:
     out:
     - out
     run: rotate
+
+```
+
+## Step Output Fields
+
+Each step, by default, is treated as having
+a single result. However, we allow a mechanism
+for specifying multiple fields, using `attrs`.
+
+Where needed, fields can be accessed outside of tasks
+by dot notation and dewret will map that access to a
+specific output field in CWL.
+
+Note that in the example below, `shuffle` is still
+only seen once in the graph:
+
+```python
+>>> from attrs import define
+>>> from numpy import random
+>>> from dewret.tasks import nested_task
+>>> @define
+... class PackResult:
+...     hearts: int
+...     clubs: int
+...     spades: int
+...     diamonds: int
+>>>
+>>> @task()
+... def shuffle(max_cards_per_suit: int) -> PackResult:
+...    """Fill a random pile from a card deck, suit by suit."""
+...    return PackResult(
+...        hearts=random.randint(max_cards_per_suit),
+...        clubs=random.randint(max_cards_per_suit),
+...        spades=random.randint(max_cards_per_suit),
+...        diamonds=random.randint(max_cards_per_suit)
+...    )
+>>> @task()
+... def sum(left: int, right: int) -> int:
+...    return left + right
+>>> red_total = sum(
+...     left=shuffle(max_cards_per_suit=13).hearts,
+...     right=shuffle(max_cards_per_suit=13).diamonds
+... )
+>>> workflow = run(red_total, simplify_ids=True)
+>>> cwl = render(workflow)
+>>> yaml.dump(cwl, sys.stdout, indent=2)
+class: Workflow
+cwlVersion: 1.2
+inputs: {}
+outputs:
+  out:
+    label: out
+    outputSource: sum-1/out
+    type: int
+steps:
+  shuffle-1:
+    in:
+      max_cards_per_suit:
+        default: 13
+    out:
+      clubs:
+        label: clubs
+        type: int
+      diamonds:
+        label: diamonds
+        type: int
+      hearts:
+        label: hearts
+        type: int
+      spades:
+        label: spades
+        type: int
+    run: shuffle
+  sum-1:
+    in:
+      left:
+        source: shuffle-1/hearts
+      right:
+        source: shuffle-1/diamonds
+    out:
+    - out
+    run: sum
 
 ```

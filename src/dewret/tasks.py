@@ -32,6 +32,7 @@ from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
 from typing import Any, get_type_hints, ParamSpec, TypeVar, cast
+from attrs import has as attrs_has
 
 from .utils import is_raw
 from .workflow import (
@@ -232,7 +233,11 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
     """
 
     def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
-        def _fn(__workflow__: Workflow | None = None, **kwargs: Param.kwargs) -> RetType:
+        def _fn(*args, __workflow__: Workflow | None = None, **kwargs: Param.kwargs) -> RetType:
+            if args:
+                raise RuntimeError(
+                    f"Calling {fn.__name__}: Arguments must _always_ be named, e.g. my_task(num=1) not my_task(1)"
+                )
             workflows = [
                 reference.__workflow__
                 for reference in kwargs.values()
@@ -256,8 +261,10 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
                 elif is_task(value):
                     if not nested:
                         raise RuntimeError("You reference a task inside another task, but it is not a nested_task - this will not be found!")
-                else:
-                    raise NotImplementedError(f"Tasks must now only refer to global parameters/raw (or tasks if nested), not objects: {var}")
+                elif attrs_has(value):
+                    ...
+                elif nested:
+                    raise NotImplementedError(f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}")
             if nested:
                 lazy_fn = cast(Lazy, fn(**original_kwargs))
                 step_reference = evaluate(lazy_fn, __workflow__=workflow)

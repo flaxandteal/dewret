@@ -34,6 +34,7 @@ def test_cwl_parameters() -> None:
             type: int
         outputs:
           out:
+            label: out
             outputSource: rotate-1/out
             type: int
         steps:
@@ -69,6 +70,7 @@ def test_complex_parameters() -> None:
             type: int
         outputs:
           out:
+            label: out
             outputSource: sum-1/out
             type: [int, double]
         steps:

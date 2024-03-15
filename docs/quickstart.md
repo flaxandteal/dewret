@@ -66,6 +66,7 @@ cwlVersion: 1.2
 inputs: {}
 outputs:
   out:
+    label: out
     outputSource: increment-012ef3b3ffb9d15c3f2837aa4bb20a8d/out
     type: int
 steps:

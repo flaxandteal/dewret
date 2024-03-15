@@ -18,7 +18,7 @@ Outputs a [Common Workflow Language](https://www.commonwl.org/) representation o
 current workflow.
 """
 
-from attrs import define
+from attrs import define, has as attrs_has, fields, AttrsInstance
 from collections.abc import Mapping
 from typing import TypedDict, NotRequired, get_args, Union, cast, Any
 from types import UnionType
@@ -74,6 +74,7 @@ class StepDefinition:
 
     name: str
     run: str
+    out: dict[str, "CommandInputSchema"] | list[str]
     in_: Mapping[str, ReferenceDefinition | Raw]
 
     @classmethod
@@ -88,6 +89,11 @@ class StepDefinition:
         return cls(
             name=step.name,
             run=step.task.name,
+            out=(
+                to_output_schema("out", step.return_type)["fields"]
+            ) if attrs_has(step.return_type) else [
+                "out"
+            ],
             in_={
                 key: (
                     ReferenceDefinition.from_reference(param)
@@ -113,7 +119,7 @@ class StepDefinition:
                     {"default": ref.value}
                 ) for key, ref in self.in_.items()
             },
-            "out": ["out"]
+            "out": flatten(self.out)
         }
 
 def to_cwl_type(typ: type) -> str | list[str]:
@@ -133,7 +139,7 @@ def to_cwl_type(typ: type) -> str | list[str]:
         return "int"
     elif typ == bool:
         return "boolean"
-    elif typ == dict:
+    elif typ == dict or attrs_has(typ):
         return "record"
     elif typ == list:
         return "array"
@@ -161,6 +167,9 @@ class CommandInputSchema(TypedDict):
     fields: NotRequired[dict[str, "CommandInputSchema"]]
     items: NotRequired[InputSchemaType]
 
+class CommandOutputSchema(CommandInputSchema):
+    outputSource: NotRequired[str]
+
 def raw_to_command_input_schema(label: str, value: RawType) -> InputSchemaType:
     """Infer the CWL input structure for this value.
 
@@ -178,6 +187,25 @@ def raw_to_command_input_schema(label: str, value: RawType) -> InputSchemaType:
         return _raw_to_command_input_schema_internal(label, value)
     else:
         return to_cwl_type(type(value))
+
+def to_output_schema(label: str, typ: type[RawType | AttrsInstance], output_source: str | None = None) -> CommandOutputSchema:
+    if attrs_has(typ):
+        output = CommandOutputSchema(
+            type="record",
+            label=label,
+            fields={
+                field.name: to_output_schema(field.name, field.type)
+                for field in fields(typ)
+            },
+        )
+    else:
+        output = CommandOutputSchema(
+            type=to_cwl_type(typ),
+            label=label,
+        )
+    if output_source is not None:
+        output["outputSource"] = output_source
+    return output
 
 def _raw_to_command_input_schema_internal(label: str, value: RawType) -> CommandInputSchema:
     typ = to_cwl_type(type(value))
@@ -269,18 +297,7 @@ class OutputsDefinition:
         outputs: sequence of results from a workflow.
     """
 
-    outputs: dict[str, "OutputReferenceDefinition"]
-
-    @define
-    class OutputReferenceDefinition:
-        """CWL-renderable reference to a specific output.
-
-        Attributes:
-            vartype: type of variable
-            name: fully-qualified name of the referenced step output.
-        """
-        type: InputSchemaType
-        name: str
+    outputs: dict[str, "CommandOutputSchema"]
 
     @classmethod
     def from_results(cls, results: dict[str, StepReference[Any]]) -> "OutputsDefinition":
@@ -293,10 +310,8 @@ class OutputsDefinition:
         """
         return cls(
             outputs={
-                key: cls.OutputReferenceDefinition(
-                    type=to_cwl_type(result.return_type),
-                    name=result.name
-                ) for key, result in results.items()
+                key: to_output_schema(result.field, result.return_type, output_source=result.name)
+                for key, result in results.items()
             }
         )
 
@@ -308,10 +323,7 @@ class OutputsDefinition:
             serialization.
         """
         return {
-            key: {
-                "type": flatten(output.type),
-                "outputSource": output.name
-            } for key, output in self.outputs.items()
+            key: flatten(output) for key, output in self.outputs.items()
         }
 
 @define
@@ -348,7 +360,7 @@ class WorkflowDefinition:
                 workflow.find_parameters()
             ]),
             outputs=OutputsDefinition.from_results({
-                "out": workflow.result
+                workflow.result.field: workflow.result
             } if workflow.result else {})
         )
 
