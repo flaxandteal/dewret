@@ -233,7 +233,9 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
     """
 
     def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
-        def _fn(*args, __workflow__: Workflow | None = None, **kwargs: Param.kwargs) -> RetType:
+        def _fn(*args: Any, __workflow__: Workflow | None = None, **kwargs: Param.kwargs) -> RetType:
+            # By marking any as the positional results list, we prevent unnamed results being
+            # passed at all.
             if args:
                 raise RuntimeError(
                     f"Calling {fn.__name__}: Arguments must _always_ be named, e.g. my_task(num=1) not my_task(1)"
@@ -280,5 +282,8 @@ def set_backend(backend: Backend) -> None:
     """Choose a backend.
 
     Will raise an error if a backend is already chosen.
+
+    Args:
+        backend: chosen backend to use from here-on in.
     """
     _manager.set_backend(backend)

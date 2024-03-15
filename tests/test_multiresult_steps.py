@@ -11,19 +11,23 @@ STARTING_NUMBER: int = 23
 
 @define
 class SplitResult:
+    """Test class showing two named values."""
     first: int
     second: float
 
 @task()
 def combine(left: int, right: float) -> float:
+    """Sum two values."""
     return left + right
 
 @nested_task()
 def algorithm() -> float:
+    """Sum two split values."""
     return combine(left=split().first, right=split().second)
 
 @task()
 def split() -> SplitResult:
+    """Create a result with two fields."""
     return SplitResult(first=1, second=2)
 
 def test_nested_task() -> None:
@@ -64,6 +68,7 @@ def test_nested_task() -> None:
     """)
 
 def test_field_of_nested_task() -> None:
+    """Tests whether a directly-output nested task can have fields."""
     workflow = run(split().first, simplify_ids=True)
     rendered = render(workflow)
 
@@ -90,6 +95,7 @@ def test_field_of_nested_task() -> None:
     """)
 
 def test_complex_field_of_nested_task() -> None:
+    """Tests whether a task can insert result fields into other steps."""
     workflow = run(algorithm(), simplify_ids=True)
     rendered = render(workflow)
 

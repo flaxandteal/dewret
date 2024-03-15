@@ -168,6 +168,14 @@ class CommandInputSchema(TypedDict):
     items: NotRequired[InputSchemaType]
 
 class CommandOutputSchema(CommandInputSchema):
+    """Structure for referring to an output in CWL.
+
+    As a simplification, this is an input schema with an extra
+    `outputSource` field.
+
+    Attributes:
+        outputSource: step result to use for this output.
+    """
     outputSource: NotRequired[str]
 
 def raw_to_command_input_schema(label: str, value: RawType) -> InputSchemaType:
@@ -189,6 +197,18 @@ def raw_to_command_input_schema(label: str, value: RawType) -> InputSchemaType:
         return to_cwl_type(type(value))
 
 def to_output_schema(label: str, typ: type[RawType | AttrsInstance], output_source: str | None = None) -> CommandOutputSchema:
+    """Turn a step's output into an output schema.
+
+    Takes a source, type and label and provides a description for CWL.
+
+    Args:
+        label: name of this field.
+        typ: either a basic type, compound of basic types, or a TypedDict representing a pre-defined result structure.
+        output_source: if provided, a CWL step result reference to input here.
+
+    Returns:
+        CWL CommandOutputSchema-like structure for embedding into an `outputs` block
+    """
     if attrs_has(typ):
         output = CommandOutputSchema(
             type="record",

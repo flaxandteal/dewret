@@ -464,6 +464,14 @@ class Step(WorkflowComponent):
 
     @property
     def return_type(self) -> Any:
+        """Take the type of the wrapped function from the target.
+
+        Unwraps and inspects the signature, meaning that the original
+        wrapped function _must_ have a typehint for the return value.
+
+        Returns:
+            Expected type of the return value.
+        """
         return inspect.signature(inspect.unwrap(self.task.target)).return_annotation
 
     @property
@@ -586,6 +594,13 @@ class StepReference(Generic[U], Reference):
 
     @property
     def field(self) -> str:
+        """Field within the result.
+
+        Explicitly set field (within an attrs-class) or `out`.
+
+        Returns:
+            Field name.
+        """
         return self._field or "out"
 
     def __init__(self, workflow: Workflow, step: Step, typ: type[U], field: str | None = None):
@@ -595,6 +610,7 @@ class StepReference(Generic[U], Reference):
             workflow: `Workflow` that this is tied to.
             step: `Step` that this refers to.
             typ: the type that the step will output.
+            field: if provided, a specific field to pull out of an attrs result class.
         """
         self.step = step
         self._field = field
@@ -609,6 +625,20 @@ class StepReference(Generic[U], Reference):
         return f"{self.step.id}/{self.field}"
 
     def __getattr__(self, attr: str) -> "StepReference"[Any]:
+        """Reference to a field within this result, if possible.
+
+        If the result is an attrs-class, this will pull out an individual
+        field for use as input to other tasks, or global output of the workflow.
+
+        Args:
+            attr: field to pull out.
+
+        Returns:
+            Another StepReference specific to the requested field.
+
+        Raises:
+            RuntimeError: if this field is not available, or we do not have a structured result.
+        """
         if self._field is not None or not attr_has(self.typ):
             raise RuntimeError("Can only get attribute of a StepReference representing an attrs-class")
         resolve_types(self.typ)
