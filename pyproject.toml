@@ -31,7 +31,7 @@ homepage = "https://github.com/flaxandteal/dewret"
 repository = "https://github.com/flaxandteal/dewret"
 documentation = "https://flaxandteal.github.io/dewret"
 readme = "README.md"
-version = "0.0.1"
+version = "0.9.0"
 authors = [
   {name = "Phil Weir", email = "phil.weir@flaxandteal.co.uk"},
   {name = "Chris Nixon", email = "chris.nixon@sigma-sc.co.uk"},
