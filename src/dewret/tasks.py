@@ -217,25 +217,26 @@ RetType = TypeVar("RetType")
 def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Decorator factory abstracting backend's own task decorator.
 
+    For example:
+
+    ```python
+    >>> @task()
+    ... def increment(num: int) -> int:
+    ...     return num + 1
+    ```
+
+    If the backend is `dask` (the default), it is will evaluate this
+    as a `dask.delayed`. Note that, with any backend, dewret will
+    hijack the decorator to record the attempted _evalution_ rather than
+    actually _evaluating_ the lazy function. Nonetheless, this hijacking
+    will still be executed with the backend's lazy executor, so
+    `dask.delayed` will still be called, for example, in the dask case.
+
     Args:
         nested: whether this should be executed to find other tasks.
 
     Returns:
         Decorator for the current backend to mark lazy-executable tasks.
-        For example:
-
-        ```python
-        >>> @task()
-        ... def increment(num: int) -> int:
-        ...     return num + 1
-        ```
-
-        If the backend is `dask` (the default), it is will evaluate this
-        as a `dask.delayed`. Note that, with any backend, dewret will
-        hijack the decorator to record the attempted _evalution_ rather than
-        actually _evaluating_ the lazy function. Nonetheless, this hijacking
-        will still be executed with the backend's lazy executor, so
-        `dask.delayed` will still be called, for example, in the dask case.
     """
 
     def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
