@@ -44,7 +44,7 @@ def flatten(value: Any) -> RawType:
         return [flatten(item) for item in value]
     if (raw := ensure_raw(value)) is not None:
         return raw
-    raise RuntimeError("Could not flatten")
+    raise RuntimeError(f"Could not flatten: {value}")
 
 
 def is_raw(value: Any) -> bool:
@@ -68,7 +68,7 @@ def ensure_raw(value: Any) -> RawType | None:
     """
     # See is_raw:
     # isinstance(var, RawType | list[RawType] | dict[str, RawType])
-    return cast(value, RawType) if is_raw(value) else None
+    return cast(RawType, value) if is_raw(value) else None
 
 def hasher(construct: FirmType) -> str:
     """Consistently hash a RawType or tuple structure.
