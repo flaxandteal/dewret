@@ -17,8 +17,8 @@
 Definition of a protocol that valid backend modules must fulfil.
 """
 
-from typing import Protocol
-from dewret.workflow import LazyFactory, Lazy, Workflow, StepReference
+from typing import Protocol, Any
+from dewret.workflow import LazyFactory, Lazy, Workflow, StepReference, Target
 
 class BackendModule(Protocol):
     """Requirements for a valid backend module.
@@ -32,7 +32,7 @@ class BackendModule(Protocol):
     """
     lazy: LazyFactory
 
-    def run(self, workflow: Workflow, task: Lazy) -> StepReference:
+    def run(self, workflow: Workflow, task: Lazy) -> StepReference[Any]:
         """Execute a lazy task for this `Workflow`.
 
         Args:
@@ -41,5 +41,34 @@ class BackendModule(Protocol):
 
         Returns:
             Reference to the final output step.
+        """
+        ...
+
+    def unwrap(self, lazy: Lazy) -> Target:
+        """Unwraps a lazy-evaluated function to get the function.
+
+        Ideally, we could use the `__wrapped__` property but not all
+        workflow engines support this, and most importantly, dask has
+        only done so as of 2024.03.
+
+        Args:
+            lazy: task to be unwrapped.
+
+        Returns:
+            Original target.
+
+        Raises:
+            RuntimeError: if the task is not a wrapped function.
+        """
+        ...
+
+    def is_lazy(self, lazy: Any) -> bool:
+        """Confirm whether this is a lazy-evaluatable function.
+
+        Args:
+            lazy: suspected lazy-evaluatable function to check.
+
+        Returns:
+            True if this is a lazy-evaluatable function for this backend, otherwise False.
         """
         ...

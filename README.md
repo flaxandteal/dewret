@@ -2,7 +2,7 @@
 
 DEclarative Workflow REndering Tool
 
-_Pron_: durr-it
+_Pron_: durr-it, like "durable"
 
 ### Introduction
 
