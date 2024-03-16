@@ -21,9 +21,11 @@ decorator for the current backend.
 
 Typical usage example:
 
-  >>> @task()
-  ... def increment(num: int) -> int:
-  ...     return num + 1
+```python
+>>> @task()
+... def increment(num: int) -> int:
+...     return num + 1
+```
 """
 
 import inspect
@@ -195,6 +197,7 @@ def nested_task() -> Callable[[Target], StepExecution]:
     effect of the nested task will be considered equivalent to whatever
     reaching whatever step reference is returned at the end.
 
+    ```python
     >>> @task()
     ... def increment(num: int) -> int:
     ...     return num + 1
@@ -202,6 +205,7 @@ def nested_task() -> Callable[[Target], StepExecution]:
     >>> @nested_task()
     ... def double_increment(num: int) -> int:
     ...     return increment(increment(num=num))
+    ```
 
     Returns:
         Task that runs at render, not execution, time.
@@ -220,9 +224,11 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
         Decorator for the current backend to mark lazy-executable tasks.
         For example:
 
+        ```python
         >>> @task()
         ... def increment(num: int) -> int:
         ...     return num + 1
+        ```
 
         If the backend is `dask` (the default), it is will evaluate this
         as a `dask.delayed`. Note that, with any backend, dewret will

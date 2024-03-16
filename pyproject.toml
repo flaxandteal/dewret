@@ -13,6 +13,9 @@ extra_markdown_extensions = [
   "pymdownx.highlight",
 ]
 
+[tool.portray.pdocs]
+exclude_source = true
+
 [tool.portray.mkdocs]
 markdown_extensions = [
   { "pymdownx.superfences" = {} }
