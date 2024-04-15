@@ -4,8 +4,6 @@ import yaml
 from attr import define
 from dewret.tasks import task, construct, nested_task
 from dewret.renderers.cwl import render
-from dewret.workflow import Lazy
-from ._lib.extra import double, mod10, sum, increase
 
 STARTING_NUMBER: int = 23
 
@@ -38,10 +36,10 @@ def test_nested_task() -> None:
     workflow = construct(split(), simplify_ids=True)
     rendered = render(workflow)
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         class: Workflow
         cwlVersion: 1.2
-        inputs: {{}}
+        inputs: {}
         outputs:
           out:
             label: out
@@ -56,7 +54,7 @@ def test_nested_task() -> None:
                     type: double
         steps:
           split-1:
-            in: {{}}
+            in: {}
             out:
               first:
                 label: first
@@ -72,10 +70,10 @@ def test_field_of_nested_task() -> None:
     workflow = construct(split().first, simplify_ids=True)
     rendered = render(workflow)
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         class: Workflow
         cwlVersion: 1.2
-        inputs: {{}}
+        inputs: {}
         outputs:
           first:
             label: first
@@ -83,7 +81,7 @@ def test_field_of_nested_task() -> None:
             type: int
         steps:
           split-1:
-            in: {{}}
+            in: {}
             out:
               first:
                 label: first
@@ -99,10 +97,10 @@ def test_complex_field_of_nested_task() -> None:
     workflow = construct(algorithm(), simplify_ids=True)
     rendered = render(workflow)
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         class: Workflow
         cwlVersion: 1.2
-        inputs: {{}}
+        inputs: {}
         outputs:
           out:
             label: out
@@ -118,7 +116,7 @@ def test_complex_field_of_nested_task() -> None:
             out: [out]
             run: combine
           split-1:
-            in: {{}}
+            in: {}
             out:
               first:
                 label: first
