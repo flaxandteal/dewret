@@ -35,30 +35,38 @@ from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
 from typing import Any, ParamSpec, TypeVar, cast
+from types import TracebackType
 from attrs import has as attrs_has
 from dataclasses import is_dataclass
+import traceback
 
-from .utils import is_raw
+from .utils import is_raw, make_traceback
 from .workflow import (
     StepReference,
     ParameterReference,
     Workflow,
     Lazy,
+    LazyEvaluation,
     Target,
     LazyFactory,
     StepExecution,
     merge_workflows,
     Parameter,
     param,
-    is_task
+    Task,
+    is_task,
 )
 from .backends._base import BackendModule
 
+
 class Backend(Enum):
     """Stringy enum representing available backends."""
+
     DASK = "dask"
 
+
 DEFAULT_BACKEND = Backend.DASK
+
 
 class TaskManager:
     """Overarching backend-agnostic task manager.
@@ -106,7 +114,9 @@ class TaskManager:
         if backend is None:
             backend = self.set_backend(DEFAULT_BACKEND)
 
-        backend_mod = importlib.import_module(f".backends.backend_{backend.value}", "dewret")
+        backend_mod = importlib.import_module(
+            f".backends.backend_{backend.value}", "dewret"
+        )
         return backend_mod
 
     def make_lazy(self) -> LazyFactory:
@@ -159,10 +169,14 @@ class TaskManager:
             Original task, cast to a Lazy, or None.
         """
         if (task := self.ensure_lazy(task)) is None:
-            raise RuntimeError(f"Task passed to be evaluated, must be lazy-evaluatable, not {type(task)}.")
+            raise RuntimeError(
+                f"Task passed to be evaluated, must be lazy-evaluatable, not {type(task)}."
+            )
         return cast(task, Lazy) if self.backend.is_lazy(task) else None
 
-    def __call__(self, task: Any, simplify_ids: bool = False, **kwargs: Any) -> Workflow:
+    def __call__(
+        self, task: Any, simplify_ids: bool = False, **kwargs: Any
+    ) -> Workflow:
         """Execute the lazy evalution.
 
         Arguments:
@@ -177,12 +191,51 @@ class TaskManager:
         result = self.evaluate(task, workflow, **kwargs)
         return Workflow.from_result(result, simplify_ids=simplify_ids)
 
+
 _manager = TaskManager()
 lazy = _manager.make_lazy
 ensure_lazy = _manager.ensure_lazy
 unwrap = _manager.unwrap
 evaluate = _manager.evaluate
 construct = _manager
+
+
+class TaskException(Exception):
+    """Exception tied to a specific task.
+
+    Primarily aimed at parsing issues, but this will ensure that
+    a message is shown with useful debug information for the
+    workflow writer.
+    """
+
+    def __init__(
+        self,
+        task: Task | Target,
+        dec_tb: TracebackType | None,
+        tb: TracebackType | None,
+        message: str,
+        *args: Any,
+        **kwargs: Any,
+    ):
+        """Create a TaskException for this exception.
+
+        Args:
+            task: the Task causing the exception.
+            dec_tb: a traceback of the task declaration.
+            tb: a traceback of the original task call.
+            message: a message to show to the user.
+            *args: any other arguments accepted by Exception.
+            **kwargs: any other arguments accepted by Exception.
+        """
+        if dec_tb:
+            frame = traceback.extract_tb(dec_tb)[-1]
+            self.add_note(
+                f"Task {task.__name__} declared in {frame.name} at {frame.filename}:{frame.lineno}\n"
+                f"{frame.line}"
+            )
+        super().__init__(message)
+        self.__traceback__ = tb
+
 
 def nested_task() -> Callable[[Target], StepExecution]:
     """Shortcut for marking a task as nested.
@@ -211,9 +264,14 @@ def nested_task() -> Callable[[Target], StepExecution]:
     """
     return task(nested=True)
 
+
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
-def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
+
+
+def task(
+    nested: bool = False,
+) -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Decorator factory abstracting backend's own task decorator.
 
     For example:
@@ -244,55 +302,84 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
     """
 
     def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
-        def _fn(*args: Any, __workflow__: Workflow | None = None, **kwargs: Param.kwargs) -> RetType:
+        declaration_tb = make_traceback()
+
+        def _fn(
+            *args: Any,
+            __workflow__: Workflow | None = None,
+            __traceback__: TracebackType | None = None,
+            **kwargs: Param.kwargs,
+        ) -> RetType:
             # By marking any as the positional results list, we prevent unnamed results being
             # passed at all.
-            if args:
-                raise TypeError(
-                    f"Calling {fn.__name__}: Arguments must _always_ be named, e.g. my_task(num=1) not my_task(1)"
-                )
+            try:
+                if args:
+                    raise TypeError(
+                        f"Calling {fn.__name__}: Arguments must _always_ be named, e.g. my_task(num=1) not my_task(1)"
+                    )
 
-            # Ensure that the passed arguments are, at least, a Python-match for the signature.
-            sig = inspect.signature(fn)
-            sig.bind(*args, **kwargs)
+                # Ensure that the passed arguments are, at least, a Python-match for the signature.
+                sig = inspect.signature(fn)
+                sig.bind(*args, **kwargs)
 
-            workflows = [
-                reference.__workflow__
-                for reference in kwargs.values()
-                if hasattr(reference, "__workflow__") and reference.__workflow__ is not None
-            ]
-            if __workflow__ is not None:
-                workflows.insert(0, __workflow__)
-            if workflows:
-                workflow = merge_workflows(*workflows)
-            else:
-                workflow = Workflow()
-            original_kwargs = dict(kwargs)
-            for var, value in inspect.getclosurevars(fn).globals.items():
-                if var in kwargs:
-                    raise TypeError("Captured parameter (global variable in task) shadows an argument")
-                if isinstance(value, Parameter):
-                    kwargs[var] = ParameterReference(workflow, value)
-                elif is_raw(value):
-                    parameter = param(var, value)
-                    kwargs[var] = ParameterReference(workflow, parameter)
-                elif is_task(value):
-                    if not nested:
-                        raise TypeError("You reference a task inside another task, but it is not a nested_task - this will not be found!")
-                elif attrs_has(value) or is_dataclass(value):
-                    ...
-                elif nested:
-                    raise NotImplementedError(f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}")
-            if nested:
-                lazy_fn = cast(Lazy, fn(**original_kwargs))
-                step_reference = evaluate(lazy_fn, __workflow__=workflow)
-                if isinstance(step_reference, StepReference):
-                    return cast(RetType, step_reference)
-                raise TypeError("Nested tasks must return a step reference, to ensure graph makes sense.")
-            return cast(RetType, workflow.add_step(fn, kwargs))
-        _fn.__step_expression__ = True # type: ignore
-        return lazy()(_fn)
+                workflows = [
+                    reference.__workflow__
+                    for reference in kwargs.values()
+                    if hasattr(reference, "__workflow__")
+                    and reference.__workflow__ is not None
+                ]
+                if __workflow__ is not None:
+                    workflows.insert(0, __workflow__)
+                if workflows:
+                    workflow = merge_workflows(*workflows)
+                else:
+                    workflow = Workflow()
+                original_kwargs = dict(kwargs)
+                for var, value in inspect.getclosurevars(fn).globals.items():
+                    if var in kwargs:
+                        raise TypeError(
+                            "Captured parameter (global variable in task) shadows an argument"
+                        )
+                    if isinstance(value, Parameter):
+                        kwargs[var] = ParameterReference(workflow, value)
+                    elif is_raw(value):
+                        parameter = param(var, value)
+                        kwargs[var] = ParameterReference(workflow, parameter)
+                    elif is_task(value):
+                        if not nested:
+                            raise TypeError(
+                                "You reference a task inside another task, but it is not a nested_task - this will not be found!"
+                            )
+                    elif attrs_has(value) or is_dataclass(value):
+                        ...
+                    elif nested:
+                        raise NotImplementedError(
+                            f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}"
+                        )
+                if nested:
+                    lazy_fn = cast(Lazy, fn(**original_kwargs))
+                    step_reference = evaluate(lazy_fn, __workflow__=workflow)
+                    if isinstance(step_reference, StepReference):
+                        return cast(RetType, step_reference)
+                    raise TypeError(
+                        "Nested tasks must return a step reference, to ensure graph makes sense."
+                    )
+                return cast(RetType, workflow.add_step(fn, kwargs))
+            except TaskException as exc:
+                raise exc
+            except Exception as exc:
+                raise TaskException(
+                    fn,
+                    declaration_tb,
+                    __traceback__,
+                    exc.args[0] if exc.args else "Could not call task",
+                ) from exc
+
+        _fn.__step_expression__ = True  # type: ignore
+        return LazyEvaluation(lazy()(_fn))
+
     return _task
+
 
 def set_backend(backend: Backend) -> None:
     """Choose a backend.
