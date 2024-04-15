@@ -238,7 +238,7 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
         Decorator for the current backend to mark lazy-executable tasks.
 
     Raises:
-        TypeError: if arguments are missing or incorrect, inline with usual
+        TypeError: if arguments are missing or incorrect, in line with usual
             Python behaviour.
     """
 
@@ -289,7 +289,7 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
                     return cast(RetType, step_reference)
                 raise TypeError("Nested tasks must return a step reference, to ensure graph makes sense.")
             return cast(RetType, workflow.add_step(fn, kwargs))
-        setattr(_fn, "__step_expression__", True)
+        _fn.__step_expression__ = True # type: ignore
         return lazy()(_fn)
     return _task
 
