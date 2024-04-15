@@ -19,4 +19,4 @@ repos:
     hooks:
       - id: mypy
         args: [--strict, --install-types, --non-interactive]
-        additional_dependencies: [sympy, attrs, pytest, click]
+        additional_dependencies: [sympy, attrs, pytest, click, dask]

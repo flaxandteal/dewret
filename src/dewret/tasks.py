@@ -168,11 +168,9 @@ class TaskManager:
         Returns:
             Original task, cast to a Lazy, or None.
         """
-        if (task := self.ensure_lazy(task)) is None:
-            raise RuntimeError(
-                f"Task passed to be evaluated, must be lazy-evaluatable, not {type(task)}."
-            )
-        return cast(task, Lazy) if self.backend.is_lazy(task) else None
+        if isinstance(task, LazyEvaluation):
+            return self.ensure_lazy(task._fn)
+        return task if self.backend.is_lazy(task) else None
 
     def __call__(
         self, task: Any, simplify_ids: bool = False, **kwargs: Any
@@ -310,12 +308,21 @@ def task(
             __traceback__: TracebackType | None = None,
             **kwargs: Param.kwargs,
         ) -> RetType:
-            # By marking any as the positional results list, we prevent unnamed results being
-            # passed at all.
             try:
+                # By marking any as the positional results list, we prevent unnamed results being
+                # passed at all.
                 if args:
                     raise TypeError(
-                        f"Calling {fn.__name__}: Arguments must _always_ be named, e.g. my_task(num=1) not my_task(1)"
+                        f"""
+                        Calling {fn.__name__}: Arguments must _always_ be named,
+                        e.g. my_task(num=1) not my_task(1)\n"
+
+                        @task()
+                        def add_numbers(left: int, right: int):
+                            return left + right
+
+                        construct(add_numbers(left=3, right=5))
+                        """
                     )
 
                 # Ensure that the passed arguments are, at least, a Python-match for the signature.
@@ -336,10 +343,8 @@ def task(
                     workflow = Workflow()
                 original_kwargs = dict(kwargs)
                 for var, value in inspect.getclosurevars(fn).globals.items():
-                    if var in kwargs:
-                        raise TypeError(
-                            "Captured parameter (global variable in task) shadows an argument"
-                        )
+                    # This error is redundant as it triggers a SyntaxError in Python.
+                    # "Captured parameter {var} (global variable in task) shadows an argument"
                     if isinstance(value, Parameter):
                         kwargs[var] = ParameterReference(workflow, value)
                     elif is_raw(value):
@@ -348,7 +353,20 @@ def task(
                     elif is_task(value):
                         if not nested:
                             raise TypeError(
-                                "You reference a task inside another task, but it is not a nested_task - this will not be found!"
+                                f"""
+                                You reference a task {var} inside another task {fn.__name__}, but it is not a nested_task
+                                - this will not be found!
+
+                                @task
+                                def {var}(...) -> ...:
+                                    ...
+
+                                @nested_task <<<--- likely what you want
+                                def {fn.__name__}(...) -> ...:
+                                    ...
+                                    {var}(...)
+                                    ...
+                                """
                             )
                     elif attrs_has(value) or is_dataclass(value):
                         ...
@@ -357,12 +375,17 @@ def task(
                             f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}"
                         )
                 if nested:
-                    lazy_fn = cast(Lazy, fn(**original_kwargs))
+                    output = fn(**original_kwargs)
+                    lazy_fn = ensure_lazy(output)
+                    if lazy_fn is None:
+                        raise TypeError(
+                            f"Task {fn.__name__} returned output of type {type(output)}, which is not a lazy function for this backend."
+                        )
                     step_reference = evaluate(lazy_fn, __workflow__=workflow)
                     if isinstance(step_reference, StepReference):
                         return cast(RetType, step_reference)
                     raise TypeError(
-                        "Nested tasks must return a step reference, to ensure graph makes sense."
+                        f"Nested tasks must return a step reference, not {type(step_reference)} to ensure graph makes sense."
                     )
                 return cast(RetType, workflow.add_step(fn, kwargs))
             except TaskException as exc:
@@ -372,7 +395,7 @@ def task(
                     fn,
                     declaration_tb,
                     __traceback__,
-                    exc.args[0] if exc.args else "Could not call task",
+                    exc.args[0] if exc.args else "Could not call task {fn.__name__}",
                 ) from exc
 
         _fn.__step_expression__ = True  # type: ignore

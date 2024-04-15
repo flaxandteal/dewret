@@ -21,6 +21,7 @@ from dask.delayed import delayed, DelayedLeaf
 from dewret.workflow import Workflow, Lazy, StepReference, Target
 from typing import Protocol, runtime_checkable, Any, cast
 
+
 @runtime_checkable
 class Delayed(Protocol):
     """Description of a dask `delayed`.
@@ -48,6 +49,7 @@ class Delayed(Protocol):
         """
         ...
 
+
 def unwrap(task: Lazy) -> Target:
     """Unwraps a lazy-evaluated function to get the function.
 
@@ -69,6 +71,7 @@ def unwrap(task: Lazy) -> Target:
         raise RuntimeError("Task is not actually a callable")
     return cast(Target, task._obj)
 
+
 def is_lazy(task: Any) -> bool:
     """Checks if a task is really a lazy-evaluated function for this backend.
 
@@ -80,7 +83,10 @@ def is_lazy(task: Any) -> bool:
     """
     return isinstance(task, Delayed)
 
+
 lazy = delayed
+
+
 def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
     """Execute a task as the output of a workflow.
 
@@ -92,5 +98,7 @@ def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
     """
     # We need isinstance to reassure type-checker.
     if not isinstance(task, Delayed) or not is_lazy(task):
-        raise RuntimeError("Cannot mix backends")
+        raise RuntimeError(
+            f"{task} is not a dask delayed, perhaps you tried to mix backends?"
+        )
     return task.compute(__workflow__=workflow)
