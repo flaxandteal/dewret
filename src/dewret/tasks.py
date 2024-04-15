@@ -21,18 +21,36 @@ decorator for the current backend.
 
 Typical usage example:
 
-  >>> @task()
-  ... def increment(num: int) -> int:
-  ...     return num + 1
+```python
+>>> @task()
+... def increment(num: int) -> int:
+...     return num + 1
+
+```
 """
 
+import inspect
 import importlib
 from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
-from typing import Any
+from typing import Any, ParamSpec, TypeVar, cast
+from attrs import has as attrs_has
 
-from .workflow import Step, StepReference, Workflow, Lazy, Target, LazyFactory, Reference, Raw, StepExecution, Task
+from .utils import is_raw
+from .workflow import (
+    StepReference,
+    ParameterReference,
+    Workflow,
+    Lazy,
+    Target,
+    LazyFactory,
+    StepExecution,
+    merge_workflows,
+    Parameter,
+    param,
+    is_task
+)
 from .backends._base import BackendModule
 
 class Backend(Enum):
@@ -98,48 +116,171 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def __call__(self, task: Lazy, **kwargs: Any) -> Workflow:
+    def evaluate(self, task: Lazy, __workflow__: Workflow, **kwargs: Any) -> Any:
+        """Evaluate a single task for a known workflow.
+
+        Args:
+            task: the task to evaluate.
+            __workflow__: workflow within which this exists.
+            **kwargs: any arguments to pass to the task.
+        """
+        return self.backend.run(__workflow__, task, **kwargs)
+
+    def unwrap(self, task: Lazy) -> Target:
+        """Unwraps a lazy-evaluated function to get the function.
+
+        Ideally, we could use the `__wrapped__` property but not all
+        workflow engines support this, and most importantly, dask has
+        only done so as of 2024.03.
+
+        Args:
+            task: task to be unwrapped.
+
+        Returns:
+            Original target.
+
+        Raises:
+            RuntimeError: if the task is not a wrapped function.
+        """
+        return self.backend.unwrap(task)
+
+    def ensure_lazy(self, task: Any) -> Lazy | None:
+        """Evaluate a single task for a known workflow.
+
+        As we mask our lazy-evaluable functions to appear as their original
+        types to the type system (see `dewret.tasks.task`), we must cast them
+        back, to allow the type-checker to comb the remainder of the code.
+
+        Args:
+            task: the suspected task to check.
+
+        Returns:
+            Original task, cast to a Lazy, or None.
+        """
+        if (task := self.ensure_lazy(task)) is None:
+            raise RuntimeError(f"Task passed to be evaluated, must be lazy-evaluatable, not {type(task)}.")
+        return cast(task, Lazy) if self.backend.is_lazy(task) else None
+
+    def __call__(self, task: Any, simplify_ids: bool = False, **kwargs: Any) -> Workflow:
         """Execute the lazy evalution.
 
         Arguments:
             task: the task to evaluate.
+            simplify_ids: when we finish running, make nicer step names?
             **kwargs: any arguments to pass to the task.
 
         Returns:
             A reusable reference to this individual step.
         """
         workflow = Workflow()
-        result = self.backend.run(workflow, task, **kwargs)
-        return Workflow.from_result(result)
+        result = self.evaluate(task, workflow, **kwargs)
+        return Workflow.from_result(result, simplify_ids=simplify_ids)
 
 _manager = TaskManager()
 lazy = _manager.make_lazy
-run = _manager
+ensure_lazy = _manager.ensure_lazy
+unwrap = _manager.unwrap
+evaluate = _manager.evaluate
+construct = _manager
 
-def task() -> Callable[[Target], StepExecution]:
+def nested_task() -> Callable[[Target], StepExecution]:
+    """Shortcut for marking a task as nested.
+
+    A nested task is one which calls other tasks and does not
+    do anything else important. It will _not_ actually get called
+    at runtime, but should map entirely into the graph. As such,
+    arithmetic operations on results, etc. will cause errors at
+    render-time. Combining tasks is acceptable, and intended. The
+    effect of the nested task will be considered equivalent to whatever
+    reaching whatever step reference is returned at the end.
+
+    ```python
+    >>> @task()
+    ... def increment(num: int) -> int:
+    ...     return num + 1
+
+    >>> @nested_task()
+    ... def double_increment(num: int) -> int:
+    ...     return increment(increment(num=num))
+
+    ```
+
+    Returns:
+        Task that runs at render, not execution, time.
+    """
+    return task(nested=True)
+
+Param = ParamSpec("Param")
+RetType = TypeVar("RetType")
+def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Decorator factory abstracting backend's own task decorator.
+
+    For example:
+
+    ```python
+    >>> @task()
+    ... def increment(num: int) -> int:
+    ...     return num + 1
+
+    ```
+
+    If the backend is `dask` (the default), it is will evaluate this
+    as a `dask.delayed`. Note that, with any backend, dewret will
+    hijack the decorator to record the attempted _evalution_ rather than
+    actually _evaluating_ the lazy function. Nonetheless, this hijacking
+    will still be executed with the backend's lazy executor, so
+    `dask.delayed` will still be called, for example, in the dask case.
+
+    Args:
+        nested: whether this should be executed to find other tasks.
 
     Returns:
         Decorator for the current backend to mark lazy-executable tasks.
-        For example:
-
-        >>> @task()
-        ... def increment(num: int) -> int:
-        ...     return num + 1
-
-        If the backend is `dask` (the default), it is will evaluate this
-        as a `dask.delayed`. Note that, with any backend, dewret will
-        hijack the decorator to record the attempted _evalution_ rather than
-        actually _evaluating_ the lazy function. Nonetheless, this hijacking
-        will still be executed with the backend's lazy executor, so
-        `dask.delayed` will still be called, for example, in the dask case.
     """
 
-    def _task(fn: Target) -> StepExecution:
-        def _fn(__workflow__: Workflow | None = None, **kwargs: Reference | Raw) -> StepReference:
-            if __workflow__ is None:
-                __workflow__ = Workflow()
-            return __workflow__.add_step(fn, kwargs)
+    def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
+        def _fn(*args: Any, __workflow__: Workflow | None = None, **kwargs: Param.kwargs) -> RetType:
+            # By marking any as the positional results list, we prevent unnamed results being
+            # passed at all.
+            if args:
+                raise RuntimeError(
+                    f"Calling {fn.__name__}: Arguments must _always_ be named, e.g. my_task(num=1) not my_task(1)"
+                )
+            workflows = [
+                reference.__workflow__
+                for reference in kwargs.values()
+                if hasattr(reference, "__workflow__") and reference.__workflow__ is not None
+            ]
+            if __workflow__ is not None:
+                workflows.insert(0, __workflow__)
+            if workflows:
+                workflow = merge_workflows(*workflows)
+            else:
+                workflow = Workflow()
+            original_kwargs = dict(kwargs)
+            for var, value in inspect.getclosurevars(fn).globals.items():
+                if var in kwargs:
+                    raise RuntimeError("Captured parameter (global variable in task) shadows an argument")
+                if isinstance(value, Parameter):
+                    kwargs[var] = ParameterReference(workflow, value)
+                elif is_raw(value):
+                    parameter = param(var, value)
+                    kwargs[var] = ParameterReference(workflow, parameter)
+                elif is_task(value):
+                    if not nested:
+                        raise RuntimeError("You reference a task inside another task, but it is not a nested_task - this will not be found!")
+                elif attrs_has(value):
+                    ...
+                elif nested:
+                    raise NotImplementedError(f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}")
+            if nested:
+                lazy_fn = cast(Lazy, fn(**original_kwargs))
+                step_reference = evaluate(lazy_fn, __workflow__=workflow)
+                if isinstance(step_reference, StepReference):
+                    return cast(RetType, step_reference)
+                raise RuntimeError("Nested tasks must return a step reference, to ensure graph makes sense.")
+            return cast(RetType, workflow.add_step(fn, kwargs))
+        setattr(_fn, "__step_expression__", True)
         return lazy()(_fn)
     return _task
 
@@ -147,5 +288,8 @@ def set_backend(backend: Backend) -> None:
     """Choose a backend.
 
     Will raise an error if a backend is already chosen.
+
+    Args:
+        backend: chosen backend to use from here-on in.
     """
     _manager.set_backend(backend)

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling < 1.22"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -10,12 +10,19 @@ modules = ["dewret"]
 extra_markdown_extensions = [
   "pymdownx.inlinehilite",
   "pymdownx.snippets",
-  "pymdownx.superfences",
   "pymdownx.highlight",
 ]
 
+[tool.portray.pdocs]
+exclude_source = true
+
+[tool.portray.mkdocs]
+markdown_extensions = [
+  { "pymdownx.superfences" = {} }
+]
+
 [tool.ruff.lint]
-select = ["D"]
+select = ["D", "F"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -27,7 +34,7 @@ homepage = "https://github.com/flaxandteal/dewret"
 repository = "https://github.com/flaxandteal/dewret"
 documentation = "https://flaxandteal.github.io/dewret"
 readme = "README.md"
-version = "0.0.1"
+version = "0.9.0"
 authors = [
   {name = "Phil Weir", email = "phil.weir@flaxandteal.co.uk"},
   {name = "Chris Nixon", email = "chris.nixon@sigma-sc.co.uk"},
@@ -40,4 +47,4 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
 ]
 requires-python = ">=3.11"
-dependencies = ["dask >= 2022", "pyyaml", "attrs", "click", "setuptools >= 65.5.1"]
+dependencies = ["dask >= 2022", "pyyaml", "attrs", "click", "setuptools >= 65.5.1", "numpy", "sympy"]
