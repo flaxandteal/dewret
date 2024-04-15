@@ -15,7 +15,7 @@ repos:
       # Run the formatter.
       - id: ruff-format
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: ""
+    rev: v1.9.0
     hooks:
       - id: mypy
         args: [--strict, --ignore-missing-imports]
