@@ -21,7 +21,6 @@ def test_can_run_task() -> None:
 
 def test_missing_arguments_throw_error_in_dask() -> None:
     """Check whether a dask task can run via `TaskManager`."""
-
     task: Lazy = lazy(add_task)(left=3)
     with pytest.raises(TypeError):
         run(None, task)
