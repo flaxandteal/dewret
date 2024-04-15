@@ -1,4 +1,4 @@
-name: Ruff
+name: Static checking
 on: [push, pull_request]
 jobs:
   static:
@@ -14,13 +14,11 @@ jobs:
       - uses: python/mypy@v1.8.0
         with:
           paths: "./src"
-      - run: . ${{ github.action_path }}/.mypy-venv/bin/activate && pip install .[tests]
+      - run: pip install .[tests]
       - uses: chartboost/ruff-action@v1
         with:
-          src: "./tests"
-      - uses: python/mypy@v1.8.0
-        with:
-          paths: "./tests"
+          src: "./tests ./example"
+      - run: mypy --strict src tests example
 
   audit:
     runs-on: ubuntu-latest
