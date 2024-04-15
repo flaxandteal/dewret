@@ -22,8 +22,9 @@ import inspect
 from collections.abc import Mapping, MutableMapping, Callable
 import base64
 from attrs import define, has as attr_has, resolve_types, fields
-from typing import Protocol, Any
 from collections import Counter
+from typing import Protocol, Any, TypeVar, Generic, cast
+from sympy import Symbol
 import logging
 
 logger = logging.getLogger(__name__)
@@ -67,9 +68,6 @@ class Lazy(Protocol):
 Target = Callable[..., Any]
 StepExecution = Callable[..., Lazy]
 LazyFactory = Callable[[Target], Lazy]
-
-from typing import TypeVar, Generic, cast
-from sympy import Symbol
 
 T = TypeVar("T")
 
