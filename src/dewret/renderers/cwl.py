@@ -21,11 +21,11 @@ current workflow.
 from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstance
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
-from typing import TypedDict, NotRequired, get_args, Union, cast, Any, Callable, Iterable, TYPE_CHECKING
+from typing import TypedDict, NotRequired, get_args, Union, cast, Any
 from types import UnionType
 
 from dewret.workflow import Reference, Raw, Workflow, Step, StepReference, Parameter
-from dewret.utils import RawType, flatten, FieldProtocol, DataclassProtocol
+from dewret.utils import RawType, flatten, DataclassProtocol
 
 InputSchemaType = Union[str, "CommandInputSchema", list[str], list["InputSchemaType"]]
 

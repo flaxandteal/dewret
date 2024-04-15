@@ -27,11 +27,12 @@ RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
 FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
 
 class DataclassProtocol(Protocol):
-    __dataclass_fields__: ClassVar[dict[str, Any]]
+    """Format of a dataclass.
 
-class FieldProtocol(Protocol):
-    name: str
-    type: type
+    Since dataclasses do not expose a proper type, we use this to
+    represent them.
+    """
+    __dataclass_fields__: ClassVar[dict[str, Any]]
 
 
 def flatten(value: Any) -> RawType:
