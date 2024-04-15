@@ -1,6 +1,6 @@
 """Complex workflow.
 
-Useful as an example of a simple workflow.
+Useful as an example of a workflow with a nested task.
 
 ```sh
 $ python -m dewret workflow_complex.py --pretty run
