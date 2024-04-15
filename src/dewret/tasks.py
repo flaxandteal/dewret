@@ -36,6 +36,7 @@ from functools import cached_property
 from collections.abc import Callable
 from typing import Any, ParamSpec, TypeVar, cast
 from attrs import has as attrs_has
+from dataclasses import is_dataclass
 
 from .utils import is_raw
 from .workflow import (
@@ -278,7 +279,7 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
                 elif is_task(value):
                     if not nested:
                         raise TypeError("You reference a task inside another task, but it is not a nested_task - this will not be found!")
-                elif attrs_has(value):
+                elif attrs_has(value) or is_dataclass(value):
                     ...
                 elif nested:
                     raise NotImplementedError(f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}")

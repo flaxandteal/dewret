@@ -18,13 +18,14 @@ Outputs a [Common Workflow Language](https://www.commonwl.org/) representation o
 current workflow.
 """
 
-from attrs import define, has as attrs_has, fields, AttrsInstance
+from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstance
+from dataclasses import is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
-from typing import TypedDict, NotRequired, get_args, Union, cast, Any
+from typing import TypedDict, NotRequired, get_args, Union, cast, Any, Callable, Iterable, TYPE_CHECKING
 from types import UnionType
 
 from dewret.workflow import Reference, Raw, Workflow, Step, StepReference, Parameter
-from dewret.utils import RawType, flatten
+from dewret.utils import RawType, flatten, FieldProtocol, DataclassProtocol
 
 InputSchemaType = Union[str, "CommandInputSchema", list[str], list["InputSchemaType"]]
 
@@ -90,7 +91,7 @@ class StepDefinition:
             run=step.task.name,
             out=(
                 to_output_schema("out", step.return_type)["fields"]
-            ) if attrs_has(step.return_type) else [
+            ) if attrs_has(step.return_type) or is_dataclass(step.return_type) else [
                 "out"
             ],
             in_={
@@ -195,7 +196,7 @@ def raw_to_command_input_schema(label: str, value: RawType) -> InputSchemaType:
     else:
         return to_cwl_type(type(value))
 
-def to_output_schema(label: str, typ: type[RawType | AttrsInstance], output_source: str | None = None) -> CommandOutputSchema:
+def to_output_schema(label: str, typ: type[RawType | AttrsInstance | DataclassProtocol], output_source: str | None = None) -> CommandOutputSchema:
     """Turn a step's output into an output schema.
 
     Takes a source, type and label and provides a description for CWL.
@@ -208,14 +209,23 @@ def to_output_schema(label: str, typ: type[RawType | AttrsInstance], output_sour
     Returns:
         CWL CommandOutputSchema-like structure for embedding into an `outputs` block
     """
+    fields = None
     if attrs_has(typ):
+        fields = {
+            str(field.name): cast(CommandInputSchema, to_output_schema(field.name, field.type))
+            for field in attrs_fields(typ)
+        }
+    elif is_dataclass(typ):
+        fields = {
+            str(field.name): cast(CommandInputSchema, to_output_schema(field.name, field.type))
+            for field in dataclass_fields(typ)
+        }
+
+    if fields:
         output = CommandOutputSchema(
             type="record",
             label=label,
-            fields={
-                field.name: to_output_schema(field.name, field.type)
-                for field in fields(typ)
-            },
+            fields=fields,
         )
     else:
         output = CommandOutputSchema(
