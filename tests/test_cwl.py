@@ -1,10 +1,9 @@
 """Verify CWL output is OK."""
 
 import yaml
-from dewret.tasks import task, construct
+from dewret.tasks import construct
 from dewret.renderers.cwl import render
 from dewret.utils import hasher
-from dewret.workflow import Workflow
 
 from ._lib.extra import (
     increment,
@@ -88,10 +87,10 @@ def test_complex_cwl_references() -> None:
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
-        inputs: {{}}
+        inputs: {}
         outputs:
           out:
             label: out
