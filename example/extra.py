@@ -24,7 +24,7 @@ def double(num: int) -> int:
 
 @task()
 def mod10(num: int) -> int:
-    """Double an integer."""
+    """Calculate supplied integer modulo 10."""
     return num % 10
 
 @task()
