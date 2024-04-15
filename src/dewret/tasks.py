@@ -236,6 +236,10 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
 
     Returns:
         Decorator for the current backend to mark lazy-executable tasks.
+
+    Raises:
+        TypeError: if arguments are missing or incorrect, inline with usual
+            Python behaviour.
     """
 
     def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
@@ -243,9 +247,14 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
             # By marking any as the positional results list, we prevent unnamed results being
             # passed at all.
             if args:
-                raise RuntimeError(
+                raise TypeError(
                     f"Calling {fn.__name__}: Arguments must _always_ be named, e.g. my_task(num=1) not my_task(1)"
                 )
+
+            # Ensure that the passed arguments are, at least, a Python-match for the signature.
+            sig = inspect.signature(fn)
+            sig.bind(*args, **kwargs)
+
             workflows = [
                 reference.__workflow__
                 for reference in kwargs.values()
@@ -260,7 +269,7 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
             original_kwargs = dict(kwargs)
             for var, value in inspect.getclosurevars(fn).globals.items():
                 if var in kwargs:
-                    raise RuntimeError("Captured parameter (global variable in task) shadows an argument")
+                    raise TypeError("Captured parameter (global variable in task) shadows an argument")
                 if isinstance(value, Parameter):
                     kwargs[var] = ParameterReference(workflow, value)
                 elif is_raw(value):
@@ -268,7 +277,7 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
                     kwargs[var] = ParameterReference(workflow, parameter)
                 elif is_task(value):
                     if not nested:
-                        raise RuntimeError("You reference a task inside another task, but it is not a nested_task - this will not be found!")
+                        raise TypeError("You reference a task inside another task, but it is not a nested_task - this will not be found!")
                 elif attrs_has(value):
                     ...
                 elif nested:
@@ -278,7 +287,7 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
                 step_reference = evaluate(lazy_fn, __workflow__=workflow)
                 if isinstance(step_reference, StepReference):
                     return cast(RetType, step_reference)
-                raise RuntimeError("Nested tasks must return a step reference, to ensure graph makes sense.")
+                raise TypeError("Nested tasks must return a step reference, to ensure graph makes sense.")
             return cast(RetType, workflow.add_step(fn, kwargs))
         setattr(_fn, "__step_expression__", True)
         return lazy()(_fn)
