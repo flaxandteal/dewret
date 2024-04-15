@@ -25,6 +25,7 @@ Typical usage example:
 >>> @task()
 ... def increment(num: int) -> int:
 ...     return num + 1
+
 ```
 """
 
@@ -201,6 +202,7 @@ def nested_task() -> Callable[[Target], StepExecution]:
     >>> @nested_task()
     ... def double_increment(num: int) -> int:
     ...     return increment(increment(num=num))
+
     ```
 
     Returns:
@@ -219,6 +221,7 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
     >>> @task()
     ... def increment(num: int) -> int:
     ...     return num + 1
+
     ```
 
     If the backend is `dask` (the default), it is will evaluate this
