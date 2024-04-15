@@ -9,7 +9,7 @@ JUMP: int = 10
 
 @task()
 def increase(num: int) -> int:
-    """Add 1 to a number."""
+    """Add globally-configured integer JUMP to a number."""
     return num + JUMP
 
 @task()
