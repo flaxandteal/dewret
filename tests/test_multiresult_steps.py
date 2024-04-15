@@ -2,7 +2,7 @@
 
 import yaml
 from attr import define
-from dewret.tasks import task, run, nested_task
+from dewret.tasks import task, construct, nested_task
 from dewret.renderers.cwl import render
 from dewret.workflow import Lazy
 from ._lib.extra import double, mod10, sum, increase
@@ -35,7 +35,7 @@ def test_nested_task() -> None:
 
     Produces CWL that has references between multiple steps.
     """
-    workflow = run(split(), simplify_ids=True)
+    workflow = construct(split(), simplify_ids=True)
     rendered = render(workflow)
 
     assert rendered == yaml.safe_load(f"""
@@ -69,7 +69,7 @@ def test_nested_task() -> None:
 
 def test_field_of_nested_task() -> None:
     """Tests whether a directly-output nested task can have fields."""
-    workflow = run(split().first, simplify_ids=True)
+    workflow = construct(split().first, simplify_ids=True)
     rendered = render(workflow)
 
     assert rendered == yaml.safe_load(f"""
@@ -96,7 +96,7 @@ def test_field_of_nested_task() -> None:
 
 def test_complex_field_of_nested_task() -> None:
     """Tests whether a task can insert result fields into other steps."""
-    workflow = run(algorithm(), simplify_ids=True)
+    workflow = construct(algorithm(), simplify_ids=True)
     rendered = render(workflow)
 
     assert rendered == yaml.safe_load(f"""

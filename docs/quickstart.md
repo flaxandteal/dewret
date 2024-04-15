@@ -50,7 +50,7 @@ and backends, as well as bespoke serialization or formatting.
 ```python
 >>> import sys
 >>> import yaml
->>> from dewret.tasks import task, run
+>>> from dewret.tasks import task, construct
 >>> from dewret.renderers.cwl import render
 >>> 
 >>> @task()
@@ -58,7 +58,7 @@ and backends, as well as bespoke serialization or formatting.
 ...     return num + 1
 >>>
 >>> result = increment(num=3)
->>> workflow = run(result)
+>>> workflow = construct(result)
 >>> cwl = render(workflow)
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow

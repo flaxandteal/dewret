@@ -1,7 +1,7 @@
 """Verify CWL output is OK."""
 
 import yaml
-from dewret.tasks import task, run
+from dewret.tasks import task, construct
 from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.workflow import Workflow
@@ -19,7 +19,7 @@ def test_cwl() -> None:
     Produces simplest possible CWL from a workflow.
     """
     result = increment(num=3)
-    workflow = run(result)
+    workflow = construct(result)
     rendered = render(workflow)
     hsh = hasher(("increment", ("num", "int|3")))
 
@@ -47,7 +47,7 @@ def test_cwl_references() -> None:
     Produces CWL that has references between steps.
     """
     result = double(num=increment(num=3))
-    workflow = run(result)
+    workflow = construct(result)
     rendered = render(workflow)
     hsh_increment = hasher(("increment", ("num", "int|3")))
     hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}/out")))
@@ -85,7 +85,7 @@ def test_complex_cwl_references() -> None:
         left=double(num=increment(num=23)),
         right=mod10(num=increment(num=23))
     )
-    workflow = run(result, simplify_ids=True)
+    workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
 
     assert rendered == yaml.safe_load(f"""

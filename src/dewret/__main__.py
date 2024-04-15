@@ -27,7 +27,7 @@ import click
 import json
 
 from .renderers.cwl import render as cwl_render
-from .tasks import Backend, run
+from .tasks import Backend, construct
 
 @click.command()
 @click.option("--pretty", is_flag=True, show_default=True, default=False, help="Pretty-print output where possible.")
@@ -53,7 +53,7 @@ def render(workflow_py: str, task: str, arguments: list[str], pretty: bool, back
         key, val = arg.split(":", 1)
         kwargs[key] = json.loads(val)
 
-    cwl = cwl_render(run(task_fn(**kwargs), simplify_ids=True))
+    cwl = cwl_render(construct(task_fn(**kwargs), simplify_ids=True))
     if pretty:
         yaml.dump(cwl, sys.stdout, indent=2)
     else:

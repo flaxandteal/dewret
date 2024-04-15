@@ -1,7 +1,7 @@
 """Verify CWL can be made with split up and nested calls."""
 
 import yaml
-from dewret.tasks import nested_task, run
+from dewret.tasks import nested_task, construct
 from dewret.renderers.cwl import render
 from dewret.workflow import Lazy
 from ._lib.extra import double, mod10, sum, increase
@@ -24,7 +24,7 @@ def test_nested_task() -> None:
 
     Produces CWL that has references between multiple steps.
     """
-    workflow = run(algorithm(), simplify_ids=True)
+    workflow = construct(algorithm(), simplify_ids=True)
     rendered = render(workflow)
 
     assert rendered == yaml.safe_load(f"""

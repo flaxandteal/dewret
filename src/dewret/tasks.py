@@ -181,7 +181,7 @@ lazy = _manager.make_lazy
 ensure_lazy = _manager.ensure_lazy
 unwrap = _manager.unwrap
 evaluate = _manager.evaluate
-run = _manager
+construct = _manager
 
 def nested_task() -> Callable[[Target], StepExecution]:
     """Shortcut for marking a task as nested.

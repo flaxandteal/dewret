@@ -1,7 +1,7 @@
 """Verify CWL can be made with parameters."""
 
 import yaml
-from dewret.tasks import task, run
+from dewret.tasks import task, construct
 from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.workflow import Workflow, param
@@ -22,7 +22,7 @@ def test_cwl_parameters() -> None:
     Produces CWL that reference input parameters based on local/global variables.
     """
     result = rotate(num=3)
-    workflow = run(result, simplify_ids=True)
+    workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
 
     assert rendered == yaml.safe_load(f"""
@@ -58,7 +58,7 @@ def test_complex_parameters() -> None:
         left=double(num=rotate(num=23)),
         right=rotate(num=rotate(num=23))
     )
-    workflow = run(result, simplify_ids=True)
+    workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
 
     assert rendered == yaml.safe_load(f"""

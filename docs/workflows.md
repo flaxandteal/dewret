@@ -7,7 +7,7 @@ We can pull in dewret tools to produce CWL with a small number of imports.
 ```python
 >>> import sys
 >>> import yaml
->>> from dewret.tasks import task, run
+>>> from dewret.tasks import task, construct
 >>> from dewret.renderers.cwl import render
 
 ```
@@ -54,7 +54,7 @@ In code, this would be:
 ...     left=double(num=increment(num=23)),
 ...     right=mod10(num=increment(num=23))
 ... )
->>> workflow = run(result, simplify_ids=True)
+>>> workflow = construct(result, simplify_ids=True)
 >>> cwl = render(workflow)
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
@@ -115,7 +115,7 @@ For example:
 ...    return (num + INPUT_NUM) % INPUT_NUM
 >>>
 >>> result = rotate(num=3)
->>> workflow = run(result, simplify_ids=True)
+>>> workflow = construct(result, simplify_ids=True)
 >>> cwl = render(workflow)
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
@@ -175,7 +175,7 @@ As code:
 ...    return rotate(num=rotate(num=num))
 >>>
 >>> result = double_rotate(num=3)
->>> workflow = run(result, simplify_ids=True)
+>>> workflow = construct(result, simplify_ids=True)
 >>> cwl = render(workflow)
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
@@ -261,7 +261,7 @@ As code:
 ...     left=shuffle(max_cards_per_suit=13).hearts,
 ...     right=shuffle(max_cards_per_suit=13).diamonds
 ... )
->>> workflow = run(red_total, simplify_ids=True)
+>>> workflow = construct(red_total, simplify_ids=True)
 >>> cwl = render(workflow)
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
