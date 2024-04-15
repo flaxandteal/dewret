@@ -21,7 +21,8 @@ from __future__ import annotations
 import inspect
 from collections.abc import Mapping, MutableMapping, Callable
 import base64
-from attrs import define, has as attr_has, resolve_types, fields
+from attrs import define, has as attr_has, resolve_types, fields as attrs_fields
+from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter
 from typing import Protocol, Any, TypeVar, Generic, cast
 from sympy import Symbol
@@ -633,15 +634,27 @@ class StepReference(Generic[U], Reference):
         Raises:
             RuntimeError: if this field is not available, or we do not have a structured result.
         """
-        if self._field is not None or not attr_has(self.typ):
-            raise RuntimeError("Can only get attribute of a StepReference representing an attrs-class")
-        resolve_types(self.typ)
-        return self.__class__(
-            workflow=self.__workflow__,
-            step=self.step,
-            typ=getattr(fields(self.typ), attr).type,
-            field=attr
-        )
+        if self._field is None:
+            typ: type | None
+            if attr_has(self.typ):
+                resolve_types(self.typ)
+                typ = getattr(attrs_fields(self.typ), attr).type
+            elif is_dataclass(self.typ):
+                matched = [field for field in dataclass_fields(self.typ) if field.name == attr]
+                if not matched:
+                    raise AttributeError(f"Field {attr} not present in dataclass")
+                typ = matched[0].type
+            else:
+                typ = None
+
+            if typ:
+                return self.__class__(
+                    workflow=self.__workflow__,
+                    step=self.step,
+                    typ=typ,
+                    field=attr
+                )
+        raise RuntimeError("Can only get attribute of a StepReference representing an attrs-class or dataclass")
 
     @property
     def return_type(self) -> type[U]:
