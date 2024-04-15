@@ -23,8 +23,7 @@ from collections.abc import Mapping
 from typing import TypedDict, NotRequired, get_args, Union, cast, Any
 from types import UnionType
 
-from dewret.workflow import Reference, Raw, Workflow, Step, Task, StepReference, Parameter
-from dewret.tasks import run
+from dewret.workflow import Reference, Raw, Workflow, Step, StepReference, Parameter
 from dewret.utils import RawType, flatten
 
 InputSchemaType = Union[str, "CommandInputSchema", list[str], list["InputSchemaType"]]

@@ -22,7 +22,7 @@ markdown_extensions = [
 ]
 
 [tool.ruff.lint]
-select = ["D"]
+select = ["D", "F"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

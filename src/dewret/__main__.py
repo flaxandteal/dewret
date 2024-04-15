@@ -27,7 +27,7 @@ import click
 import json
 
 from .renderers.cwl import render as cwl_render
-from .tasks import set_backend, Backend, run
+from .tasks import Backend, run
 
 @click.command()
 @click.option("--pretty", is_flag=True, show_default=True, default=False, help="Pretty-print output where possible.")

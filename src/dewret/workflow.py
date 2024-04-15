@@ -19,8 +19,7 @@ Basic constructs for describing a workflow.
 
 from __future__ import annotations
 import inspect
-from collections.abc import Mapping, MutableMapping, Callable, Awaitable
-from collections import OrderedDict
+from collections.abc import Mapping, MutableMapping, Callable
 import base64
 from attrs import define, has as attr_has, resolve_types, fields
 from typing import Protocol, Any
@@ -69,9 +68,7 @@ Target = Callable[..., Any]
 StepExecution = Callable[..., Lazy]
 LazyFactory = Callable[[Target], Lazy]
 
-from typing import TypeVar, Generic, cast, Any
-import numpy as np
-import numpy.typing as np_typing
+from typing import TypeVar, Generic, cast
 from sympy import Symbol
 
 T = TypeVar("T")
@@ -319,7 +316,7 @@ class Workflow:
         self.steps.append(step)
         return_type = step.return_type
         if return_type is inspect._empty:
-            raise TypeError(f"All tasks should have a type annotation.")
+            raise TypeError("All tasks should have a type annotation.")
         return StepReference(self, step, return_type)
 
     @staticmethod
@@ -328,7 +325,6 @@ class Workflow:
 
         Starts from a result, and builds a workflow to output it.
         """
-        step = result.step
         workflow = result.__workflow__
         workflow.set_result(result)
         if simplify_ids:
@@ -710,6 +706,6 @@ def is_task(task: Lazy) -> bool:
         func = unwrap(task)
         if hasattr(func, "__step_expression__"):
             return bool(func.__step_expression__)
-    except Exception as e:
+    except Exception:
         ...
     return False
