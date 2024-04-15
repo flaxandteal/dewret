@@ -19,6 +19,8 @@ General types and functions to centralize common logic.
 
 import hashlib
 import json
+import sys
+from types import FrameType, TracebackType
 from typing import Any, cast, Union, Protocol, ClassVar
 from collections.abc import Sequence, Mapping
 
@@ -26,13 +28,32 @@ BasicType = str | float | bool | bytes | int | None
 RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
 FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
 
+
 class DataclassProtocol(Protocol):
     """Format of a dataclass.
 
     Since dataclasses do not expose a proper type, we use this to
     represent them.
     """
+
     __dataclass_fields__: ClassVar[dict[str, Any]]
+
+
+def make_traceback(skip: int = 2) -> TracebackType | None:
+    """Creates a traceback for the current frame.
+
+    Necessary to allow tracebacks to be prepped for
+    potential errors in lazy-evaluated functions.
+
+    Args:
+        skip: number of frames to skip before starting traceback.
+    """
+    frame: FrameType | None = sys._getframe(skip)
+    tb = None
+    while frame:
+        tb = TracebackType(tb, frame, frame.f_lasti, frame.f_lineno)
+        frame = frame.f_back
+    return tb
 
 
 def flatten(value: Any) -> RawType:
@@ -68,6 +89,7 @@ def is_raw(value: Any) -> bool:
     # but recursive types are problematic.
     return isinstance(value, str | float | bool | bytes | int | None | list | dict)
 
+
 def ensure_raw(value: Any) -> RawType | None:
     """Check if a variable counts as "raw".
 
@@ -78,6 +100,7 @@ def ensure_raw(value: Any) -> RawType | None:
     # See is_raw:
     # isinstance(var, RawType | list[RawType] | dict[str, RawType])
     return cast(RawType, value) if is_raw(value) else None
+
 
 def hasher(construct: FirmType) -> str:
     """Consistently hash a RawType or tuple structure.
@@ -102,4 +125,3 @@ def hasher(construct: FirmType) -> str:
     hsh = hashlib.md5()
     hsh.update(construct_as_string.encode())
     return hsh.hexdigest()
-
