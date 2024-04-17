@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   build-conda:
-    name: Build package
+    name: Build conda package
     runs-on: ubuntu-latest # Currently, only need noarch
     # runs-on: ${{ matrix.os }}
     # strategy:
@@ -59,7 +59,7 @@ jobs:
         path: |
           output/**/*.tar.bz2
           output/**/*.conda
-  build_wheel:
+  build-wheel:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ubuntu-latest # Currently, only need noarch
     # runs-on: ${{ matrix.os }}
@@ -133,7 +133,7 @@ jobs:
       name: Setup pixi
       with:
         pixi-version: v0.19.1
-        cache: true
+        cache: false
         auth-host: https://repo.prefix.dev
         auth-token: ${{ secrets.PREFIX_DEV_TOKEN }}
     - name: Upload to prefix.dev
