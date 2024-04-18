@@ -127,9 +127,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: conda-package
-        path: |
-          output/**/*.tar.bz2
-          output/**/*.conda
+        path: output
     - uses: prefix-dev/setup-pixi@v0.6.0
       name: Setup pixi
       with:
