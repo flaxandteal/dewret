@@ -134,10 +134,10 @@ jobs:
         pixi-version: v0.19.1
         cache: false
         manifest-path: "pyproject.toml"
-        auth-host: https://repo.prefix.dev
+        auth-host: https://prefix.dev/api/v1/upload/dewret
         auth-token: ${{ secrets.PREFIX_DEV_TOKEN }}
     - name: Upload to prefix.dev
-      run: pixi upload https://repo.prefix.dev/dewret output/**/*.conda
+      run: pixi upload https://prefix.dev/api/v1/upload/dewret output/**/*.conda
 
   github-release:
     name: >-
