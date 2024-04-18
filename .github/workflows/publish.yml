@@ -137,7 +137,7 @@ jobs:
         auth-host: https://repo.prefix.dev
         auth-token: ${{ secrets.PREFIX_DEV_TOKEN }}
     - name: Upload to prefix.dev
-      run: pixi upload repo.prefix.dev/dewret output/**/*.conda
+      run: pixi upload https://repo.prefix.dev/dewret output/**/*.conda
 
   github-release:
     name: >-
