@@ -42,7 +42,7 @@ def unacceptable_object_usage() -> int:
 
 @nested_task()
 def unacceptable_nested_return(int_not_global: bool) -> int | Lazy:
-    """Sums two values but should not be calling a task."""
+    """Bad nested_task that fails to return a task."""
     add_task(left=3, right=4)
     return 7 if int_not_global else ADD_TASK_LINE_NO
 
