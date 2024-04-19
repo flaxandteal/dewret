@@ -7,7 +7,6 @@ $ python -m dewret workflow_complex.py --pretty run
 ```
 """
 
-from dewret.workflow import Lazy
 from dewret.tasks import nested_task
 from extra import sum, double, increase
 

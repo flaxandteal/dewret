@@ -3,15 +3,13 @@
 import yaml
 from dewret.tasks import nested_task, construct
 from dewret.renderers.cwl import render
-from dewret.workflow import Lazy
-from ._lib.extra import double, mod10, sum, increase
+from ._lib.extra import double, sum, increase
 
 STARTING_NUMBER: int = 23
 
 @nested_task()
 def algorithm() -> int | float:
     """Creates a graph of task calls."""
-    num = STARTING_NUMBER
     left = double(num=increase(num=STARTING_NUMBER))
     right = increase(num=increase(num=17))
     return sum(
@@ -27,7 +25,7 @@ def test_nested_task() -> None:
     workflow = construct(algorithm(), simplify_ids=True)
     rendered = render(workflow)
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
         inputs:

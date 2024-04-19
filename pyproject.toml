@@ -22,7 +22,7 @@ markdown_extensions = [
 ]
 
 [tool.ruff.lint]
-select = ["D", "F"]
+select = ["D", "F", "B"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -48,3 +48,6 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = ["dask >= 2022", "pyyaml", "attrs", "click", "setuptools >= 65.5.1", "numpy", "sympy"]
+
+[project.optional-dependencies]
+test = ["pytest", "coverage", "ruff", "mypy"]

@@ -3,10 +3,8 @@
 import yaml
 from dewret.tasks import task, construct
 from dewret.renderers.cwl import render
-from dewret.utils import hasher
-from dewret.workflow import Workflow, param
 
-from ._lib.extra import double, mod10, sum
+from ._lib.extra import double, sum
 
 INPUT_NUM = 3
 
@@ -25,7 +23,7 @@ def test_cwl_parameters() -> None:
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
         inputs:
@@ -61,7 +59,7 @@ def test_complex_parameters() -> None:
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
         inputs:
