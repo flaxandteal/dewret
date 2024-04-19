@@ -622,7 +622,7 @@ class StepReference(Generic[U], Reference):
     def __getattr__(self, attr: str) -> "StepReference"[Any]:
         """Reference to a field within this result, if possible.
 
-        If the result is an attrs-class, this will pull out an individual
+        If the result is an attrs-class or dataclass, this will pull out an individual
         field for use as input to other tasks, or global output of the workflow.
 
         Args:
