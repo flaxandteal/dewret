@@ -85,7 +85,7 @@ def test_missing_arguments_throw_error_in_nested_task() -> None:
 
 
 def test_positional_arguments_throw_error() -> None:
-    """Check whether we can produce simple CWL.
+    """Check whether unnamed (positional) arguments throw an error.
 
     We can use default and non-default arguments, but we expect them
     to _always_ be named.
