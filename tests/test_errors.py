@@ -114,7 +114,7 @@ def test_nesting_non_nested_tasks_throws_error() -> None:
         str(exc.value)
         .strip()
         .startswith(
-            "You reference a task add_task inside another task badly_wrap_task, but it is not a nested_task"
+            "You referenced a task add_task inside another task badly_wrap_task, but it is not a nested_task"
         )
     )
 
