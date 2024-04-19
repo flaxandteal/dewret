@@ -19,12 +19,21 @@ General types and functions to centralize common logic.
 
 import hashlib
 import json
-from typing import Any, cast, Union
+from typing import Any, cast, Union, Protocol, ClassVar
 from collections.abc import Sequence, Mapping
 
 BasicType = str | float | bool | bytes | int | None
 RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
 FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
+
+class DataclassProtocol(Protocol):
+    """Format of a dataclass.
+
+    Since dataclasses do not expose a proper type, we use this to
+    represent them.
+    """
+    __dataclass_fields__: ClassVar[dict[str, Any]]
+
 
 def flatten(value: Any) -> RawType:
     """Takes a Raw-like structure and makes it RawType.
