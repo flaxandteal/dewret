@@ -36,7 +36,7 @@ class MyStrangeClass:
 
 @nested_task()
 def unacceptable_object_usage() -> int:
-    """Sums two values but should not be calling a task."""
+    """Invalid use of custom object within nested task."""
     return MyStrangeClass(add_task(left=3, right=4))  # type: ignore
 
 
