@@ -354,7 +354,7 @@ def task(
                         if not nested:
                             raise TypeError(
                                 f"""
-                                You reference a task {var} inside another task {fn.__name__}, but it is not a nested_task
+                                You referenced a task {var} inside another task {fn.__name__}, but it is not a nested_task
                                 - this will not be found!
 
                                 @task
