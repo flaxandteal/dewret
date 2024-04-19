@@ -20,7 +20,7 @@ def badly_add_task(left: int, right: int) -> int:
     return add_task(left=left)  # type: ignore
 
 
-@task()  # This is expected to be the line number shown below.
+@task()
 def badly_wrap_task() -> int:
     """Sums two values but should not be calling a task."""
     return add_task(left=3, right=4)
@@ -34,13 +34,13 @@ class MyStrangeClass:
         ...
 
 
-@nested_task()  # This is expected to be the line number shown below.
+@nested_task()
 def unacceptable_object_usage() -> int:
     """Sums two values but should not be calling a task."""
     return MyStrangeClass(add_task(left=3, right=4))  # type: ignore
 
 
-@nested_task()  # This is expected to be the line number shown below.
+@nested_task()
 def unacceptable_nested_return(int_not_global: bool) -> int | Lazy:
     """Sums two values but should not be calling a task."""
     add_task(left=3, right=4)
