@@ -632,6 +632,7 @@ class StepReference(Generic[U], Reference):
             Another StepReference specific to the requested field.
 
         Raises:
+            AttributeError: if this field is not present in the dataclass.
             RuntimeError: if this field is not available, or we do not have a structured result.
         """
         if self._field is None:
