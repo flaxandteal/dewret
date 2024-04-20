@@ -309,7 +309,7 @@ def task(
             **kwargs: Param.kwargs,
         ) -> RetType:
             try:
-                # By marking any as the positional results list, we prevent unnamed results being
+                # Ensure that all arguments are passed as keyword args and prevent positional args. 
                 # passed at all.
                 if args:
                     raise TypeError(
