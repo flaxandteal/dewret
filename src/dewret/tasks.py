@@ -344,7 +344,11 @@ def task(
                 original_kwargs = dict(kwargs)
                 for var, value in inspect.getclosurevars(fn).globals.items():
                     # This error is redundant as it triggers a SyntaxError in Python.
-                    # "Captured parameter {var} (global variable in task) shadows an argument"
+                    # Note: the following test duplicates a syntax error.
+                    #   if var in kwargs:
+                    #       raise TypeError(
+                    #           "Captured parameter {var} (global variable in task) shadows an argument"
+                    #        )
                     if isinstance(value, Parameter):
                         kwargs[var] = ParameterReference(workflow, value)
                     elif is_raw(value):
