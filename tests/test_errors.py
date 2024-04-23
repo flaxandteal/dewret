@@ -66,7 +66,7 @@ def test_missing_arguments_throw_error() -> None:
 
 
 def test_missing_arguments_throw_error_in_nested_task() -> None:
-    """Check whether omitting a required argument will give an error.
+    """Check whether omitting a required argument within a nested_task will give an error.
 
     Since we do not run the original function, it is up to dewret to check
     that the signature is, at least, acceptable to Python.
