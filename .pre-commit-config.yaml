@@ -18,4 +18,5 @@ repos:
     rev: v1.9.0
     hooks:
       - id: mypy
-        args: [--strict, --ignore-missing-imports]
+        args: [--strict, --install-types, --non-interactive]
+        additional_dependencies: [sympy, attrs, pytest, click, dask]

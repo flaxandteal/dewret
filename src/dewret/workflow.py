@@ -25,13 +25,17 @@ from attrs import define, has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter
 from typing import Protocol, Any, TypeVar, Generic, cast
+
 from sympy import Symbol
 import logging
 
 logger = logging.getLogger(__name__)
 
+from .utils import hasher, RawType, is_raw, make_traceback
 
-from .utils import hasher, RawType, is_raw
+T = TypeVar("T")
+RetType = TypeVar("RetType")
+
 
 @define
 class Raw:
@@ -43,6 +47,7 @@ class Raw:
     Attributes:
         value: the real value, e.g. a `str`, `int`, ...
     """
+
     value: RawType
 
     def __hash__(self) -> int:
@@ -58,21 +63,49 @@ class Raw:
             value = str(self.value)
         return f"{type(self.value).__name__}|{value}"
 
+
 class Lazy(Protocol):
     """Requirements for a lazy-evaluatable function."""
+
     __name__: str
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """When called this should return a reference."""
         ...
 
+
+class LazyEvaluation(Lazy, Generic[RetType]):
+    """Tracks a single evaluation of a lazy function."""
+
+    def __init__(self, fn: Callable[..., RetType]):
+        """Initialize an evaluation.
+
+        Args:
+            fn: callable returning RetType, which this will return
+                also from it's __call__ method for consistency.
+        """
+        self._fn: Callable[..., RetType] = fn
+        self.__name__ = fn.__name__
+
+    def __call__(self, *args: Any, **kwargs: Any) -> RetType:
+        """Wrapper around a lazy execution.
+
+        Captures a traceback, for debugging if this does not work.
+
+        WARNING: this is one of the few places that we would expect
+        dask distributed to break, if running outside a single process
+        is attempted.
+        """
+        tb = make_traceback()
+        return self._fn(*args, **kwargs, __traceback__=tb)
+
+
 Target = Callable[..., Any]
 StepExecution = Callable[..., Lazy]
 LazyFactory = Callable[[Target], Lazy]
 
-T = TypeVar("T")
 
-class Parameter(Generic[T], Symbol): # type: ignore[no-untyped-call]
+class Parameter(Generic[T], Symbol):  # type: ignore[no-untyped-call]
     """Global parameter.
 
     Independent parameter that will be used when a task is spotted
@@ -85,6 +118,7 @@ class Parameter(Generic[T], Symbol): # type: ignore[no-untyped-call]
         __name__: name of the parameter.
         __default__: captured default value from the original value.
     """
+
     __name__: str
     __default__: T
 
@@ -99,6 +133,7 @@ class Parameter(Generic[T], Symbol): # type: ignore[no-untyped-call]
         self.__name__ = name
         self.__default__ = default
 
+
 def param(name: str, default: T) -> T:
     """Create a parameter.
 
@@ -108,6 +143,7 @@ def param(name: str, default: T) -> T:
         Parameter class cast to the type of the supplied default.
     """
     return cast(T, Parameter(name, default=default))
+
 
 class Task:
     """Named wrapper of a lazy-evaluatable function.
@@ -133,6 +169,11 @@ class Task:
         self.name = name
         self.target = target
 
+    @property
+    def __name__(self) -> str:
+        """Name of the task."""
+        return self.name
+
     def __str__(self) -> str:
         """Stringify the Task, currently by returning the `name`."""
         return self.name
@@ -153,10 +194,8 @@ class Task:
         """
         if not isinstance(other, Task):
             return False
-        return (
-            self.name == other.name and
-            self.target == other.target
-        )
+        return self.name == other.name and self.target == other.target
+
 
 class Workflow:
     """Overarching workflow concept.
@@ -172,6 +211,7 @@ class Workflow:
             `Task` wrappers they represent.
         result: target reference to evaluate, if yet present.
     """
+
     steps: list["Step"]
     tasks: MutableMapping[str, "Task"]
     result: StepReference[Any] | None
@@ -193,10 +233,16 @@ class Workflow:
         Returns:
             Set of all references to parameters across the steps.
         """
-        return set().union(*({
-            arg for arg in step.arguments.values()
-            if isinstance(arg, ParameterReference)
-        } for step in self.steps))
+        return set().union(
+            *(
+                {
+                    arg
+                    for arg in step.arguments.values()
+                    if isinstance(arg, ParameterReference)
+                }
+                for step in self.steps
+            )
+        )
 
     @property
     def _indexed_steps(self) -> dict[str, Step]:
@@ -209,9 +255,7 @@ class Workflow:
         Returns:
             Mapping of steps by ID.
         """
-        return {
-            step.id: step for step in self.steps
-        }
+        return {step.id: step for step in self.steps}
 
     @classmethod
     def assimilate(cls, left: Workflow, right: Workflow) -> "Workflow":
@@ -231,13 +275,15 @@ class Workflow:
 
         left_steps = left._indexed_steps
         right_steps = right._indexed_steps
-        for step_id in (left_steps.keys() & right_steps.keys()):
+        for step_id in left_steps.keys() & right_steps.keys():
             left_steps[step_id].set_workflow(new)
             right_steps[step_id].set_workflow(new)
             if left_steps[step_id] != right_steps[step_id]:
-                raise RuntimeError(f"Two steps have same ID but do not match: {step_id}")
+                raise RuntimeError(
+                    f"Two steps have same ID but do not match: {step_id}"
+                )
 
-        for task_id in (left.tasks.keys() & right.tasks.keys()):
+        for task_id in left.tasks.keys() & right.tasks.keys():
             if left.tasks[task_id] != right.tasks[task_id]:
                 raise RuntimeError("Two tasks have same name but do not match")
 
@@ -261,11 +307,7 @@ class Workflow:
         Returns:
             Same ID or a remapped name.
         """
-        return (
-            self._remapping.get(step_id, step_id)
-            if self._remapping else
-            step_id
-        )
+        return self._remapping.get(step_id, step_id) if self._remapping else step_id
 
     def simplify_ids(self) -> None:
         """Work out mapping to simple ints from hashes.
@@ -296,7 +338,9 @@ class Workflow:
         self.tasks[name] = task
         return task
 
-    def add_step(self, fn: Lazy, kwargs: dict[str, Raw | Reference]) -> StepReference[Any]:
+    def add_step(
+        self, fn: Lazy, kwargs: dict[str, Raw | Reference]
+    ) -> StepReference[Any]:
         """Append a step.
 
         Adds a step, for running a target with key-value arguments,
@@ -307,11 +351,7 @@ class Workflow:
             kwargs: any key-value arguments to pass in the call.
         """
         task = self.register_task(fn)
-        step = Step(
-            self,
-            task,
-            kwargs
-        )
+        step = Step(self, task, kwargs)
         self.steps.append(step)
         return_type = step.return_type
         if return_type is inspect._empty:
@@ -353,6 +393,7 @@ class WorkflowComponent:
     Attributes:
         __workflow__: the `Workflow` that this is tied to.
     """
+
     __workflow__: Workflow
 
     def __init__(self, workflow: Workflow):
@@ -364,6 +405,7 @@ class WorkflowComponent:
             workflow: the `Workflow` to tie to.
         """
         self.__workflow__ = workflow
+
 
 class WorkflowLinkedComponent(Protocol):
     """Protocol for objects dynamically tied to a `Workflow`."""
@@ -380,6 +422,7 @@ class WorkflowLinkedComponent(Protocol):
         """
         ...
 
+
 class Reference:
     """Superclass for all symbolic references to values."""
 
@@ -387,6 +430,7 @@ class Reference:
     def name(self) -> str:
         """Referral name for this reference."""
         raise NotImplementedError("Reference must provide a name")
+
 
 class Step(WorkflowComponent):
     """Lazy-evaluated function call.
@@ -398,11 +442,14 @@ class Step(WorkflowComponent):
         task: the `Task` being called in this step.
         arguments: key-value pairs of arguments to this step.
     """
+
     _id: str | None = None
     task: Task
     arguments: Mapping[str, Reference | Raw]
 
-    def __init__(self, workflow: Workflow, task: Task, arguments: Mapping[str, Reference | Raw]):
+    def __init__(
+        self, workflow: Workflow, task: Task, arguments: Mapping[str, Reference | Raw]
+    ):
         """Initialize a step.
 
         Args:
@@ -414,17 +461,19 @@ class Step(WorkflowComponent):
         self.task = task
         self.arguments = {}
         for key, value in arguments.items():
-            if (
-               isinstance(value, Reference) or
-               isinstance(value, Raw) or
-               is_raw(value)
-            ):
+            if isinstance(value, Reference) or isinstance(value, Raw) or is_raw(value):
                 # Avoid recursive type issues
-                if not isinstance(value, Reference) and not isinstance(value, Raw) and is_raw(value):
+                if (
+                    not isinstance(value, Reference)
+                    and not isinstance(value, Raw)
+                    and is_raw(value)
+                ):
                     value = Raw(value)
                 self.arguments[key] = value
             else:
-                raise RuntimeError(f"Non-references must be a serializable type: {key}>{value}")
+                raise RuntimeError(
+                    f"Non-references must be a serializable type: {key}>{value}"
+                )
 
     def __eq__(self, other: object) -> bool:
         """Is this the same step?
@@ -435,9 +484,9 @@ class Step(WorkflowComponent):
         if not isinstance(other, Step):
             return False
         return (
-            self.__workflow__ == other.__workflow__ and
-            self.task == other.task and
-            self.arguments == other.arguments
+            self.__workflow__ == other.__workflow__
+            and self.task == other.task
+            and self.arguments == other.arguments
         )
 
     def set_workflow(self, workflow: Workflow) -> None:
@@ -487,7 +536,9 @@ class Step(WorkflowComponent):
 
         check_id = self._generate_id()
         if check_id != self._id:
-            raise RuntimeError(f"Cannot change a step after requesting its ID: {self.task}")
+            raise RuntimeError(
+                f"Cannot change a step after requesting its ID: {self.task}"
+            )
         return self._id
 
     def _generate_id(self) -> str:
@@ -500,6 +551,7 @@ class Step(WorkflowComponent):
 
         return f"{self.task}-{hasher(comp_tup)}"
 
+
 class ParameterReference(Reference):
     """Reference to an individual `Parameter`.
 
@@ -509,6 +561,7 @@ class ParameterReference(Reference):
     Attributes:
         parameter: `Parameter` referred to.
     """
+
     parameter: Parameter[RawType]
     workflow: Workflow
 
@@ -569,11 +622,13 @@ class ParameterReference(Reference):
             True if the other parameter reference is materially the same, otherwise False.
         """
         return (
-            isinstance(other, ParameterReference) and
-            self.parameter == other.parameter
+            isinstance(other, ParameterReference) and self.parameter == other.parameter
         )
 
+
 U = TypeVar("U")
+
+
 class StepReference(Generic[U], Reference):
     """Reference to an individual `Step`.
 
@@ -583,6 +638,7 @@ class StepReference(Generic[U], Reference):
     Attributes:
         step: `Step` referred to.
     """
+
     step: Step
     _field: str | None
     typ: type[U]
@@ -598,7 +654,9 @@ class StepReference(Generic[U], Reference):
         """
         return self._field or "out"
 
-    def __init__(self, workflow: Workflow, step: Step, typ: type[U], field: str | None = None):
+    def __init__(
+        self, workflow: Workflow, step: Step, typ: type[U], field: str | None = None
+    ):
         """Initialize the reference.
 
         Args:
@@ -641,7 +699,9 @@ class StepReference(Generic[U], Reference):
                 resolve_types(self.typ)
                 typ = getattr(attrs_fields(self.typ), attr).type
             elif is_dataclass(self.typ):
-                matched = [field for field in dataclass_fields(self.typ) if field.name == attr]
+                matched = [
+                    field for field in dataclass_fields(self.typ) if field.name == attr
+                ]
                 if not matched:
                     raise AttributeError(f"Field {attr} not present in dataclass")
                 typ = matched[0].type
@@ -650,12 +710,11 @@ class StepReference(Generic[U], Reference):
 
             if typ:
                 return self.__class__(
-                    workflow=self.__workflow__,
-                    step=self.step,
-                    typ=typ,
-                    field=attr
+                    workflow=self.__workflow__, step=self.step, typ=typ, field=attr
                 )
-        raise RuntimeError("Can only get attribute of a StepReference representing an attrs-class or dataclass")
+        raise RuntimeError(
+            "Can only get attribute of a StepReference representing an attrs-class or dataclass"
+        )
 
     @property
     def return_type(self) -> type[U]:
@@ -684,6 +743,7 @@ class StepReference(Generic[U], Reference):
         """
         return self.step.__workflow__
 
+
 def merge_workflows(*workflows: Workflow) -> Workflow:
     """Combine several workflows into one.
 
@@ -700,6 +760,7 @@ def merge_workflows(*workflows: Workflow) -> Workflow:
         base = Workflow.assimilate(base, workflow)
     return base
 
+
 def is_task(task: Lazy) -> bool:
     """Decide whether this is a task.
 
@@ -713,11 +774,4 @@ def is_task(task: Lazy) -> bool:
     Returns:
         True if `task` is indeed a task.
     """
-    from .tasks import unwrap
-    try:
-        func = unwrap(task)
-        if hasattr(func, "__step_expression__"):
-            return bool(func.__step_expression__)
-    except Exception:
-        ...
-    return False
+    return isinstance(task, LazyEvaluation)
