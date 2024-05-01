@@ -57,10 +57,6 @@ In code, this would be:
 >>> workflow = construct(result, simplify_ids=True)
 >>> cwl = render(workflow)
 >>> yaml.dump(cwl, sys.stdout, indent=2)
-```
-which results in the following CWL workflow:
-
-```
 class: Workflow
 cwlVersion: 1.2
 inputs: {}
@@ -102,18 +98,16 @@ steps:
     run: sum
 ```
 Notice that the `increment` tasks appears only once in the CWL workflow definition, despite being referenced twice in the python code above. 
-Changing the workflow to include two increments with distinct input parameters
+Changing the workflow to include two increments with distinct input parameters renders a workflow with two calls to increment:
 
 ```python
 >>> result = sum(
 ...     left=double(num=increment(num=23)),
 ...     right=mod10(num=increment(num=3))
 ... )
-```
-
-renders a workflow with two calls to increment:
-
-```yaml
+>>> workflow = construct(result, simplify_ids=True)
+>>> cwl = render(workflow)
+>>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs: {}
