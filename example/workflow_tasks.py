@@ -1,4 +1,4 @@
-"""Supporting procedures for complex workflow.
+"""Supporting tasks for complex workflow.
 
 Illustrates the ability to modularize code.
 """
