@@ -275,11 +275,11 @@ it will disappear__.
 For example, the following code renders the same workflow as in the previous example:
 
 ```python
->>> @nested_task()
-... def double_rotate(num: int) -> int:
-...    """Rotate an integer twice."""
-...    unused_var = increment(num=num)
-...    return rotate(num=rotate(num=num))
+@nested_task()
+def double_rotate(num: int) -> int:
+   """Rotate an integer twice."""
+   unused_var = increment(num=num)
+   return rotate(num=rotate(num=num))
 ```
 
 ## Step Output Fields
