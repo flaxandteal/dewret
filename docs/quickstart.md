@@ -16,7 +16,7 @@ You can render a simple [CWL](https://www.commonwl.org/) workflow from a [dask](
 from dewret.tasks import task
 
 @task()
-def increment(num: int):
+def increment(num: int) -> int:
     return num + 1
 ```
 
