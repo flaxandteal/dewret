@@ -259,7 +259,7 @@ class Workflow:
 
     @classmethod
     def assimilate(cls, left: Workflow, right: Workflow) -> "Workflow":
-        """Combine Workflows into one Workflow.
+        """Combine two Workflows into one Workflow.
 
         Takes two workflows and unifies them by combining steps
         and tasks. If it sees mismatched identifiers for the same
