@@ -114,7 +114,7 @@ For example:
 ...    """Rotate an integer."""
 ...    return (num + INPUT_NUM) % INPUT_NUM
 >>>
->>> result = rotate(num=3)
+>>> result = rotate(num=5)
 >>> workflow = construct(result, simplify_ids=True)
 >>> cwl = render(workflow)
 >>> yaml.dump(cwl, sys.stdout, indent=2)
@@ -135,7 +135,7 @@ steps:
       INPUT_NUM:
         source: INPUT_NUM
       num:
-        default: 3
+        default: 5
     out:
     - out
     run: rotate
