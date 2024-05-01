@@ -8,7 +8,7 @@ From a cloned repository:
 
 ## Usage
 
-You can render a simple [CWL](https://www.commonwl.org/) workflow from a [dask](https://www.dask.org/) delayed graph as follows:
+You can render a simple Common Workflow Language [CWL](https://www.commonwl.org/) workflow from a graph composed of one or more tasks as follows:
 
 ```python
 # workflow.py
@@ -40,6 +40,9 @@ steps:
     - out
     run: increment
 ```
+
+By default `dewret` uses a [dask](https://www.dask.org/) backend so that `dewret.task` wraps a `dask.delayed`, and renders a CWL workflow. 
+
 
 ### Programmatic Usage
 
