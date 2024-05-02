@@ -96,6 +96,7 @@ steps:
     out:
     - out
     run: sum
+
 ```
 Notice that the `increment` tasks appears only once in the CWL workflow definition, despite being referenced twice in the python code above. 
 Changing the workflow to include two increments with distinct input parameters renders a workflow with two calls to increment:
@@ -154,6 +155,7 @@ steps:
     out:
     - out
     run: sum
+
 ```
 
 ## Parameters
