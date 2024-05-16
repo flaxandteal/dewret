@@ -87,7 +87,7 @@ class StepDefinition:
         """
         return cls(
             name=step.name,
-            run=step.task.name,
+            run=step.get_run(),
             out=(
                 to_output_schema("out", step.return_type)["fields"]
             ) if attrs_has(step.return_type) else [

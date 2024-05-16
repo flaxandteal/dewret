@@ -18,6 +18,8 @@ Lazy-evaluation via `dask.delayed`.
 """
 
 from dask.delayed import delayed, DelayedLeaf
+from dask.optimization import SubgraphCallable, cull
+from functools import partial
 from dewret.workflow import Workflow, Lazy, StepReference, Target
 from typing import Protocol, runtime_checkable, Any, cast
 
@@ -93,4 +95,31 @@ def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
     # We need isinstance to reassure type-checker.
     if not isinstance(task, Delayed) or not is_lazy(task):
         raise RuntimeError("Cannot mix backends")
+    winnowing_graph = {
+        k: (() if k.startswith("[Step]") else args) for k, args in
+        task.__dask_graph__().items()
+    }
+    def _wrap(*args):
+        ...
+    graph = task.__dask_graph__()
+    for name, layer in graph.layers.items():
+        for key, args in dict(layer).items():
+            if not key.startswith("[Step]"):
+                caller = partial(args[0])
+                outkey = f"[DaskSubgraph]{key}"
+                layer.mapping[outkey] = layer.mapping[key]
+                culled_graph = cull(winnowing_graph, [key])[0]
+                inkeys = [key for key in culled_graph if key.startswith("[Step]")]
+                culled_graph = {key: value for key, value in culled_graph.items() if not key.startswith("[Step]")}
+                subgraph = SubgraphCallable(
+                    culled_graph,
+                    outkey,
+                    inkeys,
+                )
+                layer.mapping[key] = (
+                    workflow.add_call_tuple,
+                    subgraph,
+                    inkeys,
+                    subgraph.name
+                )
     return task.compute(__workflow__=workflow)

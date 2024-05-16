@@ -30,6 +30,7 @@ Typical usage example:
 """
 
 import inspect
+from dask import delayed
 import importlib
 from enum import Enum
 from functools import cached_property
@@ -239,6 +240,9 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
     """
 
     def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
+        if nested:
+            return fn
+
         def _fn(*args: Any, __workflow__: Workflow | None = None, **kwargs: Param.kwargs) -> RetType:
             # By marking any as the positional results list, we prevent unnamed results being
             # passed at all.
@@ -267,20 +271,12 @@ def task(nested: bool = False) -> Callable[[Callable[Param, RetType]], Callable[
                     parameter = param(var, value)
                     kwargs[var] = ParameterReference(workflow, parameter)
                 elif is_task(value):
-                    if not nested:
-                        raise RuntimeError("You reference a task inside another task, but it is not a nested_task - this will not be found!")
+                    raise RuntimeError("You reference a task inside another task, but it is not a nested_task - this will not be found!")
                 elif attrs_has(value):
                     ...
-                elif nested:
-                    raise NotImplementedError(f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}")
-            if nested:
-                lazy_fn = cast(Lazy, fn(**original_kwargs))
-                step_reference = evaluate(lazy_fn, __workflow__=workflow)
-                if isinstance(step_reference, StepReference):
-                    return cast(RetType, step_reference)
-                raise RuntimeError("Nested tasks must return a step reference, to ensure graph makes sense.")
             return cast(RetType, workflow.add_step(fn, kwargs))
         setattr(_fn, "__step_expression__", True)
+        setattr(_fn, "__name__", f"[Step]{fn.__name__}")
         return lazy()(_fn)
     return _task
 

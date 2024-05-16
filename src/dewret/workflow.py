@@ -32,6 +32,35 @@ logger = logging.getLogger(__name__)
 
 from .utils import hasher, RawType, is_raw
 
+class Script:
+    """Named wrapper of a lazy-evaluatable function.
+
+    Wraps a lazy-evaluatable function (`dewret.workflow.Lazy`) with any
+    metadata needed to render it later. At present, this is the name.
+
+    Attributes:
+        name: Name of the lazy function as it will appear in the output workflow text.
+        target: Callable that is wrapped.
+    """
+
+    name: str
+    target: Lazy
+
+    def __init__(self, name, target, code):
+        """Initialize the Task.
+
+        Args:
+            name: Name of wrapped function.
+            target: Actual function being wrapped (optional).
+        """
+        self.name = name
+        self.code = code
+        self.target = target
+
+    def __str__(self) -> str:
+        """Stringify the Task, currently by returning the `name`."""
+        return self.name
+
 @define
 class Raw:
     """Value object for any raw types.
@@ -277,7 +306,7 @@ class Workflow:
             counter[step.task] += 1
             self._remapping[step.id] = f"{step.task}-{counter[step.task]}"
 
-    def register_task(self, fn: Lazy) -> Task:
+    def register_task(self, fn: Lazy, name=None) -> Task:
         """Note the existence of a lazy-evaluatable function, and wrap it as a `Task`.
 
         Args:
@@ -287,13 +316,33 @@ class Workflow:
             A new `Task` that wraps the function, and is retained in the `Workflow.tasks`
             dict.
         """
-        name = fn.__name__
+        name = name or fn.__name__
         if name in self.tasks and self.tasks[name].target != fn:
             raise RuntimeError(f"Naming clash for functions: {name}")
 
         task = Task(name, fn)
         self.tasks[name] = task
         return task
+
+    def add_call_tuple(self, fn: Target, args, name) -> StepReference[Any]:
+        """Append a step.
+
+        Adds a step, for running a target with key-value arguments,
+        to the workflow.
+
+        Args:
+            fn: the target function to turn into a step.
+            kwargs: any key-value arguments to pass in the call.
+        """
+        task = Script(name, fn, fn.dsk)
+        step = PseudoStep(
+            self,
+            task,
+            args
+        )
+        self.steps.append(step)
+        return_type = step.return_type
+        return StepReference(self, step, return_type)
 
     def add_step(self, fn: Lazy, kwargs: dict[str, Raw | Reference]) -> StepReference[Any]:
         """Append a step.
@@ -382,6 +431,8 @@ class WorkflowLinkedComponent(Protocol):
 class Reference:
     """Superclass for all symbolic references to values."""
 
+    __name__ = ""
+    __dask_graph__ = None
     @property
     def name(self) -> str:
         """Referral name for this reference."""
@@ -401,6 +452,9 @@ class Step(WorkflowComponent):
     task: Task
     arguments: Mapping[str, Reference | Raw]
 
+    def get_run(self):
+        return self.task.name
+
     def __init__(self, workflow: Workflow, task: Task, arguments: Mapping[str, Reference | Raw]):
         """Initialize a step.
 
@@ -413,6 +467,8 @@ class Step(WorkflowComponent):
         self.task = task
         self.arguments = {}
         for key, value in arguments.items():
+            if hasattr(value, "__dask_graph__") and value.__dask_graph__:
+                value = value.compute()
             if (
                isinstance(value, Reference) or
                isinstance(value, Raw) or
@@ -498,6 +554,13 @@ class Step(WorkflowComponent):
         comp_tup: tuple[str | tuple[str, str], ...] = tuple(components)
 
         return f"{self.task}-{hasher(comp_tup)}"
+
+class PseudoStep(Step):
+    def get_run(self):
+        return str(self.task.code)
+
+    def __init__(self, workflow: Workflow, task: Task, argument_tuple):
+        super().__init__(workflow, task, arguments={n: arg for n, arg in enumerate(argument_tuple)})
 
 class ParameterReference(Reference):
     """Reference to an individual `Parameter`.
@@ -634,7 +697,7 @@ class StepReference(Generic[U], Reference):
             RuntimeError: if this field is not available, or we do not have a structured result.
         """
         if self._field is not None or not attr_has(self.typ):
-            raise RuntimeError("Can only get attribute of a StepReference representing an attrs-class")
+            raise RuntimeError(f"Can only get attribute of a StepReference representing an attrs-class: {attr}")
         resolve_types(self.typ)
         return self.__class__(
             workflow=self.__workflow__,
