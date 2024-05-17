@@ -99,6 +99,66 @@ steps:
 
 ```
 
+Notice that the `increment` tasks appears only once in the CWL workflow definition, despite being referenced twice in the python code above. 
+Changing the workflow to include two increments with distinct input parameters renders a workflow with two calls to increment:
+
+```python
+>>> result = sum(
+...     left=double(num=increment(num=23)),
+...     right=mod10(num=increment(num=3))
+... )
+>>> workflow = construct(result, simplify_ids=True)
+>>> cwl = render(workflow)
+>>> yaml.dump(cwl, sys.stdout, indent=2)
+class: Workflow
+cwlVersion: 1.2
+inputs: {}
+outputs:
+  out:
+    label: out
+    outputSource: sum-1/out
+    type: int
+steps:
+  double-1:
+    in:
+      num:
+        source: increment-2/out
+    out:
+    - out
+    run: double
+  increment-1:
+    in:
+      num:
+        default: 3
+    out:
+    - out
+    run: increment
+  increment-2:
+    in:
+      num:
+        default: 23
+    out:
+    - out
+    run: increment
+  mod10-1:
+    in:
+      num:
+        source: increment-1/out
+    out:
+    - out
+    run: mod10
+  sum-1:
+    in:
+      left:
+        source: double-1/out
+      right:
+        source: mod10-1/out
+    out:
+    - out
+    run: sum
+
+```
+
 ## Parameters
 
 The tool will spot global variables that you have used when building your tasks,
@@ -114,7 +174,7 @@ For example:
 ...    """Rotate an integer."""
 ...    return (num + INPUT_NUM) % INPUT_NUM
 >>>
->>> result = rotate(num=3)
+>>> result = rotate(num=5)
 >>> workflow = construct(result, simplify_ids=True)
 >>> cwl = render(workflow)
 >>> yaml.dump(cwl, sys.stdout, indent=2)
@@ -135,7 +195,7 @@ steps:
       INPUT_NUM:
         source: INPUT_NUM
       num:
-        default: 3
+        default: 5
     out:
     - out
     run: rotate
@@ -148,14 +208,6 @@ When you wish to combine tasks together programmatically,
 you can use nested tasks. These are run at _render_ time, not
 execution time. In other words, they do not appear in the
 final graph, and so must only combine other tasks.
-
-Note that, as with all dewret calculations, only the steps
-necessary to achieve the ultimate output are included in the final
-graph. Therefore, nested tasks must return a step execution
-(task that is being called) that forces any other calculations
-you wish to happen. __In other words, if an task in a
-nested task does not have an impact on the return value,
-it will disappear__.
 
 For example:
 
@@ -209,6 +261,22 @@ steps:
     - out
     run: rotate
 
+```
+Note that, as with all dewret calculations, only the steps
+necessary to achieve the ultimate output are included in the final
+graph. Therefore, nested tasks must return a step execution
+(task that is being called) that forces any other calculations
+you wish to happen. __In other words, if a task in a
+nested task does not have an impact on the return value,
+it will disappear__.
+For example, the following code renders the same workflow as in the previous example:
+
+```python
+@nested_task()
+def double_rotate(num: int) -> int:
+   """Rotate an integer twice."""
+   unused_var = increment(num=num)
+   return rotate(num=rotate(num=num))
 ```
 
 ## Step Output Fields

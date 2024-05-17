@@ -8,7 +8,7 @@ $ python -m dewret workflow_complex.py --pretty nested_workflow
 """
 
 from dewret.tasks import nested_task
-from extra import sum, double, increase
+from workflow_tasks import sum, double, increase
 
 STARTING_NUMBER: int = 23
 
