@@ -3,6 +3,7 @@
 import pytest
 from dewret.workflow import Task, Lazy
 from dewret.tasks import construct, task, nested_task, TaskException
+from ._lib.extra import increment  # noqa: F401
 
 
 @task()  # This is expected to be the line number shown below.
@@ -11,7 +12,7 @@ def add_task(left: int, right: int) -> int:
     return left + right
 
 
-ADD_TASK_LINE_NO = 8
+ADD_TASK_LINE_NO = 9
 
 
 @nested_task()
@@ -32,6 +33,59 @@ class MyStrangeClass:
     def __init__(self, task: Task):
         """Dummy constructor for tests."""
         ...
+
+
+@task()
+def pi() -> float:
+    """Get pi from math package."""
+    import math
+
+    return math.pi
+
+
+@task()
+def pi_exported_from_math() -> float:
+    """Get pi from math package by name."""
+    from math import pi
+
+    return pi
+
+
+@task()
+def test_recursive() -> float:
+    """Get pi from math package by name."""
+    return test_recursive()
+
+
+@task()
+def pi_hidden_by_math() -> float:
+    """Recursive call with a bug, that we cannot spot because the math library confounds our check."""
+    import math  # noqa: F401
+
+    return pi()
+
+
+@task()
+def pi_hidden_by_math_2() -> float:
+    """Recursive call with a bug, that we cannot spot because the math library confounds our check."""
+    math = 1  # noqa: F841
+    return pi()  # noqa: F821
+
+
+@task()
+def pi_with_visible_module_task() -> float:
+    """Imported task that _will_ be spotted."""
+    from ._lib import extra
+
+    return extra.increment(2)
+
+
+@task()
+def pi_with_invisible_module_task() -> float:
+    """Imported task that will _not_ be spotted."""
+    from ._lib import extra
+
+    return extra.double(3.14 / 2)
 
 
 @nested_task()
@@ -117,6 +171,39 @@ def test_nesting_non_nested_tasks_throws_error() -> None:
             "You referenced a task add_task inside another task badly_wrap_task, but it is not a nested_task"
         )
     )
+
+
+def test_nesting_does_not_identify_imports_as_nesting() -> None:
+    """Ensure we do not throw errors simply because a task's name appears in an import.
+
+    Non-nested tasks should error if a task appears in the body, but due to https://bugs.python.org/issue36697
+    this can be misidentified using getclosurevars.
+
+    TODO: The invisible vs visible difference below is an example of a known bug.
+    It seems better to have false negatives than positives, but if an import has not
+    already put the module into the sys.modules, then we cannot spot it with this workaround.
+    The hidden-by-math examples are also wrong - by inspect module alone, we are not sure if `math` is an import
+    and (even if it's not _too_ hard to work that out) whether the variable pi actually comes from it.
+
+    One direction to go with this would be to see how mypy follows this during inspection and see if we could
+    take the same approach.
+    """
+    good = [
+        pi,
+        pi_exported_from_math,
+        pi_with_invisible_module_task,
+        pi_hidden_by_math,
+        pi_hidden_by_math_2,
+    ]
+    bad = [test_recursive, pi_with_visible_module_task]
+    for tsk in bad:
+        result = tsk()
+        with pytest.raises(TaskException) as exc:
+            construct(result)
+        assert str(exc.value).strip().startswith("You referenced a task")
+    for tsk in good:
+        result = tsk()
+        construct(result)
 
 
 def test_normal_objects_cannot_be_used_in_nested_tasks() -> None:
