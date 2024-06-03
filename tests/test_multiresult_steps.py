@@ -190,7 +190,7 @@ def test_complex_field_of_nested_task() -> None:
 def test_complex_field_of_nested_task_with_dataclasses() -> None:
     """Tests whether a task can insert result fields into other steps."""
     result = algorithm_with_dataclasses()
-    workflow = construct(result, simplify_ids=True, nested=False)
+    workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
 
     assert rendered == yaml.safe_load("""
