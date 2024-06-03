@@ -24,10 +24,20 @@ from collections.abc import Mapping
 from typing import TypedDict, NotRequired, get_args, Union, cast, Any
 from types import UnionType
 
-from dewret.workflow import Reference, Raw, Workflow, Step, StepReference, Parameter
+from dewret.workflow import (
+    Reference,
+    Raw,
+    Workflow,
+    BaseStep,
+    NestedStep,
+    StepReference,
+    ParameterReference,
+    Unset,
+)
 from dewret.utils import RawType, flatten, DataclassProtocol
 
 InputSchemaType = Union[str, "CommandInputSchema", list[str], list["InputSchemaType"]]
+
 
 @define
 class ReferenceDefinition:
@@ -35,6 +45,7 @@ class ReferenceDefinition:
 
     Normally points to a value or a step.
     """
+
     source: str
 
     @classmethod
@@ -55,9 +66,8 @@ class ReferenceDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
-        return {
-            "source": self.source
-        }
+        return {"source": self.source}
+
 
 @define
 class StepDefinition:
@@ -78,8 +88,8 @@ class StepDefinition:
     in_: Mapping[str, ReferenceDefinition | Raw]
 
     @classmethod
-    def from_step(cls, step: Step) -> "StepDefinition":
-        """Build from a `Step`.
+    def from_step(cls, step: BaseStep) -> "StepDefinition":
+        """Build from a `BaseStep`.
 
         Converts a `dewret.workflow.Step` into a CWL-rendering object.
 
@@ -89,18 +99,17 @@ class StepDefinition:
         return cls(
             name=step.name,
             run=step.task.name,
-            out=(
-                to_output_schema("out", step.return_type)["fields"]
-            ) if attrs_has(step.return_type) or is_dataclass(step.return_type) else [
-                "out"
-            ],
+            out=(to_output_schema("out", step.return_type)["fields"])
+            if attrs_has(step.return_type) or is_dataclass(step.return_type)
+            else ["out"],
             in_={
                 key: (
                     ReferenceDefinition.from_reference(param)
-                    if isinstance(param, Reference) else
-                    param
-                ) for key, param in step.arguments.items()
-            }
+                    if isinstance(param, Reference)
+                    else param
+                )
+                for key, param in step.arguments.items()
+            },
         )
 
     def render(self) -> dict[str, RawType]:
@@ -115,12 +124,31 @@ class StepDefinition:
             "in": {
                 key: (
                     ref.render()
-                    if isinstance(ref, ReferenceDefinition) else
-                    {"default": ref.value}
-                ) for key, ref in self.in_.items()
+                    if isinstance(ref, ReferenceDefinition)
+                    else {"default": ref.value}
+                )
+                for key, ref in self.in_.items()
             },
-            "out": flatten(self.out)
+            "out": flatten(self.out),
         }
+
+
+def cwl_type_from_value(val: RawType | Unset) -> str | list[str]:
+    """Find a CWL type for a given (possibly Unset) value.
+
+    Args:
+        val: a raw Python variable or an unset variable.
+
+    Returns:
+        Type as a string or list of strings.
+    """
+    if val is not None and hasattr(val, "__type__") and isinstance(val.__type__, type):
+        raw_type = val.__type__
+    else:
+        raw_type = type(val)
+
+    return to_cwl_type(raw_type)
+
 
 def to_cwl_type(typ: type) -> str | list[str]:
     """Map Python types to CWL types.
@@ -150,6 +178,7 @@ def to_cwl_type(typ: type) -> str | list[str]:
     else:
         raise TypeError(f"Cannot render complex type ({typ}) to CWL")
 
+
 class CommandInputSchema(TypedDict):
     """Structure for referring to a raw type in CWL.
 
@@ -162,10 +191,13 @@ class CommandInputSchema(TypedDict):
         fields: (for `record`) individual fields in a dict-like structure.
         items: (for `array`) type that each field will have.
     """
+
     type: InputSchemaType
     label: str
     fields: NotRequired[dict[str, "CommandInputSchema"]]
     items: NotRequired[InputSchemaType]
+    default: NotRequired[RawType]
+
 
 class CommandOutputSchema(CommandInputSchema):
     """Structure for referring to an output in CWL.
@@ -176,9 +208,11 @@ class CommandOutputSchema(CommandInputSchema):
     Attributes:
         outputSource: step result to use for this output.
     """
+
     outputSource: NotRequired[str]
 
-def raw_to_command_input_schema(label: str, value: RawType) -> InputSchemaType:
+
+def raw_to_command_input_schema(label: str, value: RawType | Unset) -> InputSchemaType:
     """Infer the CWL input structure for this value.
 
     Inspects the value, to work out an appropriate structure
@@ -194,9 +228,14 @@ def raw_to_command_input_schema(label: str, value: RawType) -> InputSchemaType:
     if isinstance(value, dict) or isinstance(value, list):
         return _raw_to_command_input_schema_internal(label, value)
     else:
-        return to_cwl_type(type(value))
+        return cwl_type_from_value(value)
 
-def to_output_schema(label: str, typ: type[RawType | AttrsInstance | DataclassProtocol], output_source: str | None = None) -> CommandOutputSchema:
+
+def to_output_schema(
+    label: str,
+    typ: type[RawType | AttrsInstance | DataclassProtocol],
+    output_source: str | None = None,
+) -> CommandOutputSchema:
     """Turn a step's output into an output schema.
 
     Takes a source, type and label and provides a description for CWL.
@@ -212,12 +251,16 @@ def to_output_schema(label: str, typ: type[RawType | AttrsInstance | DataclassPr
     fields = None
     if attrs_has(typ):
         fields = {
-            str(field.name): cast(CommandInputSchema, to_output_schema(field.name, field.type))
+            str(field.name): cast(
+                CommandInputSchema, to_output_schema(field.name, field.type)
+            )
             for field in attrs_fields(typ)
         }
     elif is_dataclass(typ):
         fields = {
-            str(field.name): cast(CommandInputSchema, to_output_schema(field.name, field.type))
+            str(field.name): cast(
+                CommandInputSchema, to_output_schema(field.name, field.type)
+            )
             for field in dataclass_fields(typ)
         }
 
@@ -236,8 +279,11 @@ def to_output_schema(label: str, typ: type[RawType | AttrsInstance | DataclassPr
         output["outputSource"] = output_source
     return output
 
-def _raw_to_command_input_schema_internal(label: str, value: RawType) -> CommandInputSchema:
-    typ = to_cwl_type(type(value))
+
+def _raw_to_command_input_schema_internal(
+    label: str, value: RawType | Unset
+) -> CommandInputSchema:
+    typ = cwl_type_from_value(value)
     structure: CommandInputSchema = {"type": typ, "label": label}
     if isinstance(value, dict):
         structure["fields"] = {
@@ -254,7 +300,10 @@ def _raw_to_command_input_schema_internal(label: str, value: RawType) -> Command
                 "and we need at least one element to infer it, or an explicit typehint."
             )
         structure["items"] = to_cwl_type(typeset.pop())
+    elif not isinstance(value, Unset):
+        structure["default"] = value
     return structure
+
 
 @define
 class InputsDefinition:
@@ -276,11 +325,15 @@ class InputsDefinition:
             type: type of variable
             name: fully-qualified name of the input.
         """
+
         type: InputSchemaType
+        default: RawType | Unset
         label: str
 
     @classmethod
-    def from_parameters(cls, parameters: list[Parameter[RawType]]) -> "InputsDefinition":
+    def from_parameters(
+        cls, parameters: list[ParameterReference]
+    ) -> "InputsDefinition":
         """Takes a list of parameters into a CWL structure.
 
         Uses the parameters to fill out the necessary input fields.
@@ -290,13 +343,14 @@ class InputsDefinition:
         """
         return cls(
             inputs={
-                input.__name__: cls.CommandInputParameter(
-                    label=input.__name__,
+                input.name: cls.CommandInputParameter(
+                    label=input.name,
+                    default=input.parameter.default,
                     type=raw_to_command_input_schema(
-                        label=input.__name__,
-                        value=input.__default__
-                    )
-                ) for input in parameters
+                        label=input.name, value=input.parameter.default
+                    ),
+                )
+                for input in parameters
             }
         )
 
@@ -307,14 +361,19 @@ class InputsDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
-        return {
-            key: {
+        result: dict[str, RawType] = {}
+        for key, input in self.inputs.items():
+            item = {
                 # Would rather not cast, but CommandInputSchema is dict[RawType]
                 # by construction, where type is seen as a TypedDict subclass.
                 "type": cast(RawType, input.type),
-                "label": input.label
-            } for key, input in self.inputs.items()
-        }
+                "label": input.label,
+            }
+            if not isinstance(input.default, Unset):
+                item["default"] = input.default
+            result[key] = item
+        return result
+
 
 @define
 class OutputsDefinition:
@@ -329,7 +388,9 @@ class OutputsDefinition:
     outputs: dict[str, "CommandOutputSchema"]
 
     @classmethod
-    def from_results(cls, results: dict[str, StepReference[Any]]) -> "OutputsDefinition":
+    def from_results(
+        cls, results: dict[str, StepReference[Any]]
+    ) -> "OutputsDefinition":
         """Takes a mapping of results into a CWL structure.
 
         Pulls the result type from the signature, ultimately, if possible.
@@ -339,7 +400,9 @@ class OutputsDefinition:
         """
         return cls(
             outputs={
-                key: to_output_schema(result.field, result.return_type, output_source=result.name)
+                key: to_output_schema(
+                    result.field, result.return_type, output_source=result.name
+                )
                 for key, result in results.items()
             }
         )
@@ -351,9 +414,8 @@ class OutputsDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
-        return {
-            key: flatten(output) for key, output in self.outputs.items()
-        }
+        return {key: flatten(output) for key, output in self.outputs.items()}
+
 
 @define
 class WorkflowDefinition:
@@ -369,28 +431,27 @@ class WorkflowDefinition:
     steps: list[StepDefinition]
     inputs: InputsDefinition
     outputs: OutputsDefinition
+    name: None | str
 
     @classmethod
-    def from_workflow(cls, workflow: Workflow) -> "WorkflowDefinition":
+    def from_workflow(
+        cls, workflow: Workflow, name: None | str = None
+    ) -> "WorkflowDefinition":
         """Build from a `Workflow`.
 
         Converts a `dewret.workflow.Workflow` into a CWL-rendering object.
 
         Args:
             workflow: workflow to convert.
+            name: name of this workflow, if it should have one.
         """
         return cls(
-            steps=[
-                StepDefinition.from_step(step)
-                for step in workflow.steps
-            ],
-            inputs=InputsDefinition.from_parameters([
-                reference.parameter for reference in
-                workflow.find_parameters()
-            ]),
-            outputs=OutputsDefinition.from_results({
-                workflow.result.field: workflow.result
-            } if workflow.result else {})
+            steps=[StepDefinition.from_step(step) for step in workflow.steps],
+            inputs=InputsDefinition.from_parameters(list(workflow.find_parameters())),
+            outputs=OutputsDefinition.from_results(
+                {workflow.result.field: workflow.result} if workflow.result else {}
+            ),
+            name=name,
         )
 
     def render(self) -> dict[str, RawType]:
@@ -405,13 +466,13 @@ class WorkflowDefinition:
             "class": "Workflow",
             "inputs": self.inputs.render(),
             "outputs": self.outputs.render(),
-            "steps": {
-                step.name: step.render()
-                for step in self.steps
-            }
+            "steps": {step.name: step.render() for step in self.steps},
         }
 
-def render(workflow: Workflow) -> dict[str, RawType]:
+
+def render(
+    workflow: Workflow,
+) -> dict[str, RawType] | tuple[dict[str, RawType], dict[str, dict[str, RawType]]]:
     """Render to a dict-like structure.
 
     Args:
@@ -421,4 +482,15 @@ def render(workflow: Workflow) -> dict[str, RawType]:
         Reduced form as a native Python dict structure for
         serialization.
     """
-    return WorkflowDefinition.from_workflow(workflow).render()
+    primary_workflow = WorkflowDefinition.from_workflow(workflow).render()
+    subworkflows = {}
+    for step in workflow.steps:
+        if isinstance(step, NestedStep):
+            subworkflows[step.name] = WorkflowDefinition.from_workflow(
+                step.subworkflow
+            ).render()
+
+    if subworkflows:
+        return primary_workflow, subworkflows
+
+    return primary_workflow

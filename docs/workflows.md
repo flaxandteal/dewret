@@ -59,7 +59,15 @@ In code, this would be:
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
-inputs: {}
+inputs:
+  increment-1-num:
+    default: 23
+    label: increment-1-num
+    type: int
+  increment-2-num:
+    default: 23
+    label: increment-2-num
+    type: int
 outputs:
   out:
     label: out
@@ -69,14 +77,21 @@ steps:
   double-1:
     in:
       num:
-        source: increment-1/out
+        source: increment-2/out
     out:
     - out
     run: double
   increment-1:
     in:
       num:
-        default: 23
+        source: increment-1-num
+    out:
+    - out
+    run: increment
+  increment-2:
+    in:
+      num:
+        source: increment-2-num
     out:
     - out
     run: increment
@@ -187,7 +202,12 @@ class: Workflow
 cwlVersion: 1.2
 inputs:
   INPUT_NUM:
+    default: 3
     label: INPUT_NUM
+    type: int
+  rotate-1-num:
+    default: 5
+    label: rotate-1-num
     type: int
 outputs:
   out:
@@ -200,7 +220,7 @@ steps:
       INPUT_NUM:
         source: INPUT_NUM
       num:
-        default: 5
+        source: rotate-1-num
     out:
     - out
     run: rotate
@@ -239,7 +259,12 @@ class: Workflow
 cwlVersion: 1.2
 inputs:
   INPUT_NUM:
+    default: 3
     label: INPUT_NUM
+    type: int
+  num:
+    default: 3
+    label: num
     type: int
 outputs:
   out:
@@ -252,7 +277,7 @@ steps:
       INPUT_NUM:
         source: INPUT_NUM
       num:
-        default: 3
+        source: num
     out:
     - out
     run: rotate
@@ -339,7 +364,15 @@ As code:
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
-inputs: {}
+inputs:
+  shuffle-1-max_cards_per_suit:
+    default: 13
+    label: shuffle-1-max_cards_per_suit
+    type: int
+  shuffle-2-max_cards_per_suit:
+    default: 13
+    label: shuffle-2-max_cards_per_suit
+    type: int
 outputs:
   out:
     label: out
@@ -349,7 +382,25 @@ steps:
   shuffle-1:
     in:
       max_cards_per_suit:
-        default: 13
+        source: shuffle-1-max_cards_per_suit
+    out:
+      clubs:
+        label: clubs
+        type: int
+      diamonds:
+        label: diamonds
+        type: int
+      hearts:
+        label: hearts
+        type: int
+      spades:
+        label: spades
+        type: int
+    run: shuffle
+  shuffle-2:
+    in:
+      max_cards_per_suit:
+        source: shuffle-2-max_cards_per_suit
     out:
       clubs:
         label: clubs
@@ -367,7 +418,7 @@ steps:
   sum-1:
     in:
       left:
-        source: shuffle-1/hearts
+        source: shuffle-2/hearts
       right:
         source: shuffle-1/diamonds
     out:
@@ -410,7 +461,15 @@ Here, we show the same example with `dataclasses`.
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
-inputs: {}
+inputs:
+  shuffle-1-max_cards_per_suit:
+    default: 13
+    label: shuffle-1-max_cards_per_suit
+    type: int
+  shuffle-2-max_cards_per_suit:
+    default: 13
+    label: shuffle-2-max_cards_per_suit
+    type: int
 outputs:
   out:
     label: out
@@ -420,7 +479,25 @@ steps:
   shuffle-1:
     in:
       max_cards_per_suit:
-        default: 13
+        source: shuffle-1-max_cards_per_suit
+    out:
+      clubs:
+        label: clubs
+        type: int
+      diamonds:
+        label: diamonds
+        type: int
+      hearts:
+        label: hearts
+        type: int
+      spades:
+        label: spades
+        type: int
+    run: shuffle
+  shuffle-2:
+    in:
+      max_cards_per_suit:
+        source: shuffle-2-max_cards_per_suit
     out:
       clubs:
         label: clubs
@@ -438,7 +515,7 @@ steps:
   sum-1:
     in:
       left:
-        source: shuffle-1/hearts
+        source: shuffle-2/hearts
       right:
         source: shuffle-1/diamonds
     out:

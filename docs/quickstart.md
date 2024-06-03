@@ -29,10 +29,10 @@ class: Workflow
 cwlVersion: 1.2
 outputs:
   out:
-    outputSource: increment-012ef3b3ffb9d15c3f2837aa4bb20a8d/out
+    outputSource: increment-e138626779553199eb2bd678356b640f-num
     type: int
 steps:
-  increment-012ef3b3ffb9d15c3f2837aa4bb20a8d:
+  increment-e138626779553199eb2bd678356b640f-num
     in:
       num:
         default: 3
@@ -61,22 +61,26 @@ and backends, as well as bespoke serialization or formatting.
 ...     return num + 1
 >>>
 >>> result = increment(num=3)
->>> workflow = construct(result)
+>>> workflow = construct(result, simplify_ids=True)
 >>> cwl = render(workflow)
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
-inputs: {}
+inputs:
+  increment-1-num:
+    default: 3
+    label: increment-1-num
+    type: int
 outputs:
   out:
     label: out
-    outputSource: increment-012ef3b3ffb9d15c3f2837aa4bb20a8d/out
+    outputSource: increment-1/out
     type: int
 steps:
-  increment-012ef3b3ffb9d15c3f2837aa4bb20a8d:
+  increment-1:
     in:
       num:
-        default: 3
+        source: increment-1-num
     out:
     - out
     run: increment
