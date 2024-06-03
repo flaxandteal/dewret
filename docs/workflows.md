@@ -127,7 +127,15 @@ Changing the workflow to include two increments with distinct input parameters r
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
-inputs: {}
+inputs:
+  increment-1-num:
+    default: 3
+    label: increment-1-num
+    type: int
+  increment-2-num:
+    default: 23
+    label: increment-2-num
+    type: int
 outputs:
   out:
     label: out
@@ -144,14 +152,14 @@ steps:
   increment-1:
     in:
       num:
-        default: 3
+        source: increment-1-num
     out:
     - out
     run: increment
   increment-2:
     in:
       num:
-        default: 23
+        source: increment-2-num
     out:
     - out
     run: increment
