@@ -101,4 +101,5 @@ def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
         raise RuntimeError(
             f"{task} is not a dask delayed, perhaps you tried to mix backends?"
         )
-    return task.compute(__workflow__=workflow)
+    result = task.compute(__workflow__=workflow)
+    return result
