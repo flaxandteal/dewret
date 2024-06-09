@@ -1,0 +1,32 @@
+rule all:
+    input:
+        "results/report.txt"
+
+rule download_data_2d031868813afdbac602c36c3e760d6e:
+    output:
+        "data/raw_data.txt"
+    shell:
+        """
+        echo "Sample data" > {output}
+        """
+
+rule process_data_2d031868813afdbac602c36c3e760d6e:
+    input:
+        "data/raw_data.txt"
+    output:
+        "data/processed_data.txt"
+    shell:
+        """
+        tr '[:lower:]' '[:upper:]' < {input} > {output}
+        """
+
+rule generate_report_2d031868813afdbac602c36c3e760d6e:
+    input:
+        "data/processed_data.txt"
+    output:
+        "results/report.txt"
+    shell:
+        """
+        echo "Report generated from:" > {output}
+        cat {input} >> {output}
+        """
