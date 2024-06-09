@@ -1,0 +1,41 @@
+rule download_data_316e0563ee9be98c38d3a1e48fbf3bd9:
+    input: 
+    output: 
+        file=params.output_file
+    params:
+        data="4, 5, 7, 8, 0",
+        boolean=True,
+        array=[],
+        dictionary={key: value},
+        fl=12.23,
+        integer=24,
+        output_file="generated_smk/data/test_data.txt"
+    run: 
+        import workflow.py
+        download_data(data=input.data, boolean=input.boolean, array=input.array, dictionary=input.dictionary,
+        fl=input.fl, integer=input.integer, output_file=input.output_file)
+
+rule generate_report_3117e1f39c91957257d6623384910e5b:
+    input:
+        processed_data=rules.process_data_1d4b352a6b3fa30fbc649664b436ca5f.output.file
+    output: 
+        file=params.output_file
+    params:
+        multiple_arg="test2",
+        output_file="results/report.txt",
+    run: 
+        import workflow.py
+        generate_report(processed_data=input.processed_data, multiple_arg=input.multiple_arg,
+        output_file=input.output_file)
+        
+rule process_data_1d4b352a6b3fa30fbc649664b436ca5f:
+    input:
+        data_file=rules.download_data_316e0563ee9be98c38d3a1e48fbf3bd9.output.file
+    output: 
+        file=params.output_file
+    params:
+        multiple_arg="test1",
+        output_file="generated_smk/data/processed_data.txt",
+    run: 
+        import workflow.py
+        process_data(data_file=input.data_file, multiple_arg=input.multiple_arg, output_file=input.output_file)
