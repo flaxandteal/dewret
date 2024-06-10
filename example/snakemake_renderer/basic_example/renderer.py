@@ -25,6 +25,7 @@ from attrs import define
 from dewret.workflow import Lazy
 from dewret.workflow import Reference, Raw, Workflow, Step, Task
 from dewret.utils import RawType
+from collections.abc  import ItemsView
 
 # TODO: Write: Better description of classes.
 
@@ -71,43 +72,78 @@ def to_snakemake_type(param: Raw) -> str:
         raise TypeError(f"Cannot render complex type ({typ}) to JSON")
     
 # TODO: Refactor: better way to handle the types.
-# Question: I've seen Phil abstract methods like these into classless helper methods - why? 
-def generate_signature_from_method(func: Lazy) -> list[str]:
+# Question: I've seen Phil abstract methods like these into classless helper methods - why? It happens in go aswell
+# but I always thought that was because there's no classes
+def get_method_args(func: Lazy) -> ItemsView[str, inspect.Parameter]:
     """Snakemake-renderable internal reference."""
-    sign = inspect.signature(func)
+    args = inspect.signature(func)
 
-    return [
-        f"{param_name}=input.{param_name}" 
-        for param_name, param in sign.parameters.items()
-    ]
+    return args
+
+def get_method_rel_path(func: Lazy) -> any:
+    """Snakemake-renderable internal reference."""
+    source_file = inspect.getsourcefile(func)
+    relative_path = os.path.relpath(source_file, start=os.getcwd())
+    module_name = os.path.splitext(relative_path)[0].replace(os.path.sep, '.')
+
+    return module_name
+
+@define
+class InputDefinition:
+    """Snakemake-renderable run block from a dewret workflow step."""
+    inputs: str
+    params: str
+    
+    # TODO: Refactor: Error Handling and better structure
+    @classmethod
+    def from_step(cls, step: Step) -> "InputDefinition":
+        params = []
+        inputs = []
+        for key, param in step.arguments.items():
+            if isinstance(param, Reference):
+                ref = ReferenceDefinition.from_reference(param).render()
+                input = f"{key}=rules.{ref.replace("-","_").replace("/out", ".output")}.output_file"
+                inputs.append(input)
+                param = f"{key}=input.{key},"
+                params.append(param)
+            else:
+                param = f"{key}={to_snakemake_type(param)},"
+                params.append(param)
+
+        # # Check if the list is not empty
+        if params:
+            params[len(params)-1] = params[len(params)-1].replace(",", "")
+
+        return cls(
+            inputs=inputs,
+            params=params
+        )
+    
+    def render(self) -> dict[str, RawType]:
+        return {
+            "inputs": self.inputs,
+            "params": self.params
+        }
 
 @define
 class OutputDefinition:
     """Snakemake-renderable run block from a dewret workflow step."""
     output_file: str
-    rel_import: str
-    args: list[str]
+    # I need a way to find the output_file, for now I assume it'll be in the method signature
 
     
     # TODO: Refactor: Error Handling and better structure
     @classmethod
-    def from_task(cls, task: Task) -> "RunDefinition":
-        source_file = inspect.getsourcefile(task.target)
-        relative_path = os.path.relpath(source_file)
-        rel_import = f"import {relative_path}"
-
-        args = generate_signature_from_method(task.target)
+    def from_step(cls, step: Step) -> "OutputDefinition":
+        args = step.arguments["output_file"]
+        args = to_snakemake_type(args)
         return cls(
-            method_name=task.name,
-            rel_import=rel_import,
-            args=args
+            output_file=args
         )
     
     def render(self) -> tuple[str | RawType]:
-        signature = ", ".join(f"{arg}" for arg in self.args)
         return (
-            self.rel_import,
-            f"{self.method_name}({signature})",
+            f"output_file={self.output_file}",
         )
 
 @define
@@ -121,22 +157,27 @@ class RunDefinition:
     # TODO: Refactor: Error Handling and better structure
     @classmethod
     def from_task(cls, task: Task) -> "RunDefinition":
-        source_file = inspect.getsourcefile(task.target)
-        relative_path = os.path.relpath(source_file)
-        rel_import = f"import {relative_path}"
+        relative_path = get_method_rel_path(task.target)
+        rel_import = f"{relative_path}"
 
-        args = generate_signature_from_method(task.target)
+        # TODO: Make sure to use Paramdefinitions for getting the parameters
+        args = get_method_args(task.target)
+        signature = [
+            f"{param_name}=params.{param_name}" 
+            for param_name, param in args.parameters.items()
+        ]
+
         return cls(
             method_name=task.name,
             rel_import=rel_import,
-            args=args
+            args=signature
         )
     
     def render(self) -> tuple[str | RawType]:
         signature = ", ".join(f"{arg}" for arg in self.args)
         return (
-            self.rel_import,
-            f"{self.method_name}({signature})",
+            f"import {self.rel_import}\n",
+            f"{self.rel_import}.{self.method_name}({signature})\n",
         )
 
 @define
@@ -146,6 +187,7 @@ class StepDefinition:
     name: str
     run: str
     params: list[str]
+    output: tuple[RawType]
     # in_: Mapping[str, ReferenceDefinition | Raw]
     in_: list[str]
 
@@ -156,24 +198,16 @@ class StepDefinition:
     # TODO: Fix: TypeError: RunDefinition() takes no arguments
 
     @classmethod
-    def from_step(cls, step: Step, inxed_steps: dict[str, Step]) -> "StepDefinition":
-        params = []
-        inputs = []
-        for key, param in step.arguments.items():
-            if isinstance(param, Reference):
-                ref = ReferenceDefinition.from_reference(param).render()
-                input = f"{key}=rules.{ref.replace("-","_").replace("/out", ".output")}.file"
-                inputs.append(input)
-            else:
-                param = f"{key}={to_snakemake_type(param)}"
-                params.append(param)
-
+    def from_step(cls, step: Step) -> "StepDefinition":                
+        input_block = InputDefinition.from_step(step).render()
         run_block = RunDefinition.from_task(step.task).render()
+        output_block = OutputDefinition.from_step(step).render()
         return cls(
             name=step.name, 
             run=run_block, 
-            params=params, 
-            in_=inputs
+            params=input_block["params"], 
+            in_=input_block["inputs"],
+            output=output_block
         )
 
     # TODO: Fix: Params must be comma delimited or they get errors
@@ -185,19 +219,22 @@ class StepDefinition:
             "run": self.run,
             "input": self.in_,
             "params": self.params,
-            "output": "\nfile=input.output_file",
+            "output": self.output,
         }
 
 
+# TODO: Fix: Find out why the order of the rules is scrambled
+# TODO: Fix: Add a rule all: with input definition the last outputed file
 @define
 class WorkflowDefinition:
     steps: list[StepDefinition]
 
+    # Question: Is it more abstract if I define the different blocks in the Workflow definition or the steps definition?
     @classmethod
     def from_workflow(cls, workflow: Workflow) -> "WorkflowDefinition":
         return cls(
             steps=[
-                StepDefinition.from_step(step, workflow._indexed_steps)
+                StepDefinition.from_step(step)
                 for step in workflow.steps
             ]
         )
@@ -211,7 +248,6 @@ class WorkflowDefinition:
 # Takes a dewret workflow object and creates a workflow based on the workflow language.
 def render(workflow: Workflow) -> str:
     """Render to a SMK string."""
-    print(WorkflowDefinition.from_workflow(workflow).render())
     trans_table = str.maketrans(
         {
             "-": "   ",
