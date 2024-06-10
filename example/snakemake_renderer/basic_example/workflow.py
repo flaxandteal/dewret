@@ -30,24 +30,20 @@ def print_obj(obj):
         "--------------------------------------------------------------------------------------"
     )
 
-
-@task()
+# @task()
 def download_data(
     data: str,
-    boolean: bool,
-    array: list,
-    dictionary: dict,
-    fl: float,
-    integer: int,
     output_file: str,
 ) -> str:
+    print("successfully enters this shit")
+
     with open(output_file, "w") as f:
         f.write(data)
 
     return output_file
 
 
-@task()
+# @task()
 def process_data(data_file: str, multiple_arg: str, output_file: str) -> str:
     # Simulate downloaded data content
     new_data = "test"
@@ -62,7 +58,7 @@ def process_data(data_file: str, multiple_arg: str, output_file: str) -> str:
     return output_file
 
 
-@task()
+# @task()
 def generate_report(processed_data: str, multiple_arg: str, output_file: str) -> str:
     # Read the processed data
     with open(processed_data, "r") as datafile:
@@ -78,11 +74,6 @@ def generate_report(processed_data: str, multiple_arg: str, output_file: str) ->
 if __name__ == "__main__":
     data = download_data(
         data="4, 5, 7, 8, 0",
-        boolean=True,
-        array=[],
-        dictionary={"key": "value"},
-        fl=12.23,
-        integer=24,
         output_file="generated_smk/data/test_data.txt",
     )
     processed_data = process_data(
@@ -93,10 +84,9 @@ if __name__ == "__main__":
     result = generate_report(
         processed_data=processed_data, multiple_arg="test2", output_file="results/report.txt"
     )
-    
+
     # workflow = construct(generate_report(data_file=process_data(data_file=download_data(data=str("1, 2, 3, 4, 5, 6, 7"), output_file="generated_smk/data/test_data.txt"))))
     workflow = construct(result)
-
     smk_output = render(workflow)
 
     with open("Snakefile", "w") as file:
