@@ -49,7 +49,6 @@ from .workflow import (
     LazyEvaluation,
     Target,
     LazyFactory,
-    StepExecution,
     merge_workflows,
     Parameter,
     param,
@@ -235,7 +234,11 @@ class TaskException(Exception):
         self.__traceback__ = tb
 
 
-def nested_task() -> Callable[[Target], StepExecution]:
+Param = ParamSpec("Param")
+RetType = TypeVar("RetType")
+
+
+def nested_task() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Shortcut for marking a task as nested.
 
     A nested task is one which calls other tasks and does not
@@ -261,10 +264,6 @@ def nested_task() -> Callable[[Target], StepExecution]:
         Task that runs at render, not execution, time.
     """
     return task(nested=True)
-
-
-Param = ParamSpec("Param")
-RetType = TypeVar("RetType")
 
 
 def task(
@@ -309,7 +308,7 @@ def task(
             **kwargs: Param.kwargs,
         ) -> RetType:
             try:
-                # Ensure that all arguments are passed as keyword args and prevent positional args. 
+                # Ensure that all arguments are passed as keyword args and prevent positional args.
                 # passed at all.
                 if args:
                     raise TypeError(

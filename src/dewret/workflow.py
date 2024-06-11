@@ -245,7 +245,7 @@ class Workflow:
         )
 
     @property
-    def _indexed_steps(self) -> dict[str, Step]:
+    def indexed_steps(self) -> dict[str, Step]:
         """Steps mapped by ID.
 
         Forces generation of IDs. Note that this effectively
@@ -273,11 +273,22 @@ class Workflow:
         """
         new = cls()
 
-        left_steps = left._indexed_steps
-        right_steps = right._indexed_steps
+        # We do a first, unindexed pass, to ensure that the steps and
+        # references are all resolvable within the new workflow.
+        new.steps = list(left.steps) + list(right.steps)
+
+        print("--_")
+        for step in new.steps:
+            print(step)
+            step.set_workflow(new, True)
+        print("---")
+
+        new.steps = []
+
+        left_steps = left.indexed_steps
+        right_steps = right.indexed_steps
+
         for step_id in left_steps.keys() & right_steps.keys():
-            left_steps[step_id].set_workflow(new)
-            right_steps[step_id].set_workflow(new)
             if left_steps[step_id] != right_steps[step_id]:
                 raise RuntimeError(
                     f"Two steps have same ID but do not match: {step_id}"
@@ -294,7 +305,7 @@ class Workflow:
         new.tasks.update(right.tasks)
 
         for step in new.steps:
-            step.__workflow__ = new
+            step.set_workflow(new, False)
 
         return new
 
@@ -489,7 +500,7 @@ class Step(WorkflowComponent):
             and self.arguments == other.arguments
         )
 
-    def set_workflow(self, workflow: Workflow) -> None:
+    def set_workflow(self, workflow: Workflow, without_arguments: bool = False) -> None:
         """Move the step reference to another workflow.
 
         Primarily intended to be called by its step, as a cascade.
@@ -497,14 +508,16 @@ class Step(WorkflowComponent):
 
         Args:
             workflow: the new target workflow.
+            without_arguments: do not set workflows for the arguments.
         """
         self.__workflow__ = workflow
-        for argument in self.arguments.values():
-            if hasattr(argument, "__workflow__"):
-                try:
-                    argument.__workflow__ = workflow
-                except AttributeError:
-                    ...
+        if not without_arguments:
+            for argument in self.arguments.values():
+                if hasattr(argument, "__workflow__"):
+                    try:
+                        argument.__workflow__ = workflow
+                    except AttributeError:
+                        ...
 
     @property
     def return_type(self) -> Any:
@@ -640,6 +653,7 @@ class StepReference(Generic[U], Reference):
     """
 
     step: Step
+    _tethered_workflow: Workflow | None
     _field: str | None
     typ: type[U]
 
@@ -668,6 +682,7 @@ class StepReference(Generic[U], Reference):
         self.step = step
         self._field = field
         self.typ = typ
+        self._tethered_workflow = None
 
     def __str__(self) -> str:
         """Global description of the reference."""
@@ -741,7 +756,24 @@ class StepReference(Generic[U], Reference):
         Returns:
             Workflow that the referee is related to.
         """
-        return self.step.__workflow__
+        return self._tethered_workflow or self.step.__workflow__
+
+    @__workflow__.setter
+    def __workflow__(self, workflow: Workflow) -> None:
+        """Sets related workflow.
+
+        We update the tethered workflow. If the step is missing from
+        this workflow then, by construction, it should have at least
+        been through an indexing process once, so we should be able
+        to get it back by name.
+
+        Args:
+            workflow: workflow to update the step
+        """
+        self._tethered_workflow = workflow
+        if self._tethered_workflow:
+            if self.step not in self._tethered_workflow.steps:
+                self.step = self._tethered_workflow.indexed_steps[self.step.id]
 
 
 def merge_workflows(*workflows: Workflow) -> Workflow:
