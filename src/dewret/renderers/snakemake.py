@@ -367,8 +367,8 @@ class StepDefinition:
         }
 
 
-# TODO: Find out why the order of the rules is scrambled
-# FIXME: Add a rule all: with input definition the last outputed file
+# TODO: Find out why the yaml.dump scrambles the order of the rules
+# TODO: Add a rule all: with input definition the last outputed file
 
 
 @define
