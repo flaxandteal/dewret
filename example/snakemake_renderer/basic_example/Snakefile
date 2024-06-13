@@ -1,0 +1,48 @@
+rule download_data_cbb4d1260b8b17d6693986ebfd833d53:
+    input: 
+    output:
+        output_file="generated_smk/data/test_data.txt"
+    params:
+        data="4, 5, 7, 8, 0",
+        output_file="generated_smk/data/test_data.txt"
+    run:
+        import snakemake_tasks
+
+        
+        snakemake_tasks.download_data(data=params.data, output_file=params.output_file)
+
+        
+rule generate_report_b1f9747ed9903dcd9571246547b1767b:
+    input:
+        processed_data=rules.process_data_75213b5c31fed773cd1f7ca1dfb6ab5a.output.output_file
+    output:
+        output_file="results/report.txt"
+    params:
+        processed_data=rules.process_data_75213b5c31fed773cd1f7ca1dfb6ab5a.output.output_file,
+        multiple_arg="test2",
+        output_file="results/report.txt"
+    run:
+        import snakemake_tasks
+
+        
+        snakemake_tasks.generate_report(processed_data=params.processed_data, multiple_arg=params.multiple_arg,
+        output_file=params.output_file)
+
+        
+rule process_data_75213b5c31fed773cd1f7ca1dfb6ab5a:
+    input:
+        data_file=rules.download_data_cbb4d1260b8b17d6693986ebfd833d53.output.output_file
+    output:
+        output_file="generated_smk/data/processed_data.txt"
+    params:
+        data_file=rules.download_data_cbb4d1260b8b17d6693986ebfd833d53.output.output_file,
+        multiple_arg="test1",
+        output_file="generated_smk/data/processed_data.txt"
+    run:
+        import snakemake_tasks
+
+        
+        snakemake_tasks.process_data(data_file=params.data_file, multiple_arg=params.multiple_arg,
+        output_file=params.output_file)
+
+        
