@@ -10,7 +10,7 @@ rule download_data_2d031868813afdbac602c36c3e760d6e:
         echo "Sample data" > {output}
         """
 
-rule process_data_2d031868813afdbac602c36c3e760d6e:
+rule process_data:
     input:
         "data/raw_data.txt"
     output:
