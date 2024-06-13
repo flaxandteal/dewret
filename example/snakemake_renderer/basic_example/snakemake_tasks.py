@@ -8,7 +8,7 @@ $ python -m dewret workflow_complex.py --pretty run
 """
 
 from dewret.tasks import task, construct
-from renderer import render
+from dewret.renderers.snakemake import render
 
 STARTING_NUMBER: int = 23
 
