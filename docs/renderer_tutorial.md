@@ -18,16 +18,17 @@ rule process_data: # Example Snakemake rule/task
     input:
         "data/raw_data.txt"
     output:
-        "data/processed_data.txt"
-    shell:
-        """
-        tr '[:lower:]' '[:upper:]' < {input} > {output}
-        """
+        output_file="data/processed_data.txt"
+    run:
+        with open(output.output_file, "w") as f:
+            f.write("data")
+
+        return output_file
 ```
 
 ## 2. Create WorkflowDefinition.
 
-The WorkflowDefinition class is responsible for transforming each step from a constructed dewret.workflow object into an executable rule in the target workflow language (e.g., Snakemake). Steps are the `@tasks` you have defined that you want to convert into executable workflow language steps.
+The WorkflowDefinition class is responsible for transforming each step from a constructed `dewret` workflow into an executable step in the target workflow language (e.g. a Snakemake rule). This class should encapsulate workflow-level information, such as the list of steps to be executed, and any workflow-scope input/ouput. It should also contain a class method that initializes the `WorkflowDefinition` from an `dewret` `Workflow` (such as `from_workflow` below), and a method that renders the workflow as a Python dict (as in the `render` method below).
 
 ### Example:
 ```python
@@ -48,7 +49,7 @@ class WorkflowDefinition:
         }
 ```
 
-## 3. Create a StepsDefinition.
+## 3. Create a StepDefinition.
 
 Create a StepsDefinition class create each of the code blocks needed for a rule(step) to be executable in Snakemake.
 When you have defined each block in your target workflow language task from [step 1](#1-understand-the-target-workflow-language),
@@ -64,26 +65,61 @@ In the Snakemake example, we have created:
 ```python
 @define
 class StepDefinition:
-    name: str
-    run: list[str]
-    params: list[str]
-    output: list[str]
-    input: list[str]
+    """Represents a Snakemake-renderable step definition in a dewret workflow.
+
+    Attributes:
+        name (str): The name of the step.
+        run (str): The run block definition for the step.
+        params (List[str]): The parameter definitions for the step.
+        output (list[str]: The output definition for the step.
+        input (List[str]): The input definitions for the step.
+
+    Methods:
+        from_step(cls, step: Step) -> "StepDefinition": Constructs a StepDefinition
+            object from a Step object, extracting step information and components
+            from the step and converting them to Snakemake format.
+        render(self) -> dict[str, MainTypes]: Renders the step definition as a dictionary
+            suitable for use in Snakemake workflows.
+    """
+
+    # You can consider each step as a separate rule.
+    # Each field in this class represents a separate block in the rule definition
+    name: str # name of the rule
+    input: list[str] # Input block
+    params: list[str] # Params block
+    output: list[str] # Output block
+    run: list[str] # Run block - where the instructions for the task are
 
     @classmethod
     def from_step(cls, step: Step) -> "StepDefinition":
+        """Constructs a StepDefinition object from a Step.
+
+        Args:
+            step (Step): The Step object from which step information and components
+                are extracted.
+
+        Returns:
+            StepDefinition: A StepDefinition object containing the converted step
+                information and components.
+        """
         input_block = InputDefinition.from_step(step).render()
         run_block = RunDefinition.from_task(step.task).render()
         output_block = OutputDefinition.from_step(step).render()
         return cls(
-            name=step.name,
+            name=step.name, 
             run=run_block,
             params=input_block["params"],
             input=input_block["inputs"],
             output=output_block,
         )
 
-    def render(self) -> dict[str, RawType]:
+    def render(self) -> dict[str, MainTypes]:
+        """Renders the step definition as a dictionary.
+
+        Returns:
+            dict[str, MainTypes]: A dictionary containing the components of the step
+                definition, for use in Snakemake workflows.
+        """
         return {
             "run": self.run,
             "input": self.input,
@@ -110,30 +146,68 @@ The InputDefinition class is responsible for rendering the inputs and parameters
 ```python
 @define
 class InputDefinition:
+    """Represents input and parameter definitions block for a Snakemake-renderable workflow step.
+
+    Attributes:
+        inputs (List[str]): A list of input definitions.
+        params (List[str]): A list of parameter definitions.
+
+    Methods:
+        from_step(cls, step: Step) -> "InputDefinition": Constructs an InputDefinition
+            object from a Step object, extracting inputs and parameters and converting
+            them to Snakemake-compatible format.
+        render(self) -> dict[str, str]: Renders the input and parameter definitions
+            as a dictionary for use in Snakemake Input and Params blocks.
+    """
+
+    # As we already mention input and params block have similar generation
+    # So it made sence to encapsulate them into one Definition
     inputs: list[str]
     params: list[str]
 
     @classmethod
     def from_step(cls, step: Step) -> "InputDefinition":
+        """Constructs an InputDefinition object from a Step.
+
+        Args:
+            step (Step): The Step object from which input and parameter block definitions are
+                extracted.
+
+        Returns:
+            InputDefinition: An InputDefinition object.
+        """
         params = []
         inputs = []
+        # The keys represent the names of the arguments of the @tasks in our snakemake_workflow.py.
+        # The params represent the values.
         for key, param in step.arguments.items():
+            # We check if the param is a reference.
+            # If it is then it's an input requirement for the rule to run, so we put it in the input block
             if isinstance(param, Reference):
-                ref = ReferenceDefinition.from_reference(param).render()
-                input = f"{key}=rules.{ref.replace('-','_').replace('/out', '.output')}.output_file"
+                ref = ReferenceDefinition.from_reference(param).render().replace("-","_").replace("/out", ".output")
+                input = f"{key}=rules.{ref}.output_file"
                 inputs.append(input)
                 params.append(input + ",")
+            # If it's not - we put it in the params block for use in the RunDefinition
             elif isinstance(param, Raw):
-                customized = f"{key}={to_Snakemake_type(param)},"
+                customized = f"{key}={to_snakemake_type(param)},"
                 params.append(customized)
 
+        # Since the params must be comma separated except the last one - we remove the last comma
         if params:
             params[len(params) - 1] = params[len(params) - 1].replace(",", "")
 
         return cls(inputs=inputs, params=params)
 
     def render(self) -> dict[str, list[str]]:
+        """Renders the input and parameter definitions as a dictionary.
+
+        Returns:
+            dict[str, list[MainTypes]]: A dictionary containing the input and parameter definitions,
+                for use in Snakemake Input and Params blocks.
+        """
         return {"inputs": self.inputs, "params": self.params}
+
 ```
 
 #### RunDefinition:
@@ -143,25 +217,61 @@ The RunDefinition class is responsible for rendering the run block, which contai
 ```python
 @define
 class RunDefinition:
+    # This is where we handle the execution of the task itself.
+    """Represents a Snakemake-renderable run block for a dewret workflow step.
+
+    Attributes:
+        method_name (str): The name of the method to be executed in the snakefile run block.
+        rel_import (str): The relative import path of the method.
+        args (List[str]): The arguments to be passed to the method.
+
+    Methods:
+        from_task(cls, task: Task) -> "RunDefinition": Constructs a RunDefinition
+            object from a Task object, extracting method information and arguments
+            from the task and converting them to Snakemake-compatible format.
+
+        render(self) -> list[str]: A list containing the import statement and the method
+            call statement, for use in Snakemake run block.
+    """
+
     method_name: str
     rel_import: str
     args: list[str]
 
     @classmethod
     def from_task(cls, task: Task) -> "RunDefinition":
+        """Constructs a RunDefinition object from a Task.
+
+        Args:
+            task (Task): The Task object from which method information and arguments
+                are extracted.
+
+        Returns:
+            RunDefinition: A RunDefinition object containing the converted method
+                information and arguments.
+        """
+        # Since we can import our snakemake_workflow.py @tasks we need the relative path
         relative_path = get_method_rel_path(task.target)
+        # If we need to make any customization to the import
         rel_import = f"{relative_path}"
 
         args = get_method_args(task.target)
         signature = [
             f"{param_name}=params.{param_name}"
-            for param_name, param in args.parameters.items()
+            for param_name in args.parameters.keys()
         ]
 
         return cls(method_name=task.name, rel_import=rel_import, args=signature)
 
     def render(self) -> list[str]:
+        """Renders the run block as a list of strings.
+
+        Returns:
+            list[str]: A list containing the import statement and the method
+                call statement, for use in Snakemake run block.
+        """
         signature = ", ".join(f"{arg}" for arg in self.args)
+        # The comma after the last element is mandatory for the structure of rule onces it's used in yaml.dump
         return [
             f"import {self.rel_import}\n",
             f"{self.rel_import}.{self.method_name}({signature})\n",
@@ -175,21 +285,52 @@ The OutputDefinition class is responsible for rendering the output block, which 
 ```python
 @define
 class OutputDefinition:
+    """Represents the output definition block for a Snakemake-renderable workflow step.
+
+    Attributes:
+        output_file (str): The output file definition.
+
+    Methods:
+        from_step(cls, step: Step) -> "OutputDefinition": Constructs an OutputDefinition
+            object from a Step object, extracting and converting the output file definition
+            to Snakemake-compatible format.
+
+        render(self) -> list[str]: Renders the output definition as a list
+            suitable for use in Snakemake Output block.
+    """
+
     output_file: str
 
     @classmethod
     def from_step(cls, step: Step) -> "OutputDefinition":
+        """Constructs an OutputDefinition object from a Step.
+
+        Args:
+            step (Step): The Step object from which the output file definition is extracted.
+
+        Returns:
+            OutputDefinition: An OutputDefinition object, for use in Snakemake Output block.
+        """
+        # Since snakemake commonly communicates using files.
+        # Output file must always be called - `output_file`
+        # Further code could be added to handled if it's a reference in case we want take care of multiple tasks writing to the same output file.
         output_file = step.arguments["output_file"]
         if isinstance(output_file, Raw):
-            args = to_Snakemake_type(output_file)
+            args = to_snakemake_type(output_file)
 
         return cls(output_file=args)
 
     def render(self) -> list[str]:
+        """Renders the output definition as a list.
+
+        Returns:
+            list[str]: A list containing the output file definition, for use in a Snakemake Output block.
+        """
+        # The comma after the last element is mandatory for the structure of rule onces it's used in yaml.dump
+        # It adds the new line to the output block
         return [
             f"output_file={self.output_file}",
         ]
-
 ```
 
 Integrate these block definitions into the StepDefinition class as demonstrated in [Step 3](#3-create-a-stepsdefinition). Each StepDefinition will use these block definitions to render the complete step in the target workflow language.
@@ -208,6 +349,8 @@ We'll define the following helper methods for our Snakemake renderer:
 #### Type Conversion Helper:
 
 ```python
+# Basic types returned from dewret will look like this "str|valueOfParam".
+# We'll need to convert them.
 def to_Snakemake_type(param: Raw) -> str:
     typ = str(param)
     if typ.__contains__("str"):
@@ -229,6 +372,7 @@ def to_Snakemake_type(param: Raw) -> str:
 #### Argument Extraction Helper:
 
 ```python
+# We need to get the signature of the method. 
 def get_method_args(func: Lazy) -> inspect.Signature:
     args = inspect.signature(func)
     return args
@@ -238,6 +382,7 @@ def get_method_args(func: Lazy) -> inspect.Signature:
 #### Relative Path Computation Helper:
 
 ```python
+# Computes the relative path
 def get_method_rel_path(func: Lazy) -> str:
     source_file = inspect.getsourcefile(func)
     if source_file:
@@ -273,9 +418,4 @@ python snakemake_tasks.py
 ```
 
 ### Q: Should I add a brief description of dewret in step 1? Should link dewret types/docs etc here?
-### Q: Better explain each component(steps, workflows, tasks) available members? Or just link them?
-### Q: More inline comments?
-### Q: Better explain helper methods?
-### Q: Should we abstract some Definitions?
-### Q: Should I write a Snakemake example to the docs.
 ### A: Get details on how that happens and probably yes.

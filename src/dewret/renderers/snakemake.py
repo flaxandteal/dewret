@@ -29,7 +29,9 @@ from dewret.workflow import Lazy
 from dewret.workflow import Reference, Raw, Workflow, Step, Task
 from dewret.utils import BasicType
 
-RawType = typing.Union[BasicType, list[str], list["RawType"], dict[str, "RawType"]]
+MainTypes = typing.Union[
+    BasicType, list[str], list["MainTypes"], dict[str, "MainTypes"]
+]
 
 
 @define
@@ -173,8 +175,13 @@ class InputDefinition:
         inputs = []
         for key, param in step.arguments.items():
             if isinstance(param, Reference):
-                ref = ReferenceDefinition.from_reference(param).render()
-                input = f"{key}=rules.{ref.replace("-","_").replace("/out", ".output")}.output_file"
+                ref = (
+                    ReferenceDefinition.from_reference(param)
+                    .render()
+                    .replace("-", "_")
+                    .replace("/out", ".output")
+                )
+                input = f"{key}=rules.{ref}.output_file"
                 inputs.append(input)
                 params.append(input + ",")
             elif isinstance(param, Raw):
@@ -190,7 +197,7 @@ class InputDefinition:
         """Renders the input and parameter definitions as a dictionary.
 
         Returns:
-            dict[str, list[RawType]]: A dictionary containing the input and parameter definitions,
+            dict[str, list[MainTypes]]: A dictionary containing the input and parameter definitions,
                 for use in Snakemake Input and Params blocks.
         """
         return {"inputs": self.inputs, "params": self.params}
@@ -283,8 +290,7 @@ class RunDefinition:
 
         args = get_method_args(task.target)
         signature = [
-            f"{param_name}=params.{param_name}"
-            for param_name, param in args.parameters.items()
+            f"{param_name}=params.{param_name}" for param_name in args.parameters.keys()
         ]
 
         return cls(method_name=task.name, rel_import=rel_import, args=signature)
@@ -319,7 +325,7 @@ class StepDefinition:
         from_step(cls, step: Step) -> "StepDefinition": Constructs a StepDefinition
             object from a Step object, extracting step information and components
             from the step and converting them to Snakemake format.
-        render(self) -> dict[str, RawType]: Renders the step definition as a dictionary
+        render(self) -> dict[str, MainTypes]: Renders the step definition as a dictionary
             suitable for use in Snakemake workflows.
     """
 
@@ -352,11 +358,11 @@ class StepDefinition:
             output=output_block,
         )
 
-    def render(self) -> dict[str, RawType]:
+    def render(self) -> dict[str, MainTypes]:
         """Renders the step definition as a dictionary.
 
         Returns:
-            dict[str, RawType]: A dictionary containing the components of the step
+            dict[str, MainTypes]: A dictionary containing the components of the step
                 definition, for use in Snakemake workflows.
         """
         return {
@@ -383,7 +389,7 @@ class WorkflowDefinition:
         from_workflow(cls, workflow: Workflow) -> "WorkflowDefinition": Constructs a WorkflowDefinition
             object from a Workflow object, converting its steps to StepDefinition objects.
 
-        render(self) -> dict[str, RawType]: Renders the workflow definition as a dictionary
+        render(self) -> dict[str, MainTypes]: Renders the workflow definition as a dictionary
             containing Snakemake rules, for use in Snakemake workflows.
     """
 
@@ -404,11 +410,11 @@ class WorkflowDefinition:
         """
         return cls(steps=[StepDefinition.from_step(step) for step in workflow.steps])
 
-    def render(self) -> dict[str, RawType]:
+    def render(self) -> dict[str, MainTypes]:
         """Render the WorkflowDefinition.
 
         Returns:
-            dict[str, RawType]: A dictionary containing the components of the Workflow
+            dict[str, MainTypes]: A dictionary containing the components of the Workflow
                 definition, for use in Snakemake workflows.
         """
         return {
@@ -419,7 +425,7 @@ class WorkflowDefinition:
 def render(workflow: Workflow) -> str:
     """Render the workflow as a Snakemake (SMK) string.
 
-    This function converts a Workflow object into a Snakemake-compatible yamp.
+    This function converts a Workflow object into a Snakemake-compatible yaml.
 
     Args:
         workflow (Workflow): The workflow to be rendered.
