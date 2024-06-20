@@ -60,15 +60,17 @@ rule process_data_75213b5c31fed773cd1f7ca1dfb6ab5a:
         snakemake_tasks.process_data(data_file=params.data_file, multiple_arg=params.multiple_arg,
         output_file=params.output_file)
 
-In order to make the snakemake file be executable you need to manually add:
+In order to make the snakemake file be executable you need to:
+- manually add:
 rule all:
     input:
         "results/report.txt" # To make sure all connected rules are executed. For more information https://snakemake.readthedocs.io/
-
-Changed the order of the rules to match the order of execution.
-Make sure all methods in run blocks are on the same line.
+- Change the order of the rules to match the order of execution.
+- Make sure all methods in run blocks are on the same line.
+- Remove @task annotation from the snakemake_workflow.py
 """
 
+import yaml
 from dewret.tasks import task, construct
 from dewret.renderers.snakemake import render
 
@@ -162,4 +164,13 @@ if __name__ == "__main__":
     smk_output = render(workflow)
 
     with open("Snakefile", "w") as file:
+        trans_table = str.maketrans(
+            {
+                "-": "   ",
+                "'": "",
+                "[": "",
+                "]": "",
+            }
+        )
+        smk_output = yaml.dump(smk_output, indent=4).translate(trans_table)
         file.write(smk_output)
