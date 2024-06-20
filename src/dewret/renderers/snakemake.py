@@ -418,8 +418,23 @@ class WorkflowDefinition:
                 definition, for use in Snakemake workflows.
         """
         return {
-            f"rule {step.name.replace("-", "_")}": step.render() for step in self.steps
+            f"rule {step.name.replace('-', '_')}": step.render() for step in self.steps
         }
+
+
+def raw_render(workflow: Workflow) -> dict[str, MainTypes]:
+    """Render the workflow as a Snakemake (SMK) string.
+
+    This function converts a Workflow object into a object containing snakemake rules.
+
+    Args:
+        workflow (Workflow): The workflow to be rendered.
+
+    Returns:
+        dict[str, MainTypes]: A dictionary containing the components of the Workflow
+            definition, for use in Snakemake workflows.
+    """
+    return WorkflowDefinition.from_workflow(workflow).render()
 
 
 def render(workflow: Workflow) -> str:
@@ -441,6 +456,7 @@ def render(workflow: Workflow) -> str:
             "]": "",
         }
     )
+
     return yaml.dump(
         WorkflowDefinition.from_workflow(workflow).render(), indent=4
     ).translate(trans_table)
