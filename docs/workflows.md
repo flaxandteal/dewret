@@ -15,7 +15,7 @@ We can pull in dewret tools to produce CWL with a small number of imports.
 ## Dependencies
 
 Specifying step interdependencies is possible by combining lazy-evaluated function
-calls.
+calls. The output series of steps is not guaranteed to be in order of execution.
 
 Dewret hashes the parameters to identify and unify steps. This lets you do, for example:
 
