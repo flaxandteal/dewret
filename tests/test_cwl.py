@@ -320,3 +320,109 @@ def test_complex_cwl_references() -> None:
                     source: mod10-1/out
             out: [out]
     """)
+
+
+def test_cwl_with_subworkflow_and_raw_params() -> None:
+    """Check whether we can produce a subworkflow from CWL."""
+    my_param = param("num", typ=int)
+    result = increment(num=floor(num=triple_and_one(num=sum(left=my_param, right=3))))
+    workflow = construct(result, simplify_ids=True)
+    rendered, subworkflows = render(workflow)
+
+    assert len(subworkflows) == 1
+    assert isinstance(subworkflows, dict)
+    name, subworkflow = list(subworkflows.items())[0]
+
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          num:
+            label: num
+            type: int
+          sum-1-right:
+            default: 3
+            label: sum-1-right
+            type: int
+        outputs:
+          out:
+            label: out
+            outputSource: increment-1/out
+            type: int
+        steps:
+          floor-1:
+             in:
+               num:
+                 source: triple_and_one-1/out
+             out: [out]
+             run: floor
+          increment-1:
+             in:
+               num:
+                 source: floor-1/out
+             out: [out]
+             run: increment
+          sum-1:
+             in:
+               left:
+                 source: num
+               right:
+                 source: sum-1-right
+             out: [out]
+             run: sum
+          triple_and_one-1:
+             in:
+               num:
+                 source: sum-1/out
+             out: [out]
+             run: triple_and_one
+    """)
+
+    assert subworkflow == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          num:
+            label: num
+            type: [
+              int,
+              double
+            ]
+          sum-1-2-right:
+            default: 1
+            label: sum-1-2-right
+            type: int
+        outputs:
+          out:
+            label: out
+            outputSource: sum-1-2/out
+            type:
+            - int
+            - double
+        steps:
+          double-1-1:
+            in:
+              num:
+                source: num
+            out:
+            - out
+            run: double
+          sum-1-1:
+            in:
+              left:
+                source: double-1-1/out
+              right:
+                source: num
+            out:
+            - out
+            run: sum
+          sum-1-2:
+            in:
+              left:
+                source: sum-1-1/out
+              right:
+                source: sum-1-2-right
+            out:
+            - out
+            run: sum
+    """)
