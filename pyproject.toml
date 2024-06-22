@@ -49,5 +49,11 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = ["dask >= 2022", "pyyaml", "attrs", "click", "setuptools >= 65.5.1", "numpy", "sympy"]
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [project.optional-dependencies]
 test = ["pytest", "coverage", "ruff", "mypy"]
+docs = [
+  "portray @ git+https://github.com/flaxandteal/portray.git#v1.8.0-fat"
+]
