@@ -1,7 +1,8 @@
 """Verify CWL output is OK."""
 
 import yaml
-from dewret.tasks import construct, task
+from datetime import datetime, timedelta
+from dewret.tasks import construct, task, factory
 from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.workflow import param
@@ -21,6 +22,17 @@ def pi() -> float:
 def floor(num: int | float) -> int:
     """Converts int/float to int."""
     return int(num)
+
+
+@task()
+def days_in_future(now: datetime, num: int | float) -> datetime:
+    """Add `num` days to `now`.
+
+    Args:
+        now: current datetime.
+        num: count of days.
+    """
+    return now + timedelta(days=num)
 
 
 def test_basic_cwl() -> None:
@@ -48,6 +60,79 @@ def test_basic_cwl() -> None:
             run: pi
             in: {{}}
             out: [out]
+    """)
+
+
+def test_input_factories() -> None:
+    """Use input factories to input complex types.
+
+    Tests whether input factories can be treated as steps,
+    or complex input, as a flag choice to the renderer.
+    """
+
+    def get_now() -> datetime:
+        return datetime.now()
+
+    now = factory(get_now)()
+    result = days_in_future(now=now, num=3)
+    workflow = construct(result, simplify_ids=True)
+    rendered = render(workflow, allow_complex_types=True, factories_as_params=True)
+
+    assert rendered == yaml.safe_load("""
+        cwlVersion: 1.2
+        class: Workflow
+        inputs:
+          days_in_future-1-num:
+            default: 3
+            type: int
+            label: days_in_future-1-num
+          get_now-1:
+            label: get_now-1
+            type: datetime
+        outputs:
+          out:
+            label: out
+            outputSource: days_in_future-1/out
+            type: datetime
+        steps:
+          days_in_future-1:
+            run: days_in_future
+            in:
+              num:
+                source: days_in_future-1-num
+              now:
+                source: get_now-1/out
+            out: [out]
+    """)
+
+    rendered = render(workflow, allow_complex_types=True)
+
+    assert rendered == yaml.safe_load("""
+        cwlVersion: 1.2
+        class: Workflow
+        inputs:
+          days_in_future-1-num:
+            default: 3
+            type: int
+            label: days_in_future-1-num
+        outputs:
+          out:
+            label: out
+            outputSource: days_in_future-1/out
+            type: datetime
+        steps:
+          days_in_future-1:
+            run: days_in_future
+            in:
+              num:
+                source: days_in_future-1-num
+              now:
+                source: get_now-1/out
+            out: [out]
+          get_now-1:
+            in: {}
+            out: [out]
+            run: get_now
     """)
 
 

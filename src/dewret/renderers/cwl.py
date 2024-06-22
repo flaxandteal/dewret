@@ -19,12 +19,14 @@ current workflow.
 """
 
 from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstance
-from dataclasses import is_dataclass, fields as dataclass_fields
+from dataclasses import dataclass, is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
-from typing import TypedDict, NotRequired, get_args, Union, cast, Any
+from contextvars import ContextVar
+from typing import TypedDict, NotRequired, get_args, Union, cast, Any, Unpack
 from types import UnionType
 
 from dewret.workflow import (
+    FactoryCall,
     Reference,
     Raw,
     Workflow,
@@ -37,6 +39,45 @@ from dewret.workflow import (
 from dewret.utils import RawType, flatten, DataclassProtocol
 
 InputSchemaType = Union[str, "CommandInputSchema", list[str], list["InputSchemaType"]]
+
+
+@dataclass
+class CWLRendererConfiguration(TypedDict):
+    """Configuration for the renderer.
+
+    Attributes:
+        allow_complex_types: can input/output types be other than raw?
+        factories_as_params: should factories be treated as input or steps?
+    """
+
+    allow_complex_types: NotRequired[bool]
+    factories_as_params: NotRequired[bool]
+
+
+CONFIGURATION: ContextVar[CWLRendererConfiguration] = ContextVar("cwl-configuration")
+
+
+def set_configuration(configuration: CWLRendererConfiguration) -> None:
+    """Set configuration for this rendering.
+
+    Args:
+        configuration: overridden settings as dict.
+    """
+    CONFIGURATION.set(
+        CWLRendererConfiguration(
+            allow_complex_types=False,
+            factories_as_params=False,
+        )
+    )
+    CONFIGURATION.get().update(configuration)
+
+
+def configuration(key: str) -> Any:
+    """Retrieve current configuration (thread/async-local)."""
+    current_configuration = CONFIGURATION.get()
+    if key not in current_configuration:
+        raise KeyError("Unknown configuration settings.")
+    return current_configuration.get(key)
 
 
 @define
@@ -176,6 +217,8 @@ def to_cwl_type(typ: type) -> str | list[str]:
     elif typ == str:
         return "string"
     else:
+        if configuration("allow_complex_types"):
+            return typ.__name__
         raise TypeError(f"Cannot render complex type ({typ}) to CWL")
 
 
@@ -332,7 +375,7 @@ class InputsDefinition:
 
     @classmethod
     def from_parameters(
-        cls, parameters: list[ParameterReference]
+        cls, parameters: list[ParameterReference | FactoryCall]
     ) -> "InputsDefinition":
         """Takes a list of parameters into a CWL structure.
 
@@ -345,9 +388,9 @@ class InputsDefinition:
             inputs={
                 input.name: cls.CommandInputParameter(
                     label=input.name,
-                    default=input.parameter.default,
+                    default=input.default,
                     type=raw_to_command_input_schema(
-                        label=input.name, value=input.parameter.default
+                        label=input.name, value=input.default
                     ),
                 )
                 for input in parameters
@@ -445,9 +488,23 @@ class WorkflowDefinition:
             workflow: workflow to convert.
             name: name of this workflow, if it should have one.
         """
+        parameters: list[ParameterReference | FactoryCall] = list(
+            workflow.find_parameters(
+                include_factory_calls=not configuration("factories_as_params")
+            )
+        )
+        if configuration("factories_as_params"):
+            parameters += list(workflow.find_factories().values())
         return cls(
-            steps=[StepDefinition.from_step(step) for step in workflow.steps],
-            inputs=InputsDefinition.from_parameters(list(workflow.find_parameters())),
+            steps=[
+                StepDefinition.from_step(step)
+                for step in workflow.steps
+                if not (
+                    isinstance(step, FactoryCall)
+                    and configuration("factories_as_params")
+                )
+            ],
+            inputs=InputsDefinition.from_parameters(parameters),
             outputs=OutputsDefinition.from_results(
                 {workflow.result.field: workflow.result} if workflow.result else {}
             ),
@@ -471,17 +528,19 @@ class WorkflowDefinition:
 
 
 def render(
-    workflow: Workflow,
+    workflow: Workflow, **kwargs: Unpack[CWLRendererConfiguration]
 ) -> dict[str, RawType] | tuple[dict[str, RawType], dict[str, dict[str, RawType]]]:
     """Render to a dict-like structure.
 
     Args:
         workflow: workflow to evaluate result.
+        **kwargs: additional configuration arguments - these should match CWLRendererConfiguration.
 
     Returns:
         Reduced form as a native Python dict structure for
         serialization.
     """
+    set_configuration(kwargs)
     primary_workflow = WorkflowDefinition.from_workflow(workflow).render()
     subworkflows = {}
     for step in workflow.steps:

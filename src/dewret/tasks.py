@@ -283,6 +283,15 @@ def is_in_nested_task() -> bool:
         return False
 
 
+def factory(fn: Callable[..., RetType]) -> Callable[..., RetType]:
+    """Create a factory, that can be treated as complex input to a workflow.
+
+    Args:
+        fn: a callable to create the entity.
+    """
+    return task(is_factory=True)(fn)
+
+
 def nested_task() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Shortcut for marking a task as nested.
 
@@ -342,6 +351,7 @@ def subworkflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetTyp
 def task(
     nested: bool = False,
     flatten_nested: bool = True,
+    is_factory: bool = False,
 ) -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Decorator factory abstracting backend's own task decorator.
 
@@ -366,6 +376,8 @@ def task(
         flatten_nested: (only relevant to nested tasks) should this nested task
             be considered a distinct subworkflow, or is it just organizational
             for the outer workflow.
+        is_factory: whether this task should be marked as a 'factory', rather than
+            a normal step.
 
     Returns:
         Decorator for the current backend to mark lazy-executable tasks.
@@ -436,7 +448,13 @@ def task(
                         elif isinstance(value, Parameter):
                             kwargs[var] = ParameterReference(workflow, value)
                 original_kwargs = dict(kwargs)
-                for var, value in inspect.getclosurevars(fn).globals.items():
+                try:
+                    fn_globals = dict(inspect.getclosurevars(fn).globals)
+                # This covers the case of wrapping, rather than decorating.
+                except TypeError:
+                    fn_globals = {}
+
+                for var, value in fn_globals.items():
                     # This error is redundant as it triggers a SyntaxError in Python.
                     # Note: the following test duplicates a syntax error.
                     #   if var in kwargs:
@@ -523,7 +541,12 @@ def task(
                     )
                 step = cast(
                     RetType,
-                    workflow.add_step(fn, kwargs, raw_as_parameter=is_in_nested_task()),
+                    workflow.add_step(
+                        fn,
+                        kwargs,
+                        raw_as_parameter=is_in_nested_task(),
+                        is_factory=is_factory,
+                    ),
                 )
                 return step
             except TaskException as exc:
