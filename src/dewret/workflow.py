@@ -24,9 +24,9 @@ import base64
 from attrs import define, has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter
-from typing import Protocol, Any, TypeVar, Generic, cast
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal
+from uuid import uuid4
 
-from sympy import Symbol
 import logging
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,32 @@ StepExecution = Callable[..., Lazy]
 LazyFactory = Callable[[Target], Lazy]
 
 
-class Parameter(Generic[T], Symbol):  # type: ignore[no-untyped-call]
+class Unset:
+    """Unset variable, with no default value."""
+
+
+class UnsetType(Unset, Generic[T]):
+    """Unset variable with a specific type.
+
+    Attributes:
+        __type__: type of the variable.
+    """
+
+    __type__: type[T]
+
+    def __init__(self, raw_type: type[T]):
+        """Create a new Unset token of a specific type.
+
+        Attributes:
+            __type__: type of the variable.
+        """
+        self.__type__ = raw_type
+
+
+UNSET = Unset()
+
+
+class Parameter(Generic[T]):
     """Global parameter.
 
     Independent parameter that will be used when a task is spotted
@@ -120,21 +145,105 @@ class Parameter(Generic[T], Symbol):  # type: ignore[no-untyped-call]
     """
 
     __name__: str
-    __default__: T
+    __default__: T | UnsetType[T]
+    __tethered__: Literal[False] | None | BaseStep | Workflow
 
-    def __init__(self, name: str, default: T):
+    autoname: bool = False
+
+    def __init__(
+        self,
+        name: str,
+        default: T | UnsetType[T],
+        tethered: Literal[False] | None | Step | Workflow = None,
+        autoname: bool = False,
+    ):
         """Construct a parameter.
 
         Args:
             name: name of the parameter.
             default: value to infer type, etc. from.
+            tethered: a workflow or step that demands this parameter; None if not yet present, False if not desired.
+            autoname: whether we should customize this name for uniqueness (it is not user-set).
         """
-        Symbol.__init__(name)
+        self.__original_name__ = name
+
+        # TODO: is using this in a step hash a risk of ambiguity? (full name is circular)
+        if autoname:
+            name = f"{name}-{uuid4()}"
+        self.autoname = autoname
+
         self.__name__ = name
         self.__default__ = default
+        self.__tethered__ = tethered
+        self.__callers__: list[BaseStep] = []
+
+        if (
+            default is not None
+            and hasattr(default, "__type__")
+            and isinstance(default.__type__, type)
+        ):
+            raw_type = default.__type__
+        else:
+            raw_type = type(default)
+        self.__type__: type[T] = raw_type
+
+        if tethered and isinstance(tethered, BaseStep):
+            self.register_caller(tethered)
+
+    def __hash__(self) -> int:
+        """Get a unique hash for this parameter."""
+        if self.__tethered__ is None:
+            raise RuntimeError(
+                "Parameter {self.full_name} was never tethered but should have been"
+            )
+        return hash(self.__name__)
+
+    @property
+    def default(self) -> T | UnsetType[T]:
+        """Retrieve default value for this parameter, or an unset token."""
+        return self.__default__
+
+    @property
+    def full_name(self) -> str:
+        """Extended name, suitable for rendering.
+
+        This attempts to create a unique name by tying the parameter to a step
+        if the user has not explicitly provided a name, ideally the one where
+        we discovered it.
+        """
+        tethered = self.__tethered__
+        if tethered is False or tethered is None or self.autoname is False:
+            return self.__name__
+        else:
+            return f"{tethered.name}-{self.__original_name__}"
+
+    def register_caller(self, caller: BaseStep) -> None:
+        """Capture a step that uses this parameter.
+
+        Gathers together the steps using this parameter. The first found will
+        be recorded as the tethered step, and used for forming the name.
+        """
+        if self.__tethered__ is None:
+            self.__tethered__ = caller
+        self.__callers__.append(caller)
+
+    @property
+    def name(self) -> str:
+        """Name for this step.
+
+        May be remapped by the workflow to something nicer
+        than the ID.
+        """
+        return self.full_name
 
 
-def param(name: str, default: T) -> T:
+def param(
+    name: str,
+    default: T | UnsetType[T] | Unset = UNSET,
+    tethered: Literal[False] | None | Step | Workflow = False,
+    typ: type[T] | Unset = UNSET,
+    autoname: bool = False,
+) -> T:
     """Create a parameter.
 
     Will cast so it looks like the original type.
@@ -142,7 +251,13 @@ def param(name: str, default: T) -> T:
     Returns:
         Parameter class cast to the type of the supplied default.
     """
-    return cast(T, Parameter(name, default=default))
+    if default is UNSET:
+        if isinstance(typ, Unset):
+            raise ValueError("Must provide a default or a type")
+        default = UnsetType[T](typ)
+    return cast(
+        T, Parameter(name, default=default, tethered=tethered, autoname=autoname)
+    )
 
 
 class Task:
@@ -212,17 +327,56 @@ class Workflow:
         result: target reference to evaluate, if yet present.
     """
 
-    steps: list["Step"]
+    steps: list["BaseStep"]
     tasks: MutableMapping[str, "Task"]
     result: StepReference[Any] | None
     _remapping: dict[str, str] | None
+    _name: str | None
 
-    def __init__(self) -> None:
+    def __init__(self, name: str | None = None) -> None:
         """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
         self.steps = []
         self.tasks = {}
         self.result: StepReference[Any] | None = None
         self._remapping = None
+        self._name = name
+
+    def __str__(self) -> str:
+        """Name of the workflow, if available."""
+        if self._name is None:
+            return super().__str__()
+        return self.name
+
+    def __hash__(self) -> int:
+        """Hashes for finding."""
+        return hash(self.name)
+
+    def __eq__(self, other: object) -> bool:
+        """Is this the same workflow?
+
+        At present, we naively compare the steps and arguments. In
+        future, this may be more nuanced.
+        """
+        if not isinstance(other, Workflow):
+            return False
+        return (
+            self.steps == other.steps
+            and self.tasks == other.tasks
+            and self.result == other.result
+            and self._remapping == other._remapping
+            and self._name == other._name
+        )
+
+    @property
+    def name(self) -> str:
+        """Get the name of the workflow.
+
+        Raises:
+            NameError: if no name has been set.
+        """
+        if self._name is None:
+            raise NameError("Can not get the name of an anonymous workflow.")
+        return self._name
 
     def find_parameters(self) -> set[ParameterReference]:
         """Crawl steps for parameter references.
@@ -245,7 +399,7 @@ class Workflow:
         )
 
     @property
-    def _indexed_steps(self) -> dict[str, Step]:
+    def _indexed_steps(self) -> dict[str, BaseStep]:
         """Steps mapped by ID.
 
         Forces generation of IDs. Note that this effectively
@@ -273,11 +427,18 @@ class Workflow:
         """
         new = cls()
 
+        new._name = left._name or right._name
+
         left_steps = left._indexed_steps
         right_steps = right._indexed_steps
+
+        for step in list(left_steps.values()) + list(right_steps.values()):
+            step.set_workflow(new)
+            for arg in step.arguments:
+                if hasattr(arg, "__workflow__"):
+                    arg.__workflow__ = new
+
         for step_id in left_steps.keys() & right_steps.keys():
-            left_steps[step_id].set_workflow(new)
-            right_steps[step_id].set_workflow(new)
             if left_steps[step_id] != right_steps[step_id]:
                 raise RuntimeError(
                     f"Two steps have same ID but do not match: {step_id}"
@@ -296,6 +457,16 @@ class Workflow:
         for step in new.steps:
             step.__workflow__ = new
 
+        # TODO: should we combine as a result array?
+        result = left.result or right.result
+
+        if result:
+            new.set_result(
+                StepReference(
+                    new, result.step, typ=result.return_type, field=result.field
+                )
+            )
+
         return new
 
     def remap(self, step_id: str) -> str:
@@ -309,16 +480,35 @@ class Workflow:
         """
         return self._remapping.get(step_id, step_id) if self._remapping else step_id
 
-    def simplify_ids(self) -> None:
+    def simplify_ids(self, infix: list[str] | None = None) -> None:
         """Work out mapping to simple ints from hashes.
 
         Goes through and numbers each step by the order of use of its task.
         """
-        counter = Counter[Task]()
+        counter = Counter[Task | Workflow]()
         self._remapping = {}
+        infix_str = ("-".join(infix) + "-") if infix else ""
         for step in self.steps:
             counter[step.task] += 1
-            self._remapping[step.id] = f"{step.task}-{counter[step.task]}"
+            self._remapping[step.id] = f"{step.task}-{infix_str}{counter[step.task]}"
+            if isinstance(step, NestedStep):
+                step.subworkflow.simplify_ids(
+                    infix=(infix or []) + [str(counter[step.task])]
+                )
+        param_counter = Counter[str]()
+        name_to_original: dict[str, str] = {}
+        for name, param in {
+            pr.parameter.__name__: pr.parameter for pr in self.find_parameters()
+        }.items():
+            if param.__original_name__ != name:
+                param_counter[param.__original_name__] += 1
+                self._remapping[param.__name__] = (
+                    f"{param.__original_name__}-{param_counter[param.__original_name__]}"
+                )
+                name_to_original[param.__original_name__] = param.__name__
+        for pname, count in param_counter.items():
+            if count == 1:
+                self._remapping[name_to_original[pname]] = pname
 
     def register_task(self, fn: Lazy) -> Task:
         """Note the existence of a lazy-evaluatable function, and wrap it as a `Task`.
@@ -338,8 +528,30 @@ class Workflow:
         self.tasks[name] = task
         return task
 
+    def add_nested_step(
+        self, name: str, subworkflow: Workflow, kwargs: dict[str, Any]
+    ) -> StepReference[Any]:
+        """Append a nested step.
+
+        Calls a subworkflow.
+
+        Args:
+            name: name of the subworkflow.
+            subworkflow: the subworkflow itself.
+            kwargs: any key-value arguments to pass in the call.
+        """
+        step = NestedStep(self, name, subworkflow, kwargs)
+        self.steps.append(step)
+        return_type = step.return_type
+        if return_type is inspect._empty:
+            raise TypeError("All tasks should have a type annotation.")
+        return StepReference(self, step, return_type)
+
     def add_step(
-        self, fn: Lazy, kwargs: dict[str, Raw | Reference]
+        self,
+        fn: Lazy,
+        kwargs: dict[str, Raw | Reference],
+        raw_as_parameter: bool = False,
     ) -> StepReference[Any]:
         """Append a step.
 
@@ -349,9 +561,10 @@ class Workflow:
         Args:
             fn: the target function to turn into a step.
             kwargs: any key-value arguments to pass in the call.
+            raw_as_parameter: whether to turn any discovered raw arguments into workflow parameters.
         """
         task = self.register_task(fn)
-        step = Step(self, task, kwargs)
+        step = Step(self, task, kwargs, raw_as_parameter=raw_as_parameter)
         self.steps.append(step)
         return_type = step.return_type
         if return_type is inspect._empty:
@@ -359,7 +572,9 @@ class Workflow:
         return StepReference(self, step, return_type)
 
     @staticmethod
-    def from_result(result: StepReference[Any], simplify_ids: bool = False) -> Workflow:
+    def from_result(
+        result: StepReference[Any], simplify_ids: bool = False, nested: bool = True
+    ) -> Workflow:
         """Create from a desired result.
 
         Starts from a result, and builds a workflow to output it.
@@ -432,7 +647,7 @@ class Reference:
         raise NotImplementedError("Reference must provide a name")
 
 
-class Step(WorkflowComponent):
+class BaseStep(WorkflowComponent):
     """Lazy-evaluated function call.
 
     Individual function call to a lazy-evaluatable function, tracked
@@ -444,11 +659,15 @@ class Step(WorkflowComponent):
     """
 
     _id: str | None = None
-    task: Task
+    task: Task | Workflow
     arguments: Mapping[str, Reference | Raw]
 
     def __init__(
-        self, workflow: Workflow, task: Task, arguments: Mapping[str, Reference | Raw]
+        self,
+        workflow: Workflow,
+        task: Task | Workflow,
+        arguments: Mapping[str, Reference | Raw],
+        raw_as_parameter: bool = False,
     ):
         """Initialize a step.
 
@@ -456,6 +675,7 @@ class Step(WorkflowComponent):
             workflow: `Workflow` that this is tied to.
             task: the lazy-evaluatable function that this wraps.
             arguments: key-value pairs to pass to the function.
+            raw_as_parameter: whether to turn any raw-type arguments into workflow parameters (or just keep them as default argument values).
         """
         super().__init__(workflow)
         self.task = task
@@ -468,7 +688,15 @@ class Step(WorkflowComponent):
                     and not isinstance(value, Raw)
                     and is_raw(value)
                 ):
-                    value = Raw(value)
+                    if raw_as_parameter:
+                        value = ParameterReference(
+                            workflow, param(key, value, tethered=None)
+                        )
+                    else:
+                        value = Raw(value)
+                if isinstance(value, ParameterReference):
+                    parameter = value.parameter
+                    parameter.register_caller(self)
                 self.arguments[key] = value
             else:
                 raise RuntimeError(
@@ -481,7 +709,7 @@ class Step(WorkflowComponent):
         At present, we naively compare the task and arguments. In
         future, this may be more nuanced.
         """
-        if not isinstance(other, Step):
+        if not isinstance(other, BaseStep):
             return False
         return (
             self.__workflow__ == other.__workflow__
@@ -516,6 +744,13 @@ class Step(WorkflowComponent):
         Returns:
             Expected type of the return value.
         """
+        if isinstance(self.task, Workflow):
+            if self.task.result:
+                return self.task.result.return_type
+            else:
+                raise AttributeError(
+                    "Cannot determine return type of a workflow with an unspecified result"
+                )
         return inspect.signature(inspect.unwrap(self.task.target)).return_annotation
 
     @property
@@ -536,6 +771,7 @@ class Step(WorkflowComponent):
 
         check_id = self._generate_id()
         if check_id != self._id:
+            return self._id
             raise RuntimeError(
                 f"Cannot change a step after requesting its ID: {self.task}"
             )
@@ -552,6 +788,63 @@ class Step(WorkflowComponent):
         return f"{self.task}-{hasher(comp_tup)}"
 
 
+class NestedStep(BaseStep):
+    """Calling out to a subworkflow.
+
+    Type of BaseStep to call a subworkflow, which holds a reference to it.
+    """
+
+    def __init__(
+        self,
+        workflow: Workflow,
+        name: str,
+        subworkflow: Workflow,
+        arguments: Mapping[str, Reference | Raw],
+        raw_as_parameter: bool = False,
+    ):
+        """Create a NestedStep.
+
+        Args:
+            workflow: outer workflow.
+            name: name of the subworkflow.
+            subworkflow: inner workflow (subworkflow) itself.
+            arguments: arguments provided to the step.
+            raw_as_parameter: whether raw-type arguments should be made (outer) workflow parameters.
+        """
+        self.__subworkflow__ = subworkflow
+        super().__init__(
+            workflow=workflow,
+            task=subworkflow,
+            arguments=arguments,
+            raw_as_parameter=raw_as_parameter,
+        )
+
+    @property
+    def subworkflow(self) -> Workflow:
+        """Subworkflow that is wrapped."""
+        return self.__subworkflow__
+
+    @property
+    def return_type(self) -> Any:
+        """Take the type of the wrapped function from the target.
+
+        Unwraps and inspects the signature, meaning that the original
+        wrapped function _must_ have a typehint for the return value.
+
+        Returns:
+            Expected type of the return value.
+        """
+        if not self.__subworkflow__.result:
+            raise RuntimeError("Can only use a subworkflow if the reference exists.")
+        return self.__subworkflow__.result.return_type
+
+
+class Step(BaseStep):
+    """Regular step."""
+
+    ...
+
+
 class ParameterReference(Reference):
     """Reference to an individual `Parameter`.
 
@@ -560,12 +853,17 @@ class ParameterReference(Reference):
 
     Attributes:
         parameter: `Parameter` referred to.
+        __workflow__: Related workflow. In this case, as Parameters are generic
+            but ParameterReferences are specific, this carries the actual workflow reference.
+
+    Returns:
+        Workflow that the referee is related to.
     """
 
     parameter: Parameter[RawType]
-    workflow: Workflow
+    __workflow__: Workflow
 
-    def __init__(self, workflow: Workflow, parameter: Parameter[RawType]):
+    def __init__(self, __workflow__: Workflow, parameter: Parameter[RawType]):
         """Initialize the reference.
 
         Args:
@@ -573,15 +871,35 @@ class ParameterReference(Reference):
             parameter: `Parameter` that this refers to.
         """
         self.parameter = parameter
-        self.workflow = workflow
+        self.__workflow__ = __workflow__
+
+    @property
+    def __type__(self) -> type:
+        """Type represented by wrapped parameter."""
+        return self.parameter.__type__
 
     def __str__(self) -> str:
         """Global description of the reference."""
-        return self.parameter.__name__
+        return self.parameter.full_name
 
     def __repr__(self) -> str:
         """Hashable reference to the step (and field)."""
-        return f":param:{self.parameter.__name__}"
+        try:
+            typ = self.__type__.__name__
+        except AttributeError:
+            typ = str(self.__type__)
+        return f"{typ}|:param:{self.unique_name}"
+
+    @property
+    def unique_name(self) -> str:
+        """Unique, machine-generated name.
+
+        Normally this will become invisible in output, but it avoids circularity
+        as a step that uses this parameter will ask for this when constructing
+        its own hash, but we will normally want to use the step's name as part of
+        the parameter name to distinguish from other parameters of the same name.
+        """
+        return self.parameter.__name__
 
     @property
     def name(self) -> str:
@@ -590,19 +908,7 @@ class ParameterReference(Reference):
         May be remapped by the workflow to something nicer
         than the ID.
         """
-        return self.parameter.__name__
-
-    @property
-    def __workflow__(self) -> Workflow:
-        """Related workflow.
-
-        In this case, as Parameters are generic but ParameterReferences are
-        specific, this carries the actual workflow reference.
-
-        Returns:
-            Workflow that the referee is related to.
-        """
-        return self.workflow
+        return self.__workflow__.remap(self.parameter.name)
 
     def __hash__(self) -> int:
         """Hash to parameter.
@@ -639,7 +945,7 @@ class StepReference(Generic[U], Reference):
         step: `Step` referred to.
     """
 
-    step: Step
+    step: BaseStep
     _field: str | None
     typ: type[U]
 
@@ -655,7 +961,7 @@ class StepReference(Generic[U], Reference):
         return self._field or "out"
 
     def __init__(
-        self, workflow: Workflow, step: Step, typ: type[U], field: str | None = None
+        self, workflow: Workflow, step: BaseStep, typ: type[U], field: str | None = None
     ):
         """Initialize the reference.
 
@@ -712,7 +1018,7 @@ class StepReference(Generic[U], Reference):
                 return self.__class__(
                     workflow=self.__workflow__, step=self.step, typ=typ, field=attr
                 )
-        raise RuntimeError(
+        raise AttributeError(
             "Can only get attribute of a StepReference representing an attrs-class or dataclass"
         )
 
@@ -735,6 +1041,11 @@ class StepReference(Generic[U], Reference):
         return f"{self.step.name}/{self.field}"
 
     @property
+    def __type__(self) -> Any:
+        """Type of the step's referenced value."""
+        return self.step.return_type
+
+    @property
     def __workflow__(self) -> Workflow:
         """Related workflow.
 
@@ -742,6 +1053,10 @@ class StepReference(Generic[U], Reference):
             Workflow that the referee is related to.
         """
         return self.step.__workflow__
+
+    @__workflow__.setter
+    def __workflow__(self, workflow: Workflow) -> None:
+        self.step.set_workflow(workflow)
 
 
 def merge_workflows(*workflows: Workflow) -> Workflow:
