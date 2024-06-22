@@ -77,6 +77,11 @@ def flatten(value: Any) -> RawType:
     raise RuntimeError(f"Could not flatten: {value}")
 
 
+def is_raw_type(typ: type) -> bool:
+    """Check if a type counts as "raw"."""
+    return issubclass(typ, str | float | bool | bytes | int | None | list | dict)
+
+
 def is_raw(value: Any) -> bool:
     """Check if a variable counts as "raw".
 

@@ -581,6 +581,7 @@ As we have used subworkflow to wrap the colour totals, the outer workflow
 contains references to them only. The subworkflows are now returned by `render`
 as a second term.
 
+```
 >>> yaml.dump(subworkflows["red_total-1"], sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
@@ -641,6 +642,132 @@ steps:
         source: shuffle-1-2/hearts
       right:
         source: shuffle-1-1/diamonds
+    out:
+    - out
+    run: sum
+
+```
+
+## Input Factories
+
+Sometimes we want to take complex Python input, not just raw types.
+Not all serialization support this, but the `factory` function lets us
+wrap a simple call, usually a constructor, that takes _only_ raw arguments.
+This can then rendered as either a step or a parameter depending on whether
+the chosen renderer has the capability.
+
+Below is the default output, treating `Pack` as a task.
+
+```
+>>> from dewret.tasks import subworkflow, factory
+>>> my_param = param("num", typ=int)
+>>> Pack = factory(PackResult)
+>>> @nested_task()
+... def black_total(pack: PackResult):
+...     return sum(
+...         left=pack.spades,
+...         right=pack.clubs
+...     )
+>>> pack = Pack(hearts=13, spades=13, diamonds=13, clubs=13)
+>>> workflow = construct(black_total(pack=pack), simplify_ids=True)
+>>> cwl = render(workflow)
+>>> yaml.dump(cwl, sys.stdout, indent=2)
+class: Workflow
+cwlVersion: 1.2
+inputs:
+  PackResult-1-clubs:
+    default: 13
+    label: PackResult-1-clubs
+    type: int
+  PackResult-1-diamonds:
+    default: 13
+    label: PackResult-1-diamonds
+    type: int
+  PackResult-1-hearts:
+    default: 13
+    label: PackResult-1-hearts
+    type: int
+  PackResult-1-spades:
+    default: 13
+    label: PackResult-1-spades
+    type: int
+outputs:
+  out:
+    label: out
+    outputSource: sum-1/out
+    type: int
+steps:
+  PackResult-1:
+    in:
+      clubs:
+        source: PackResult-1-clubs
+      diamonds:
+        source: PackResult-1-diamonds
+      hearts:
+        source: PackResult-1-hearts
+      spades:
+        source: PackResult-1-spades
+    out:
+      clubs:
+        label: clubs
+        type: int
+      diamonds:
+        label: diamonds
+        type: int
+      hearts:
+        label: hearts
+        type: int
+      spades:
+        label: spades
+        type: int
+    run: PackResult
+  sum-1:
+    in:
+      left:
+        source: PackResult-1/spades
+      right:
+        source: PackResult-1/clubs
+    out:
+    - out
+    run: sum
+
+```
+
+The CWL renderer is also able to treat `pack` as a parameter, if complex
+types are allowed.
+
+```
+>>> from dewret.tasks import subworkflow, factory
+>>> my_param = param("num", typ=int)
+>>> Pack = factory(PackResult)
+>>> @nested_task()
+... def black_total(pack: PackResult):
+...     return sum(
+...         left=pack.spades,
+...         right=pack.clubs
+...     )
+>>> pack = Pack(hearts=13, spades=13, diamonds=13, clubs=13)
+>>> workflow = construct(black_total(pack=pack), simplify_ids=True)
+>>> cwl = render(workflow, allow_complex_types=True, factories_as_params=True)
+>>> yaml.dump(cwl, sys.stdout, indent=2)
+class: Workflow
+cwlVersion: 1.2
+inputs:
+  PackResult-1:
+    label: PackResult-1
+    type: PackResult
+outputs:
+  out:
+    label: out
+    outputSource: sum-1/out
+    type: int
+steps:
+  sum-1:
+    in:
+      left:
+        source: PackResult-1/spades
+      right:
+        source: PackResult-1/clubs
     out:
     - out
     run: sum
