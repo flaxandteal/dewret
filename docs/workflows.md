@@ -8,6 +8,7 @@ We can pull in dewret tools to produce CWL with a small number of imports.
 >>> import sys
 >>> import yaml
 >>> from dewret.tasks import task, construct
+>>> from dewret.workflow import param
 >>> from dewret.renderers.cwl import render
 
 ```
@@ -114,13 +115,14 @@ steps:
 
 ```
 
-Notice that the `increment` tasks appears only once in the CWL workflow definition, despite being referenced twice in the python code above. 
-Changing the workflow to include two increments with distinct input parameters renders a workflow with two calls to increment:
+Notice that the `increment` tasks appears twice in the CWL workflow definition, being referenced twice in the python code above. 
+This duplication can be avoided by explicitly indicating that the parameters are the same, with the `param` function.
 
 ```python
+>>> num = param("num", default=3)
 >>> result = sum(
-...     left=double(num=increment(num=23)),
-...     right=mod10(num=increment(num=3))
+...     left=double(num=increment(num=num)),
+...     right=mod10(num=increment(num=num))
 ... )
 >>> workflow = construct(result, simplify_ids=True)
 >>> cwl = render(workflow)
@@ -128,13 +130,9 @@ Changing the workflow to include two increments with distinct input parameters r
 class: Workflow
 cwlVersion: 1.2
 inputs:
-  increment-1-num:
+  num:
     default: 3
-    label: increment-1-num
-    type: int
-  increment-2-num:
-    default: 23
-    label: increment-2-num
+    label: num
     type: int
 outputs:
   out:
@@ -145,21 +143,14 @@ steps:
   double-1:
     in:
       num:
-        source: increment-2/out
+        source: increment-1/out
     out:
     - out
     run: double
   increment-1:
     in:
       num:
-        source: increment-1-num
-    out:
-    - out
-    run: increment
-  increment-2:
-    in:
-      num:
-        source: increment-2-num
+        source: num
     out:
     - out
     run: increment
