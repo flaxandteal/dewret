@@ -520,3 +520,129 @@ steps:
     run: sum
 
 ```
+
+## Subworkflow
+
+A special form of nested task is available to help divide up
+more complex workflows: the *subworkflow*. By wrapping logic in subflows,
+dewret will produce multiple output workflows that reference each other.
+
+```
+>>> from dewret.tasks import subworkflow
+>>> my_param = param("num", typ=int)
+>>> @subworkflow()
+... def red_total():
+...     return sum(
+...         left=shuffle(max_cards_per_suit=13).hearts,
+...         right=shuffle(max_cards_per_suit=13).diamonds
+...     )
+>>> @subworkflow()
+... def black_total():
+...     return sum(
+...         left=shuffle(max_cards_per_suit=13).spades,
+...         right=shuffle(max_cards_per_suit=13).clubs
+...     )
+>>> total = sum(left=red_total(), right=black_total())
+>>> workflow = construct(total, simplify_ids=True)
+>>> cwl, subworkflows = render(workflow)
+>>> yaml.dump(cwl, sys.stdout, indent=2)
+class: Workflow
+cwlVersion: 1.2
+inputs: {}
+outputs:
+  out:
+    label: out
+    outputSource: sum-1/out
+    type: int
+steps:
+  black_total-1:
+    in: {}
+    out:
+    - out
+    run: black_total
+  red_total-1:
+    in: {}
+    out:
+    - out
+    run: red_total
+  sum-1:
+    in:
+      left:
+        source: red_total-1/out
+      right:
+        source: black_total-1/out
+    out:
+    - out
+    run: sum
+
+```
+
+As we have used subworkflow to wrap the colour totals, the outer workflow
+contains references to them only. The subworkflows are now returned by `render`
+as a second term.
+
+>>> yaml.dump(subworkflows["red_total-1"], sys.stdout, indent=2)
+class: Workflow
+cwlVersion: 1.2
+inputs:
+  shuffle-1-1-max_cards_per_suit:
+    default: 13
+    label: shuffle-1-1-max_cards_per_suit
+    type: int
+  shuffle-1-2-max_cards_per_suit:
+    default: 13
+    label: shuffle-1-2-max_cards_per_suit
+    type: int
+outputs:
+  out:
+    label: out
+    outputSource: sum-1-1/out
+    type: int
+steps:
+  shuffle-1-1:
+    in:
+      max_cards_per_suit:
+        source: shuffle-1-1-max_cards_per_suit
+    out:
+      clubs:
+        label: clubs
+        type: int
+      diamonds:
+        label: diamonds
+        type: int
+      hearts:
+        label: hearts
+        type: int
+      spades:
+        label: spades
+        type: int
+    run: shuffle
+  shuffle-1-2:
+    in:
+      max_cards_per_suit:
+        source: shuffle-1-2-max_cards_per_suit
+    out:
+      clubs:
+        label: clubs
+        type: int
+      diamonds:
+        label: diamonds
+        type: int
+      hearts:
+        label: hearts
+        type: int
+      spades:
+        label: spades
+        type: int
+    run: shuffle
+  sum-1-1:
+    in:
+      left:
+        source: shuffle-1-2/hearts
+      right:
+        source: shuffle-1-1/diamonds
+    out:
+    - out
+    run: sum
+
+```
