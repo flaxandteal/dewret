@@ -166,6 +166,10 @@ and treat them as parameters. It will try to get the type from the typehint, or
 the value that you have set it to. This only works for basic types (and dict/lists of
 those).
 
+**Important:** global parameters should be treated as **read-only** and must not be updated.
+
+While global variables are implicit input to the Python function **note that** in CWL, they will be rendered as explicit global input to a step.
+
 For example:
 ```python
 >>> INPUT_NUM = 3
