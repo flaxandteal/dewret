@@ -334,7 +334,6 @@ As code:
 ```python
 >>> from attrs import define
 >>> from numpy import random
->>> from dewret.tasks import nested_task
 >>> @define
 ... class PackResult:
 ...     hearts: int
@@ -431,7 +430,6 @@ Here, we show the same example with `dataclasses`.
 ```python
 >>> from dataclasses import dataclass
 >>> from numpy import random
->>> from dewret.tasks import nested_task
 >>> @dataclass
 ... class PackResult:
 ...     hearts: int
