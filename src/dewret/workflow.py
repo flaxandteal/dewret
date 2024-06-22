@@ -31,7 +31,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .utils import hasher, RawType, is_raw, make_traceback
+from .utils import hasher, RawType, is_raw, make_traceback, is_raw_type
 
 T = TypeVar("T")
 RetType = TypeVar("RetType")
@@ -378,7 +378,13 @@ class Workflow:
             raise NameError("Can not get the name of an anonymous workflow.")
         return self._name
 
-    def find_parameters(self) -> set[ParameterReference]:
+    def find_factories(self) -> dict[str, FactoryCall]:
+        """Steps that are factory calls."""
+        return {step.id: step for step in self.steps if isinstance(step, FactoryCall)}
+
+    def find_parameters(
+        self, include_factory_calls: bool = True
+    ) -> set[ParameterReference]:
         """Crawl steps for parameter references.
 
         As the workflow does not hold its own list of parameters, this
@@ -392,7 +398,10 @@ class Workflow:
                 {
                     arg
                     for arg in step.arguments.values()
-                    if isinstance(arg, ParameterReference)
+                    if (
+                        isinstance(arg, ParameterReference)
+                        and (include_factory_calls or not isinstance(step, FactoryCall))
+                    )
                 }
                 for step in self.steps
             )
@@ -498,7 +507,9 @@ class Workflow:
         param_counter = Counter[str]()
         name_to_original: dict[str, str] = {}
         for name, param in {
-            pr.parameter.__name__: pr.parameter for pr in self.find_parameters()
+            pr.parameter.__name__: pr.parameter
+            for pr in self.find_parameters()
+            if isinstance(pr, ParameterReference)
         }.items():
             if param.__original_name__ != name:
                 param_counter[param.__original_name__] += 1
@@ -552,6 +563,7 @@ class Workflow:
         fn: Lazy,
         kwargs: dict[str, Raw | Reference],
         raw_as_parameter: bool = False,
+        is_factory: bool = False,
     ) -> StepReference[Any]:
         """Append a step.
 
@@ -562,9 +574,11 @@ class Workflow:
             fn: the target function to turn into a step.
             kwargs: any key-value arguments to pass in the call.
             raw_as_parameter: whether to turn any discovered raw arguments into workflow parameters.
+            is_factory: whether this step should be a Factory.
         """
         task = self.register_task(fn)
-        step = Step(self, task, kwargs, raw_as_parameter=raw_as_parameter)
+        step_maker = FactoryCall if is_factory else Step
+        step = step_maker(self, task, kwargs, raw_as_parameter=raw_as_parameter)
         self.steps.append(step)
         return_type = step.return_type
         if return_type is inspect._empty:
@@ -681,10 +695,16 @@ class BaseStep(WorkflowComponent):
         self.task = task
         self.arguments = {}
         for key, value in arguments.items():
-            if isinstance(value, Reference) or isinstance(value, Raw) or is_raw(value):
+            if (
+                isinstance(value, FactoryCall)
+                or isinstance(value, Reference)
+                or isinstance(value, Raw)
+                or is_raw(value)
+            ):
                 # Avoid recursive type issues
                 if (
                     not isinstance(value, Reference)
+                    and not isinstance(value, FactoryCall)
                     and not isinstance(value, Raw)
                     and is_raw(value)
                 ):
@@ -700,7 +720,7 @@ class BaseStep(WorkflowComponent):
                 self.arguments[key] = value
             else:
                 raise RuntimeError(
-                    f"Non-references must be a serializable type: {key}>{value}"
+                    f"Non-references must be a serializable type: {key}>{value} {type(value)}"
                 )
 
     def __eq__(self, other: object) -> bool:
@@ -751,6 +771,8 @@ class BaseStep(WorkflowComponent):
                 raise AttributeError(
                     "Cannot determine return type of a workflow with an unspecified result"
                 )
+        if isinstance(self.task.target, type):
+            return self.task.target
         return inspect.signature(inspect.unwrap(self.task.target)).return_annotation
 
     @property
@@ -845,6 +867,39 @@ class Step(BaseStep):
     ...
 
 
+class FactoryCall(Step):
+    """Call to a factory function."""
+
+    def __init__(
+        self,
+        workflow: Workflow,
+        task: Task | Workflow,
+        arguments: Mapping[str, Reference | Raw],
+        raw_as_parameter: bool = False,
+    ):
+        """Initialize a step.
+
+        Args:
+            workflow: `Workflow` that this is tied to.
+            task: the lazy-evaluatable function that this wraps.
+            arguments: key-value pairs to pass to the function - for a factory call, these _must_ be raw.
+            raw_as_parameter: whether to turn any raw-type arguments into workflow parameters (or just keep them as default argument values).
+        """
+        for arg in list(arguments.values()):
+            if not is_raw(arg) and not (
+                isinstance(arg, ParameterReference) and is_raw_type(arg.__type__)
+            ):
+                raise RuntimeError(
+                    f"Factories must be constructed with raw types {arg} {type(arg)}"
+                )
+        super().__init__(workflow, task, arguments, raw_as_parameter=raw_as_parameter)
+
+    @property
+    def default(self) -> Unset:
+        """Dummy default property for use as property."""
+        return UnsetType(self.return_type)
+
+
 class ParameterReference(Reference):
     """Reference to an individual `Parameter`.
 
@@ -872,6 +927,11 @@ class ParameterReference(Reference):
         """
         self.parameter = parameter
         self.__workflow__ = __workflow__
+
+    @property
+    def default(self) -> RawType | Unset:
+        """Default value of the parameter."""
+        return self.parameter.default
 
     @property
     def __type__(self) -> type:
@@ -1011,6 +1071,8 @@ class StepReference(Generic[U], Reference):
                 if not matched:
                     raise AttributeError(f"Field {attr} not present in dataclass")
                 typ = matched[0].type
+            elif isinstance(self.step, FactoryCall):
+                typ = self.step.return_type
             else:
                 typ = None
 
