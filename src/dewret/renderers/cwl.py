@@ -142,7 +142,7 @@ def cwl_type_from_value(val: RawType | Unset) -> str | list[str]:
     Returns:
         Type as a string or list of strings.
     """
-    if val is not None and hasattr(val, "__type__") and isinstance(val.__type__, type):
+    if val is not None and hasattr(val, "__type__"):
         raw_type = val.__type__
     else:
         raw_type = type(val)
