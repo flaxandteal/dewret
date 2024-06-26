@@ -467,7 +467,7 @@ def task(
                         kwargs[var] = ParameterReference(
                             workflow, param(var, value, tethered=False)
                         )
-                    elif is_task(value):
+                    elif is_task(value) or ensure_lazy(value) is not None:
                         if not nested and _workaround_check_value_is_task(
                             fn, var, value
                         ):

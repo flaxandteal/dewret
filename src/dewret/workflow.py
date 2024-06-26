@@ -97,7 +97,8 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         is attempted.
         """
         tb = make_traceback()
-        return self._fn(*args, **kwargs, __traceback__=tb)
+        result = self._fn(*args, **kwargs, __traceback__=tb)
+        return result
 
 
 Target = Callable[..., Any]
@@ -581,7 +582,11 @@ class Workflow:
         step = step_maker(self, task, kwargs, raw_as_parameter=raw_as_parameter)
         self.steps.append(step)
         return_type = step.return_type
-        if return_type is inspect._empty:
+        if (
+            return_type is inspect._empty
+            and not isinstance(fn, type)
+            and not inspect.isclass(fn)
+        ):
             raise TypeError("All tasks should have a type annotation.")
         return StepReference(self, step, return_type)
 
