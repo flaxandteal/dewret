@@ -206,6 +206,17 @@ def test_nesting_does_not_identify_imports_as_nesting() -> None:
         construct(result)
 
 
+def test_strict_mode_refuses_to_allow_mismatched_parameters() -> None:
+    """Ensure that an error is raised if passed types do not match."""
+    result = add_task(left="me", right="you")  # type: ignore
+    with pytest.raises(TaskException) as exc:
+        construct(result)
+    assert (
+        str(exc.value)
+        == "Nested tasks must now only refer to global parameters, raw or tasks, not objects: MyStrangeClass"
+    )
+
+
 def test_normal_objects_cannot_be_used_in_nested_tasks() -> None:
     """Most entities cannot appear in a nested_task, ensure we catch them.
 

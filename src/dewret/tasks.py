@@ -352,6 +352,7 @@ def task(
     nested: bool = False,
     flatten_nested: bool = True,
     is_factory: bool = False,
+    strict: bool = False,
 ) -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Decorator factory abstracting backend's own task decorator.
 
@@ -378,6 +379,7 @@ def task(
             for the outer workflow.
         is_factory: whether this task should be marked as a 'factory', rather than
             a normal step.
+        strict: whether to error out if types do not match.
 
     Returns:
         Decorator for the current backend to mark lazy-executable tasks.
@@ -416,6 +418,15 @@ def task(
                 # Ensure that the passed arguments are, at least, a Python-match for the signature.
                 sig = inspect.signature(fn)
                 sig.bind(*args, **kwargs)
+
+                if strict:
+                    for key, arg in sig.parameters.items():
+                        if not isinstance(kwargs[key], arg.annotation):
+                            raise TypeError(
+                                f"Argument {key} to {fn.__name__} has "
+                                f"incorrect type {type(kwargs[key])} for "
+                                f"annotation {arg.annotation}."
+                            )
 
                 workflows = [
                     reference.__workflow__
