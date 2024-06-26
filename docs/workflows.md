@@ -1,5 +1,9 @@
 # Workflows
 
+## Description
+
+A dewret workflow is composed of one or more steps that may make use of both local and global parameters. Each step is defined by a dewret task that is created by using the @task() decorator, and each task may be used by multiple steps.
+
 ## Setup
 
 We can pull in dewret tools to produce CWL with a small number of imports.
