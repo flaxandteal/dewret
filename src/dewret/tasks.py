@@ -501,9 +501,6 @@ def task(
                             raise TypeError(
                                 f"Task {fn.__name__} returned output of type {type(output)}, which is not a lazy function for this backend."
                             )
-                        # for var, value in kwargs.items():
-                        #    if isinstance(value, ParameterReference):
-                        #        value.parameter.register_caller(workflow)
                         step_reference = evaluate(lazy_fn, __workflow__=workflow)
                     else:
                         nested_workflow = Workflow(name=fn.__name__)
@@ -514,23 +511,11 @@ def task(
                                     var, typ=value.__type__, tethered=nested_workflow
                                 ),
                             )
-                            for var, value in kwargs.items()
+                            for var, value in original_kwargs.items()
                         }
                         with in_nested_task():
                             output = fn(**nested_kwargs)
                         nested_workflow = _manager(output, __workflow__=nested_workflow)
-                        # lazy_fn = ensure_lazy(output)
-                        # if lazy_fn is None:
-                        #    raise TypeError(
-                        #        f"Task {fn.__name__} returned output of type {type(output)}, which is not a lazy function for this backend."
-                        #    )
-                        # if not is_in_nested_task():
-                        #    for var, value in kwargs.items():
-                        #        if isinstance(value, ParameterReference):
-                        #            value.parameter.register_caller(nested_workflow)
-                        # step_reference = evaluate(lazy_fn, __workflow__=nested_workflow)
-                        # nested_workflow = step_reference.__workflow__
-                        # nested_workflow.set_result(step_reference)
                         step_reference = workflow.add_nested_step(
                             fn.__name__, nested_workflow, kwargs
                         )
