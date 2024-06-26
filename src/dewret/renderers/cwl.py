@@ -218,7 +218,7 @@ def to_cwl_type(typ: type) -> str | list[str]:
         return "string"
     else:
         if configuration("allow_complex_types"):
-            return typ.__name__
+            return typ if isinstance(typ, str) else typ.__name__
         raise TypeError(f"Cannot render complex type ({typ}) to CWL")
 
 
