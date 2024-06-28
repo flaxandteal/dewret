@@ -211,6 +211,9 @@ ensure_lazy = _manager.ensure_lazy
 unwrap = _manager.unwrap
 evaluate = _manager.evaluate
 construct = _manager
+"""An alias pointing to an instance of the TaskManager class.
+Used for constructing a set of tasks into a dewret workflow instance.
+"""
 
 
 class TaskException(Exception):
