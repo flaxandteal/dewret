@@ -29,13 +29,28 @@ import json
 from .renderers.cwl import render as cwl_render
 from .tasks import Backend, construct
 
+
 @click.command()
-@click.option("--pretty", is_flag=True, show_default=True, default=False, help="Pretty-print output where possible.")
-@click.option("--backend", type=click.Choice(list(Backend.__members__)), show_default=True, default=Backend.DASK.name, help="Backend to use for workflow evaluation.")
+@click.option(
+    "--pretty",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Pretty-print output where possible.",
+)
+@click.option(
+    "--backend",
+    type=click.Choice(list(Backend.__members__)),
+    show_default=True,
+    default=Backend.DASK.name,
+    help="Backend to use for workflow evaluation.",
+)
 @click.argument("workflow_py")
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
-def render(workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend) -> None:
+def render(
+    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend
+) -> None:
     """Render a workflow.
 
     WORKFLOW_PY is the Python file containing workflow.
@@ -49,14 +64,24 @@ def render(workflow_py: str, task: str, arguments: list[str], pretty: bool, back
     kwargs = {}
     for arg in arguments:
         if ":" not in arg:
-            raise RuntimeError("Arguments should be specified as key:val, where val is a JSON representation of the argument")
+            raise RuntimeError(
+                "Arguments should be specified as key:val, where val is a JSON representation of the argument"
+            )
         key, val = arg.split(":", 1)
         kwargs[key] = json.loads(val)
 
-    cwl = cwl_render(construct(task_fn(**kwargs), simplify_ids=True))
-    if pretty:
-        yaml.dump(cwl, sys.stdout, indent=2)
+    try:
+        cwl = cwl_render(construct(task_fn(**kwargs), simplify_ids=True))
+    except Exception as exc:
+        import traceback
+
+        print(exc, exc.__cause__, exc.__context__)
+        traceback.print_exc()
     else:
-        print(cwl)
+        if pretty:
+            yaml.dump(cwl, sys.stdout, indent=2)
+        else:
+            print(cwl)
+
 
 render()

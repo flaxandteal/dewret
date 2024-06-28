@@ -1,7 +1,7 @@
 # Renderers
 
-_Renderers_ are a function that takes a [task](/reference/dewret/workflow/#task), which can
-be assumed to have a `__workflow__` member of type [Workflow](/reference/dewret/workflow/#workflow), and return
+_Renderers_ are a function that takes a [task](https://flaxandteal.github.io/dewret/reference/dewret/tasks/#task), which can
+be assumed to have a `__workflow__` member of type [Workflow](https://flaxandteal.github.io/dewret/reference/dewret/workflow/#workflow), and return
 a YAML-serializable nested `dict` structure.
 
 

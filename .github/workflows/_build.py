@@ -1,9 +1,12 @@
-from portray import config, render
+from portray import config, render  # type: ignore
+from typing import Any
 import yaml
 
 # Note that this does not work for reloads.
 mkdocs = config.mkdocs
-def _mkdocs(directory: str, **overrides) -> dict:
+
+
+def _mkdocs(directory: str, **overrides) -> dict:  # type: ignore
     superfences = yaml.unsafe_load("""
       preserve_tabs: true
       custom_fences:
@@ -22,12 +25,16 @@ def _mkdocs(directory: str, **overrides) -> dict:
             continue
         ext["pymdownx.superfences"].update(superfences)
         overrides["markdown_extensions"][n] = ext
-    res = mkdocs(directory, **overrides)
+    res: dict[Any, Any] = mkdocs(directory, **overrides)
     return res
+
+
 config.mkdocs = _mkdocs
 
 mkdocs_render = render.mkdocs
-def _mkdocs_render(config: dict):
+
+
+def _mkdocs_render(config: dict[str, Any]) -> Any:
     """Ensures the original config can be reused."""
     original_config = list(config.get("markdown_extensions", []))
     if original_config and "pymdownx.superfences" in original_config[0]:
@@ -37,6 +44,11 @@ def _mkdocs_render(config: dict):
     else:
         result = mkdocs_render(config)
     return result
+
+
 render.mkdocs = _mkdocs_render
 
-from portray import __main__
+if __name__ == "__main__":
+    from portray.cli import cli  # type: ignore
+
+    cli()

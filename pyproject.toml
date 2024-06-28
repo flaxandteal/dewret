@@ -22,7 +22,7 @@ markdown_extensions = [
 ]
 
 [tool.ruff.lint]
-select = ["D", "F"]
+select = ["D", "F", "B"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -34,7 +34,7 @@ homepage = "https://github.com/flaxandteal/dewret"
 repository = "https://github.com/flaxandteal/dewret"
 documentation = "https://flaxandteal.github.io/dewret"
 readme = "README.md"
-version = "0.9.0"
+version = "0.9.1"
 authors = [
   {name = "Phil Weir", email = "phil.weir@flaxandteal.co.uk"},
   {name = "Chris Nixon", email = "chris.nixon@sigma-sc.co.uk"},
@@ -48,3 +48,12 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = ["dask >= 2022", "pyyaml", "attrs", "click", "setuptools >= 65.5.1", "numpy", "sympy"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project.optional-dependencies]
+test = ["pytest", "coverage", "ruff", "mypy"]
+docs = [
+  "portray @ git+https://github.com/flaxandteal/portray.git#v1.8.0-fat"
+]

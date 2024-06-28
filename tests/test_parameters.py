@@ -2,13 +2,13 @@
 
 import yaml
 from dewret.tasks import task, construct
+from dewret.workflow import param
 from dewret.renderers.cwl import render
-from dewret.utils import hasher
-from dewret.workflow import Workflow, param
 
-from ._lib.extra import double, mod10, sum
+from ._lib.extra import double, sum
 
 INPUT_NUM = 3
+
 
 @task()
 def rotate(num: int) -> int:
@@ -25,13 +25,18 @@ def test_cwl_parameters() -> None:
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
         inputs:
           INPUT_NUM:
             label: INPUT_NUM
             type: int
+            default: 3
+          rotate-1-num:
+            label: rotate-1-num
+            type: int
+            default: 3
         outputs:
           out:
             label: out
@@ -42,7 +47,7 @@ def test_cwl_parameters() -> None:
             run: rotate
             in:
                 num:
-                    default: 3
+                    source: rotate-1-num
                 INPUT_NUM:
                     source: INPUT_NUM
             out: [out]
@@ -54,20 +59,27 @@ def test_complex_parameters() -> None:
 
     Produces CWL that has references between multiple steps.
     """
-    result = sum(
-        left=double(num=rotate(num=23)),
-        right=rotate(num=rotate(num=23))
-    )
+    num = param("numx", 23)
+    result = sum(left=double(num=rotate(num=num)), right=rotate(num=rotate(num=23)))
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
         inputs:
           INPUT_NUM:
             label: INPUT_NUM
             type: int
+            default: 3
+          numx:
+            label: numx
+            type: int
+            default: 23
+          rotate-1-num:
+            label: rotate-1-num
+            type: int
+            default: 23
         outputs:
           out:
             label: out
@@ -80,13 +92,13 @@ def test_complex_parameters() -> None:
                 INPUT_NUM:
                     source: INPUT_NUM
                 num:
-                    default: 23
+                    source: rotate-1-num
             out: [out]
           double-1:
             run: double
             in:
                 num:
-                    source: rotate-1/out
+                    source: rotate-3/out
             out: [out]
           rotate-2:
             run: rotate
@@ -95,6 +107,14 @@ def test_complex_parameters() -> None:
                     source: INPUT_NUM
                 num:
                     source: rotate-1/out
+            out: [out]
+          rotate-3:
+            run: rotate
+            in:
+                INPUT_NUM:
+                    source: INPUT_NUM
+                num:
+                    source: numx
             out: [out]
           sum-1:
             run: sum
