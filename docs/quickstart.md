@@ -1,6 +1,41 @@
 # Quickstart
 
-## Installation
+## Introduction 
+
+### Description 
+
+Dewret is a tool designed for creating complex workflows, written in a dynamic style, to be rendered to a static representation. Dewret provides a programmatic python interface to multiple declarative workflow engines, where workflows are often written in a yaml-like syntax. It makes it easier for users to define tasks and organize them into workflows. Currently, Dewret supports two renderers: Snakemake and CWL, which generate yamls in the corresponding workflow languages.
+
+### What are Workflows?
+
+Workflows are a collection of tasks or steps designed to automate complex processes. These processes are common in fields like data science, scientific computing and software development, where you can ensure automation. Traditionally, managing workflows can be challenging due to the diversity of backend systems and the complexity of configurations involved.
+
+### What Makes Dewret Unique? Why should I use Dewret?
+
+Dewret stands out by providing a unified and simplified interface for workflow management, making it accessible to users with varying levels of experience. Here are some key features that make Dewret unique:
+- Consistency: offers a consistent interface for defining tasks and workflows.
+- Optimization: creating a declarative workflow opens up possibilities for static analysis and refactoring before execution.
+- Customization: ability to create a custom renderer in a desired workflow language.
+- Git-versionable workflows: while code can be versioned, the changes of a dynamic workflow do not necessarily clearly correspond to changes in the executed workflow. This maintains a precise trackable history.
+- Default Renderers: Snakemake and CWL.
+- Debugging: a number of classes of workflow planning bugs will not appear until late in a simulation run that might take days or weeks. This catches them before startup.
+- Continuous Integration and Testing: complex dynamic workflows can be rapidly sense-checked in CI without needing all the hardware and internal algorithms present to run them.
+
+## Installation for pure users
+
+If you simply want to use Dewret to run workflows, you can install it from PyPI or Conda.
+
+### From PyPI:
+```shell
+pip install dewret
+```
+
+### From Conda:
+```shell
+conda install conda-forge::dewret
+```
+
+## Installation for developers
 
 From a cloned repository:
 
