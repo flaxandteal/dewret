@@ -1,0 +1,3155 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.5.4">
+    
+    
+      
+        <title>Workflow - dewret</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.80dcb947.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.cbb835fc.min.css">
+        
+          
+          
+          <meta name="theme-color" content="#4cae4f">
+        
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="green" data-md-color-accent="lightgreen">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-dewretworkflow" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="dewret" class="md-header__button md-logo" aria-label="dewret" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            dewret
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Workflow
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/flaxandteal/dewret" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dewret
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="dewret" class="md-nav__button md-logo" aria-label="dewret" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    dewret
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/flaxandteal/dewret" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dewret
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../docs/glossary/" class="md-nav__link">
+        Glossary
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../docs/quickstart/" class="md-nav__link">
+        Quickstart
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../docs/renderer_tutorial/" class="md-nav__link">
+        Renderer Tutorial
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../docs/renderers/" class="md-nav__link">
+        Renderers
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../docs/workflows/" class="md-nav__link">
+        Workflows
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_7" type="checkbox" id="__nav_7" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_7">
+          Reference
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Reference" data-md-level="1">
+        <label class="md-nav__title" for="__nav_7">
+          <span class="md-nav__icon md-icon"></span>
+          Reference
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_7_1" type="checkbox" id="__nav_7_1" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_7_1">
+          Dewret
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Dewret" data-md-level="2">
+        <label class="md-nav__title" for="__nav_7_1">
+          <span class="md-nav__icon md-icon"></span>
+          Dewret
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        Index
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tasks/" class="md-nav__link">
+        Tasks
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utils/" class="md-nav__link">
+        Utils
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Workflow
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Workflow
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#variables" class="md-nav__link">
+    Variables
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    Functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#is_task" class="md-nav__link">
+    is_task
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#merge_workflows" class="md-nav__link">
+    merge_workflows
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#param" class="md-nav__link">
+    param
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#classes" class="md-nav__link">
+    Classes
+  </a>
+  
+    <nav class="md-nav" aria-label="Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basestep" class="md-nav__link">
+    BaseStep
+  </a>
+  
+    <nav class="md-nav" aria-label="BaseStep">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#descendants" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_workflow" class="md-nav__link">
+    set_workflow
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#factorycall" class="md-nav__link">
+    FactoryCall
+  </a>
+  
+    <nav class="md-nav" aria-label="FactoryCall">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_1" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_1" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_1" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_workflow_1" class="md-nav__link">
+    set_workflow
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lazy" class="md-nav__link">
+    Lazy
+  </a>
+  
+    <nav class="md-nav" aria-label="Lazy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_2" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#descendants_1" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lazyevaluation" class="md-nav__link">
+    LazyEvaluation
+  </a>
+  
+    <nav class="md-nav" aria-label="LazyEvaluation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_3" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nestedstep" class="md-nav__link">
+    NestedStep
+  </a>
+  
+    <nav class="md-nav" aria-label="NestedStep">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_4" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_2" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_2" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_workflow_2" class="md-nav__link">
+    set_workflow
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameter" class="md-nav__link">
+    Parameter
+  </a>
+  
+    <nav class="md-nav" aria-label="Parameter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_1" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_5" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#class-variables" class="md-nav__link">
+    Class variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_3" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_3" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register_caller" class="md-nav__link">
+    register_caller
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameterreference" class="md-nav__link">
+    ParameterReference
+  </a>
+  
+    <nav class="md-nav" aria-label="ParameterReference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_2" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_6" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_4" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#raw" class="md-nav__link">
+    Raw
+  </a>
+  
+    <nav class="md-nav" aria-label="Raw">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_3" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_5" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    Reference
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#descendants_2" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_6" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step" class="md-nav__link">
+    Step
+  </a>
+  
+    <nav class="md-nav" aria-label="Step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_7" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#descendants_3" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_7" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_4" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_workflow_3" class="md-nav__link">
+    set_workflow
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stepreference" class="md-nav__link">
+    StepReference
+  </a>
+  
+    <nav class="md-nav" aria-label="StepReference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_4" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_8" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_8" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task" class="md-nav__link">
+    Task
+  </a>
+  
+    <nav class="md-nav" aria-label="Task">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_5" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unset" class="md-nav__link">
+    Unset
+  </a>
+  
+    <nav class="md-nav" aria-label="Unset">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#descendants_4" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unsettype" class="md-nav__link">
+    UnsetType
+  </a>
+  
+    <nav class="md-nav" aria-label="UnsetType">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_6" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_9" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    Workflow
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_7" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#static-methods" class="md-nav__link">
+    Static methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#assimilate" class="md-nav__link">
+    assimilate
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from_result" class="md-nav__link">
+    from_result
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_9" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_5" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add_nested_step" class="md-nav__link">
+    add_nested_step
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add_step" class="md-nav__link">
+    add_step
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_factories" class="md-nav__link">
+    find_factories
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_parameters" class="md-nav__link">
+    find_parameters
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register_task" class="md-nav__link">
+    register_task
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remap" class="md-nav__link">
+    remap
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_result" class="md-nav__link">
+    set_result
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#simplify_ids" class="md-nav__link">
+    simplify_ids
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflowcomponent" class="md-nav__link">
+    WorkflowComponent
+  </a>
+  
+    <nav class="md-nav" aria-label="WorkflowComponent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_8" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#descendants_5" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflowlinkedcomponent" class="md-nav__link">
+    WorkflowLinkedComponent
+  </a>
+  
+    <nav class="md-nav" aria-label="WorkflowLinkedComponent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_10" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_7_1_5" type="checkbox" id="__nav_7_1_5" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_7_1_5">
+          Backends
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Backends" data-md-level="3">
+        <label class="md-nav__title" for="__nav_7_1_5">
+          <span class="md-nav__icon md-icon"></span>
+          Backends
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backends/backend_dask/" class="md-nav__link">
+        Backend Dask
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backends/" class="md-nav__link">
+        Index
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_7_1_6" type="checkbox" id="__nav_7_1_6" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_7_1_6">
+          Renderers
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Renderers" data-md-level="3">
+        <label class="md-nav__title" for="__nav_7_1_6">
+          <span class="md-nav__icon md-icon"></span>
+          Renderers
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renderers/cwl/" class="md-nav__link">
+        Cwl
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renderers/" class="md-nav__link">
+        Index
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renderers/snakemake/" class="md-nav__link">
+        Snakemake
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#variables" class="md-nav__link">
+    Variables
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    Functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#is_task" class="md-nav__link">
+    is_task
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#merge_workflows" class="md-nav__link">
+    merge_workflows
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#param" class="md-nav__link">
+    param
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#classes" class="md-nav__link">
+    Classes
+  </a>
+  
+    <nav class="md-nav" aria-label="Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basestep" class="md-nav__link">
+    BaseStep
+  </a>
+  
+    <nav class="md-nav" aria-label="BaseStep">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#descendants" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_workflow" class="md-nav__link">
+    set_workflow
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#factorycall" class="md-nav__link">
+    FactoryCall
+  </a>
+  
+    <nav class="md-nav" aria-label="FactoryCall">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_1" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_1" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_1" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_workflow_1" class="md-nav__link">
+    set_workflow
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lazy" class="md-nav__link">
+    Lazy
+  </a>
+  
+    <nav class="md-nav" aria-label="Lazy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_2" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#descendants_1" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lazyevaluation" class="md-nav__link">
+    LazyEvaluation
+  </a>
+  
+    <nav class="md-nav" aria-label="LazyEvaluation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_3" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nestedstep" class="md-nav__link">
+    NestedStep
+  </a>
+  
+    <nav class="md-nav" aria-label="NestedStep">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_4" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_2" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_2" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_workflow_2" class="md-nav__link">
+    set_workflow
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameter" class="md-nav__link">
+    Parameter
+  </a>
+  
+    <nav class="md-nav" aria-label="Parameter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_1" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_5" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#class-variables" class="md-nav__link">
+    Class variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_3" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_3" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register_caller" class="md-nav__link">
+    register_caller
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameterreference" class="md-nav__link">
+    ParameterReference
+  </a>
+  
+    <nav class="md-nav" aria-label="ParameterReference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_2" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_6" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_4" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#raw" class="md-nav__link">
+    Raw
+  </a>
+  
+    <nav class="md-nav" aria-label="Raw">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_3" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_5" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    Reference
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#descendants_2" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_6" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step" class="md-nav__link">
+    Step
+  </a>
+  
+    <nav class="md-nav" aria-label="Step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_7" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#descendants_3" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_7" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_4" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_workflow_3" class="md-nav__link">
+    set_workflow
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stepreference" class="md-nav__link">
+    StepReference
+  </a>
+  
+    <nav class="md-nav" aria-label="StepReference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_4" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_8" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_8" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task" class="md-nav__link">
+    Task
+  </a>
+  
+    <nav class="md-nav" aria-label="Task">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_5" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unset" class="md-nav__link">
+    Unset
+  </a>
+  
+    <nav class="md-nav" aria-label="Unset">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#descendants_4" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unsettype" class="md-nav__link">
+    UnsetType
+  </a>
+  
+    <nav class="md-nav" aria-label="UnsetType">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_6" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_9" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    Workflow
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_7" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#static-methods" class="md-nav__link">
+    Static methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#assimilate" class="md-nav__link">
+    assimilate
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from_result" class="md-nav__link">
+    from_result
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instance-variables_9" class="md-nav__link">
+    Instance variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods_5" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add_nested_step" class="md-nav__link">
+    add_nested_step
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add_step" class="md-nav__link">
+    add_step
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_factories" class="md-nav__link">
+    find_factories
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_parameters" class="md-nav__link">
+    find_parameters
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register_task" class="md-nav__link">
+    register_task
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remap" class="md-nav__link">
+    remap
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_result" class="md-nav__link">
+    set_result
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#simplify_ids" class="md-nav__link">
+    simplify_ids
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflowcomponent" class="md-nav__link">
+    WorkflowComponent
+  </a>
+  
+    <nav class="md-nav" aria-label="WorkflowComponent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_8" class="md-nav__link">
+    Attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#descendants_5" class="md-nav__link">
+    Descendants
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflowlinkedcomponent" class="md-nav__link">
+    WorkflowLinkedComponent
+  </a>
+  
+    <nav class="md-nav" aria-label="WorkflowLinkedComponent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ancestors-in-mro_10" class="md-nav__link">
+    Ancestors (in MRO)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <a href="https://github.com/flaxandteal/dewret/edit/main/reference/dewret/workflow.md" title="Edit this page" class="md-content__button md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
+  </a>
+
+
+<h1 id="module-dewretworkflow">Module dewret.workflow</h1>
+<p>Overarching workflow concepts.</p>
+<p>Basic constructs for describing a workflow.</p>
+<h2 id="variables">Variables</h2>
+<div class="highlight"><pre><span></span><code><span class="n">LazyFactory</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">RetType</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">StepExecution</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">T</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">Target</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">U</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">UNSET</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">logger</span>
+</code></pre></div>
+<h2 id="functions">Functions</h2>
+<h3 id="is_task">is_task</h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">is_task</span><span class="p">(</span>
+    <span class="n">task</span><span class="p">:</span> <span class="s1">&#39;Lazy&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;bool&#39;</span>
+</code></pre></div>
+<p>Decide whether this is a task.</p>
+<p>Checks whether the wrapped function has the magic
+attribute <code>__step_expression__</code> set to True, which is
+done within task creation.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>task</td>
+<td>None</td>
+<td>lazy-evaluated value, suspected to be a task.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>True if <code>task</code> is indeed a task.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="merge_workflows">merge_workflows</h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">merge_workflows</span><span class="p">(</span>
+    <span class="o">*</span><span class="n">workflows</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Workflow&#39;</span>
+</code></pre></div>
+<p>Combine several workflows into one.</p>
+<p>Merges a series of workflows by combining steps and tasks.</p>
+<p>Argument:
+    *workflows: series of workflows to combine.</p>
+<p><strong>Returns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>One workflow with all steps.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="param">param</h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">param</span><span class="p">(</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;str&#39;</span><span class="p">,</span>
+    <span class="n">default</span><span class="p">:</span> <span class="s1">&#39;T | UnsetType[T] | Unset&#39;</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">dewret</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">Unset</span> <span class="nb">object</span> <span class="n">at</span> <span class="mh">0x7f0715564a90</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="n">tethered</span><span class="p">:</span> <span class="s1">&#39;Literal[False] | None | Step | Workflow&#39;</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">typ</span><span class="p">:</span> <span class="s1">&#39;type[T] | Unset&#39;</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">dewret</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">Unset</span> <span class="nb">object</span> <span class="n">at</span> <span class="mh">0x7f0715564a90</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="n">autoname</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;T&#39;</span>
+</code></pre></div>
+<p>Create a parameter.</p>
+<p>Will cast so it looks like the original type.</p>
+<p><strong>Returns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>Parameter class cast to the type of the supplied default.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="classes">Classes</h2>
+<h3 id="basestep">BaseStep</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">BaseStep</span><span class="p">(</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+    <span class="n">task</span><span class="p">:</span> <span class="s1">&#39;Task | Workflow&#39;</span><span class="p">,</span>
+    <span class="n">arguments</span><span class="p">:</span> <span class="s1">&#39;Mapping[str, Reference | Raw]&#39;</span><span class="p">,</span>
+    <span class="n">raw_as_parameter</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Lazy-evaluated function call.</p>
+<p>Individual function call to a lazy-evaluatable function, tracked
+for building up the <code>Workflow</code>.</p>
+<h4 id="attributes">Attributes</h4>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>task</td>
+<td>None</td>
+<td>the <code>Task</code> being called in this step.</td>
+<td>None</td>
+</tr>
+<tr>
+<td>arguments</td>
+<td>None</td>
+<td>key-value pairs of arguments to this step.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ancestors-in-mro">Ancestors (in MRO)</h4>
+<ul>
+<li>dewret.workflow.WorkflowComponent</li>
+</ul>
+<h4 id="descendants">Descendants</h4>
+<ul>
+<li>dewret.workflow.NestedStep</li>
+<li>dewret.workflow.Step</li>
+</ul>
+<h4 id="instance-variables">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="nb">id</span>
+</code></pre></div>
+<p>Consistent ID based on the value.</p>
+<div class="highlight"><pre><span></span><code><span class="n">name</span>
+</code></pre></div>
+<p>Name for this step.</p>
+<p>May be remapped by the workflow to something nicer
+than the ID.</p>
+<div class="highlight"><pre><span></span><code><span class="n">return_type</span>
+</code></pre></div>
+<p>Take the type of the wrapped function from the target.</p>
+<p>Unwraps and inspects the signature, meaning that the original
+wrapped function <em>must</em> have a typehint for the return value.</p>
+<h4 id="methods">Methods</h4>
+<h4 id="set_workflow">set_workflow</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">set_workflow</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;None&#39;</span>
+</code></pre></div>
+<p>Move the step reference to another workflow.</p>
+<p>Primarily intended to be called by its step, as a cascade.
+It will attempt to update its arguments, similarly.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>workflow</td>
+<td>None</td>
+<td>the new target workflow.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h3 id="factorycall">FactoryCall</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">FactoryCall</span><span class="p">(</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+    <span class="n">task</span><span class="p">:</span> <span class="s1">&#39;Task | Workflow&#39;</span><span class="p">,</span>
+    <span class="n">arguments</span><span class="p">:</span> <span class="s1">&#39;Mapping[str, Reference | Raw]&#39;</span><span class="p">,</span>
+    <span class="n">raw_as_parameter</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Call to a factory function.</p>
+<h4 id="ancestors-in-mro_1">Ancestors (in MRO)</h4>
+<ul>
+<li>dewret.workflow.Step</li>
+<li>dewret.workflow.BaseStep</li>
+<li>dewret.workflow.WorkflowComponent</li>
+</ul>
+<h4 id="instance-variables_1">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="n">default</span>
+</code></pre></div>
+<p>Dummy default property for use as property.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">id</span>
+</code></pre></div>
+<p>Consistent ID based on the value.</p>
+<div class="highlight"><pre><span></span><code><span class="n">name</span>
+</code></pre></div>
+<p>Name for this step.</p>
+<p>May be remapped by the workflow to something nicer
+than the ID.</p>
+<div class="highlight"><pre><span></span><code><span class="n">return_type</span>
+</code></pre></div>
+<p>Take the type of the wrapped function from the target.</p>
+<p>Unwraps and inspects the signature, meaning that the original
+wrapped function <em>must</em> have a typehint for the return value.</p>
+<h4 id="methods_1">Methods</h4>
+<h4 id="set_workflow_1">set_workflow</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">set_workflow</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;None&#39;</span>
+</code></pre></div>
+<p>Move the step reference to another workflow.</p>
+<p>Primarily intended to be called by its step, as a cascade.
+It will attempt to update its arguments, similarly.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>workflow</td>
+<td>None</td>
+<td>the new target workflow.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h3 id="lazy">Lazy</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Lazy</span><span class="p">(</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Requirements for a lazy-evaluatable function.</p>
+<h4 id="ancestors-in-mro_2">Ancestors (in MRO)</h4>
+<ul>
+<li>typing.Protocol</li>
+<li>typing.Generic</li>
+</ul>
+<h4 id="descendants_1">Descendants</h4>
+<ul>
+<li>dewret.workflow.LazyEvaluation</li>
+</ul>
+<h3 id="lazyevaluation">LazyEvaluation</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">LazyEvaluation</span><span class="p">(</span>
+    <span class="n">fn</span><span class="p">:</span> <span class="s1">&#39;Callable[..., RetType]&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Tracks a single evaluation of a lazy function.</p>
+<h4 id="ancestors-in-mro_3">Ancestors (in MRO)</h4>
+<ul>
+<li>dewret.workflow.Lazy</li>
+<li>typing.Protocol</li>
+<li>typing.Generic</li>
+</ul>
+<h3 id="nestedstep">NestedStep</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">NestedStep</span><span class="p">(</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;str&#39;</span><span class="p">,</span>
+    <span class="n">subworkflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+    <span class="n">arguments</span><span class="p">:</span> <span class="s1">&#39;Mapping[str, Reference | Raw]&#39;</span><span class="p">,</span>
+    <span class="n">raw_as_parameter</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Calling out to a subworkflow.</p>
+<p>Type of BaseStep to call a subworkflow, which holds a reference to it.</p>
+<h4 id="ancestors-in-mro_4">Ancestors (in MRO)</h4>
+<ul>
+<li>dewret.workflow.BaseStep</li>
+<li>dewret.workflow.WorkflowComponent</li>
+</ul>
+<h4 id="instance-variables_2">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="nb">id</span>
+</code></pre></div>
+<p>Consistent ID based on the value.</p>
+<div class="highlight"><pre><span></span><code><span class="n">name</span>
+</code></pre></div>
+<p>Name for this step.</p>
+<p>May be remapped by the workflow to something nicer
+than the ID.</p>
+<div class="highlight"><pre><span></span><code><span class="n">return_type</span>
+</code></pre></div>
+<p>Take the type of the wrapped function from the target.</p>
+<p>Unwraps and inspects the signature, meaning that the original
+wrapped function <em>must</em> have a typehint for the return value.</p>
+<div class="highlight"><pre><span></span><code><span class="n">subworkflow</span>
+</code></pre></div>
+<p>Subworkflow that is wrapped.</p>
+<h4 id="methods_2">Methods</h4>
+<h4 id="set_workflow_2">set_workflow</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">set_workflow</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;None&#39;</span>
+</code></pre></div>
+<p>Move the step reference to another workflow.</p>
+<p>Primarily intended to be called by its step, as a cascade.
+It will attempt to update its arguments, similarly.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>workflow</td>
+<td>None</td>
+<td>the new target workflow.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h3 id="parameter">Parameter</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Parameter</span><span class="p">(</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;str&#39;</span><span class="p">,</span>
+    <span class="n">default</span><span class="p">:</span> <span class="s1">&#39;T | UnsetType[T]&#39;</span><span class="p">,</span>
+    <span class="n">tethered</span><span class="p">:</span> <span class="s1">&#39;Literal[False] | None | Step | Workflow&#39;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">autoname</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Global parameter.</p>
+<p>Independent parameter that will be used when a task is spotted
+reaching outside its scope. This wraps the variable it uses.</p>
+<p>To allow for potential arithmetic operations, etc. it is a Sympy
+symbol.</p>
+<h4 id="attributes_1">Attributes</h4>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>name</strong></td>
+<td>None</td>
+<td>name of the parameter.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><strong>default</strong></td>
+<td>None</td>
+<td>captured default value from the original value.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ancestors-in-mro_5">Ancestors (in MRO)</h4>
+<ul>
+<li>typing.Generic</li>
+</ul>
+<h4 id="class-variables">Class variables</h4>
+<div class="highlight"><pre><span></span><code><span class="n">autoname</span>
+</code></pre></div>
+<h4 id="instance-variables_3">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="n">default</span>
+</code></pre></div>
+<p>Retrieve default value for this parameter, or an unset token.</p>
+<div class="highlight"><pre><span></span><code><span class="n">full_name</span>
+</code></pre></div>
+<p>Extended name, suitable for rendering.</p>
+<p>This attempts to create a unique name by tying the parameter to a step
+if the user has not explicitly provided a name, ideally the one where
+we discovered it.</p>
+<div class="highlight"><pre><span></span><code><span class="n">name</span>
+</code></pre></div>
+<p>Name for this step.</p>
+<p>May be remapped by the workflow to something nicer
+than the ID.</p>
+<h4 id="methods_3">Methods</h4>
+<h4 id="register_caller">register_caller</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">register_caller</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">caller</span><span class="p">:</span> <span class="s1">&#39;BaseStep&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;None&#39;</span>
+</code></pre></div>
+<p>Capture a step that uses this parameter.</p>
+<p>Gathers together the steps using this parameter. The first found will
+be recorded as the tethered step, and used for forming the name.</p>
+<h3 id="parameterreference">ParameterReference</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">ParameterReference</span><span class="p">(</span>
+    <span class="n">__workflow__</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+    <span class="n">parameter</span><span class="p">:</span> <span class="s1">&#39;Parameter[RawType]&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Reference to an individual <code>Parameter</code>.</p>
+<p>Allows us to refer to the outputs of a <code>Parameter</code> in subsequent <code>Parameter</code>
+arguments.</p>
+<h4 id="attributes_2">Attributes</h4>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>parameter</td>
+<td>None</td>
+<td><code>Parameter</code> referred to.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><strong>workflow</strong></td>
+<td>None</td>
+<td>Related workflow. In this case, as Parameters are generic<br>but ParameterReferences are specific, this carries the actual workflow reference.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ancestors-in-mro_6">Ancestors (in MRO)</h4>
+<ul>
+<li>dewret.workflow.Reference</li>
+</ul>
+<h4 id="instance-variables_4">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="n">default</span>
+</code></pre></div>
+<p>Default value of the parameter.</p>
+<div class="highlight"><pre><span></span><code><span class="n">name</span>
+</code></pre></div>
+<p>Reference based on the named step.</p>
+<p>May be remapped by the workflow to something nicer
+than the ID.</p>
+<div class="highlight"><pre><span></span><code><span class="n">unique_name</span>
+</code></pre></div>
+<p>Unique, machine-generated name.</p>
+<p>Normally this will become invisible in output, but it avoids circularity
+as a step that uses this parameter will ask for this when constructing
+its own hash, but we will normally want to use the step's name as part of
+the parameter name to distinguish from other parameters of the same name.</p>
+<h3 id="raw">Raw</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Raw</span><span class="p">(</span>
+    <span class="n">value</span><span class="p">:</span> <span class="s1">&#39;RawType&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Value object for any raw types.</p>
+<p>This is able to hash raw types consistently and provides
+a single type for validating type-consistency.</p>
+<h4 id="attributes_3">Attributes</h4>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td>None</td>
+<td>the real value, e.g. a <code>str</code>, <code>int</code>, ...</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="instance-variables_5">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="n">value</span>
+</code></pre></div>
+<h3 id="reference">Reference</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Reference</span><span class="p">(</span>
+    <span class="o">/</span><span class="p">,</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Superclass for all symbolic references to values.</p>
+<h4 id="descendants_2">Descendants</h4>
+<ul>
+<li>dewret.workflow.ParameterReference</li>
+<li>dewret.workflow.StepReference</li>
+</ul>
+<h4 id="instance-variables_6">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="n">name</span>
+</code></pre></div>
+<p>Referral name for this reference.</p>
+<h3 id="step">Step</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Step</span><span class="p">(</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+    <span class="n">task</span><span class="p">:</span> <span class="s1">&#39;Task | Workflow&#39;</span><span class="p">,</span>
+    <span class="n">arguments</span><span class="p">:</span> <span class="s1">&#39;Mapping[str, Reference | Raw]&#39;</span><span class="p">,</span>
+    <span class="n">raw_as_parameter</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Regular step.</p>
+<h4 id="ancestors-in-mro_7">Ancestors (in MRO)</h4>
+<ul>
+<li>dewret.workflow.BaseStep</li>
+<li>dewret.workflow.WorkflowComponent</li>
+</ul>
+<h4 id="descendants_3">Descendants</h4>
+<ul>
+<li>dewret.workflow.FactoryCall</li>
+</ul>
+<h4 id="instance-variables_7">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="nb">id</span>
+</code></pre></div>
+<p>Consistent ID based on the value.</p>
+<div class="highlight"><pre><span></span><code><span class="n">name</span>
+</code></pre></div>
+<p>Name for this step.</p>
+<p>May be remapped by the workflow to something nicer
+than the ID.</p>
+<div class="highlight"><pre><span></span><code><span class="n">return_type</span>
+</code></pre></div>
+<p>Take the type of the wrapped function from the target.</p>
+<p>Unwraps and inspects the signature, meaning that the original
+wrapped function <em>must</em> have a typehint for the return value.</p>
+<h4 id="methods_4">Methods</h4>
+<h4 id="set_workflow_3">set_workflow</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">set_workflow</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;None&#39;</span>
+</code></pre></div>
+<p>Move the step reference to another workflow.</p>
+<p>Primarily intended to be called by its step, as a cascade.
+It will attempt to update its arguments, similarly.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>workflow</td>
+<td>None</td>
+<td>the new target workflow.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h3 id="stepreference">StepReference</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">StepReference</span><span class="p">(</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+    <span class="n">step</span><span class="p">:</span> <span class="s1">&#39;BaseStep&#39;</span><span class="p">,</span>
+    <span class="n">typ</span><span class="p">:</span> <span class="s1">&#39;type[U]&#39;</span><span class="p">,</span>
+    <span class="n">field</span><span class="p">:</span> <span class="s1">&#39;str | None&#39;</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Reference to an individual <code>Step</code>.</p>
+<p>Allows us to refer to the outputs of a <code>Step</code> in subsequent <code>Step</code>
+arguments.</p>
+<h4 id="attributes_4">Attributes</h4>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>step</td>
+<td>None</td>
+<td><code>Step</code> referred to.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ancestors-in-mro_8">Ancestors (in MRO)</h4>
+<ul>
+<li>typing.Generic</li>
+<li>dewret.workflow.Reference</li>
+</ul>
+<h4 id="instance-variables_8">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="n">field</span>
+</code></pre></div>
+<p>Field within the result.</p>
+<p>Explicitly set field (within an attrs-class) or <code>out</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="n">name</span>
+</code></pre></div>
+<p>Reference based on the named step.</p>
+<p>May be remapped by the workflow to something nicer
+than the ID.</p>
+<div class="highlight"><pre><span></span><code><span class="n">return_type</span>
+</code></pre></div>
+<p>Type that this step reference will resolve to.</p>
+<h3 id="task">Task</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Task</span><span class="p">(</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;str&#39;</span><span class="p">,</span>
+    <span class="n">target</span><span class="p">:</span> <span class="s1">&#39;Lazy&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Named wrapper of a lazy-evaluatable function.</p>
+<p>Wraps a lazy-evaluatable function (<code>dewret.workflow.Lazy</code>) with any
+metadata needed to render it later. At present, this is the name.</p>
+<h4 id="attributes_5">Attributes</h4>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>None</td>
+<td>Name of the lazy function as it will appear in the output workflow text.</td>
+<td>None</td>
+</tr>
+<tr>
+<td>target</td>
+<td>None</td>
+<td>Callable that is wrapped.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h3 id="unset">Unset</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Unset</span><span class="p">(</span>
+    <span class="o">/</span><span class="p">,</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Unset variable, with no default value.</p>
+<h4 id="descendants_4">Descendants</h4>
+<ul>
+<li>dewret.workflow.UnsetType</li>
+</ul>
+<h3 id="unsettype">UnsetType</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">UnsetType</span><span class="p">(</span>
+    <span class="n">raw_type</span><span class="p">:</span> <span class="s1">&#39;type[T]&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Unset variable with a specific type.</p>
+<h4 id="attributes_6">Attributes</h4>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>type</strong></td>
+<td>None</td>
+<td>type of the variable.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ancestors-in-mro_9">Ancestors (in MRO)</h4>
+<ul>
+<li>dewret.workflow.Unset</li>
+<li>typing.Generic</li>
+</ul>
+<h3 id="workflow">Workflow</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">Workflow</span><span class="p">(</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;str | None&#39;</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Overarching workflow concept.</p>
+<p>Represents a whole workflow, as a singleton maintaining all
+state information needed ahead of rendering. It is built up
+as the lazy-evaluations are finally evaluated.</p>
+<h4 id="attributes_7">Attributes</h4>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>steps</td>
+<td>None</td>
+<td>the sequence of calls to lazy-evaluable functions,<br>built as they are evaluated.</td>
+<td>None</td>
+</tr>
+<tr>
+<td>tasks</td>
+<td>None</td>
+<td>the mapping of names used in the <code>steps</code> to the actual<br><code>Task</code> wrappers they represent.</td>
+<td>None</td>
+</tr>
+<tr>
+<td>result</td>
+<td>None</td>
+<td>target reference to evaluate, if yet present.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="static-methods">Static methods</h4>
+<h4 id="assimilate">assimilate</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">assimilate</span><span class="p">(</span>
+    <span class="n">left</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+    <span class="n">right</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;&#39;Workflow&#39;&quot;</span>
+</code></pre></div>
+<p>Combine two Workflows into one Workflow.</p>
+<p>Takes two workflows and unifies them by combining steps
+and tasks. If it sees mismatched identifiers for the same
+component, it will error.
+This could happen if the hashing function is flawed
+or some Python magic to do with Targets being passed.</p>
+<p>Argument:
+    left: workflow to use as base
+    right: workflow to combine on top</p>
+<h4 id="from_result">from_result</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">from_result</span><span class="p">(</span>
+    <span class="n">result</span><span class="p">:</span> <span class="s1">&#39;StepReference[Any]&#39;</span><span class="p">,</span>
+    <span class="n">simplify_ids</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">nested</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Workflow&#39;</span>
+</code></pre></div>
+<p>Create from a desired result.</p>
+<p>Starts from a result, and builds a workflow to output it.</p>
+<h4 id="instance-variables_9">Instance variables</h4>
+<div class="highlight"><pre><span></span><code><span class="n">name</span>
+</code></pre></div>
+<p>Get the name of the workflow.</p>
+<h4 id="methods_5">Methods</h4>
+<h4 id="add_nested_step">add_nested_step</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">add_nested_step</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;str&#39;</span><span class="p">,</span>
+    <span class="n">subworkflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+    <span class="n">kwargs</span><span class="p">:</span> <span class="s1">&#39;dict[str, Any]&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;StepReference[Any]&#39;</span>
+</code></pre></div>
+<p>Append a nested step.</p>
+<p>Calls a subworkflow.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>None</td>
+<td>name of the subworkflow.</td>
+<td>None</td>
+</tr>
+<tr>
+<td>subworkflow</td>
+<td>None</td>
+<td>the subworkflow itself.</td>
+<td>None</td>
+</tr>
+<tr>
+<td>kwargs</td>
+<td>None</td>
+<td>any key-value arguments to pass in the call.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="add_step">add_step</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">add_step</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">fn</span><span class="p">:</span> <span class="s1">&#39;Lazy&#39;</span><span class="p">,</span>
+    <span class="n">kwargs</span><span class="p">:</span> <span class="s1">&#39;dict[str, Raw | Reference]&#39;</span><span class="p">,</span>
+    <span class="n">raw_as_parameter</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">is_factory</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;StepReference[Any]&#39;</span>
+</code></pre></div>
+<p>Append a step.</p>
+<p>Adds a step, for running a target with key-value arguments,
+to the workflow.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fn</td>
+<td>None</td>
+<td>the target function to turn into a step.</td>
+<td>None</td>
+</tr>
+<tr>
+<td>kwargs</td>
+<td>None</td>
+<td>any key-value arguments to pass in the call.</td>
+<td>None</td>
+</tr>
+<tr>
+<td>raw_as_parameter</td>
+<td>None</td>
+<td>whether to turn any discovered raw arguments into workflow parameters.</td>
+<td>None</td>
+</tr>
+<tr>
+<td>is_factory</td>
+<td>None</td>
+<td>whether this step should be a Factory.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="find_factories">find_factories</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">find_factories</span><span class="p">(</span>
+    <span class="bp">self</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;dict[str, FactoryCall]&#39;</span>
+</code></pre></div>
+<p>Steps that are factory calls.</p>
+<h4 id="find_parameters">find_parameters</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">find_parameters</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">include_factory_calls</span><span class="p">:</span> <span class="s1">&#39;bool&#39;</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;set[ParameterReference]&#39;</span>
+</code></pre></div>
+<p>Crawl steps for parameter references.</p>
+<p>As the workflow does not hold its own list of parameters, this
+dynamically finds them.</p>
+<p><strong>Returns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>Set of all references to parameters across the steps.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="register_task">register_task</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">register_task</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">fn</span><span class="p">:</span> <span class="s1">&#39;Lazy&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Task&#39;</span>
+</code></pre></div>
+<p>Note the existence of a lazy-evaluatable function, and wrap it as a <code>Task</code>.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fn</td>
+<td>None</td>
+<td>the wrapped function.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>A new <code>Task</code> that wraps the function, and is retained in the <code>Workflow.tasks</code><br>dict.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="remap">remap</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">remap</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">step_id</span><span class="p">:</span> <span class="s1">&#39;str&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;str&#39;</span>
+</code></pre></div>
+<p>Apply name simplification if requested.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>step_id</td>
+<td>None</td>
+<td>step to check.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>Same ID or a remapped name.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="set_result">set_result</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">set_result</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">result</span><span class="p">:</span> <span class="s1">&#39;StepReference[Any]&#39;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;None&#39;</span>
+</code></pre></div>
+<p>Choose the result step.</p>
+<p>Sets a step as being the result for the entire workflow.
+When we evaluate a dynamic workflow, the engine (e.g. dask)
+creates a graph to realize the result of a single collection.
+Similarly, in the static case, we need to have a result that
+drives the calculation.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>result</td>
+<td>None</td>
+<td>reference to the chosen step.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="simplify_ids">simplify_ids</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">simplify_ids</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">infix</span><span class="p">:</span> <span class="s1">&#39;list[str] | None&#39;</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;None&#39;</span>
+</code></pre></div>
+<p>Work out mapping to simple ints from hashes.</p>
+<p>Goes through and numbers each step by the order of use of its task.</p>
+<h3 id="workflowcomponent">WorkflowComponent</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">WorkflowComponent</span><span class="p">(</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Base class for anything directly tied to an individual <code>Workflow</code>.</p>
+<h4 id="attributes_8">Attributes</h4>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>workflow</strong></td>
+<td>None</td>
+<td>the <code>Workflow</code> that this is tied to.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<h4 id="descendants_5">Descendants</h4>
+<ul>
+<li>dewret.workflow.BaseStep</li>
+</ul>
+<h3 id="workflowlinkedcomponent">WorkflowLinkedComponent</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">WorkflowLinkedComponent</span><span class="p">(</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Protocol for objects dynamically tied to a <code>Workflow</code>.</p>
+<h4 id="ancestors-in-mro_10">Ancestors (in MRO)</h4>
+<ul>
+<li>typing.Protocol</li>
+<li>typing.Generic</li>
+</ul>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        
+<footer class="md-footer">
+    
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="../utils/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Utils" rel="prev">
+            <div class="md-footer__button md-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <div class="md-ellipsis">
+                <span class="md-footer__direction">
+                  Previous
+                </span>
+                Utils
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../backends/backend_dask/" class="md-footer__link md-footer__link--next" aria-label="Next: Backend Dask" rel="next">
+            <div class="md-footer__title">
+              <div class="md-ellipsis">
+                <span class="md-footer__direction">
+                  Next
+                </span>
+                Backend Dask
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+    <div class="md-footer-meta md-typeset">
+      <div class="md-footer-meta__inner md-grid">
+        <div class="md-footer-copyright">
+            
+            Powered by
+            <a href="http://timothycrosley.github.io/portray">portray.</a>
+            You too can
+            <a href="http://timothycrosley.github.io/portray">
+              portray</a>
+            your Python project well using automatic documentation.
+          </div>
+        
+      </div>
+    </div>
+  </footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.5bf1dace.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.078830c0.min.js"></script>
+      
+    
+  </body>
+</html>
