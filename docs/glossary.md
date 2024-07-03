@@ -3,7 +3,9 @@
 #### Construct
 - To `construct` a workflow in dewret is to pull the connected steps into a single structure.
 
-#### Nested Task
+#### Sub Workflow
+- A subworkflow is a nested or hierarchical workflow. It is a workflow defined within another workflow, allowing for the encapsulation and reuse of complex operations as a single, higher-level step in the parent workflow.
+
 - Specific type of [task](#task) designed to encapsulate multiple tasks. Nested tasks are the culmination (or result) of multiple tasks represented as a single task in a dewret [workflow](#workflow).
 
 #### Render
