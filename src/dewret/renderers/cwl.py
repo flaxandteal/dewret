@@ -22,7 +22,7 @@ from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstanc
 from dataclasses import dataclass, is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
 from contextvars import ContextVar
-from typing import TypedDict, NotRequired, get_args, Union, cast, Any, Unpack
+from typing import TypedDict, NotRequired, get_args, Union, cast, Any, Iterable, Unpack
 from types import UnionType
 
 from dewret.workflow import (
@@ -210,12 +210,14 @@ def to_cwl_type(typ: type) -> str | list[str]:
         return "boolean"
     elif typ == dict or attrs_has(typ):
         return "record"
-    elif typ == list:
-        return "array"
     elif typ == float:
         return "double"
     elif typ == str:
         return "string"
+    elif typ == bytes:
+        return "bytes"
+    elif isinstance(typ, Iterable):
+        return "array"
     else:
         if configuration("allow_complex_types"):
             return typ if isinstance(typ, str) else typ.__name__
