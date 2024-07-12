@@ -37,3 +37,9 @@ def sum(left: int | float, right: int | float) -> int | float:
 def triple_and_one(num: int | float) -> int | float:
     """Triple a number by doubling and adding again, then add 1."""
     return sum(left=sum(left=double(num=num), right=num), right=1)
+
+
+@task()
+def tuple_float_return() -> tuple[float, float]:
+    """Return a tuple of floats."""
+    return 48.856667, 2.351667

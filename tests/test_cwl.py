@@ -7,7 +7,14 @@ from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.workflow import param
 
-from ._lib.extra import increment, double, mod10, sum, triple_and_one
+from ._lib.extra import (
+    increment,
+    double,
+    mod10,
+    sum,
+    triple_and_one,
+    tuple_float_return,
+)
 
 
 @task()
@@ -328,7 +335,9 @@ def test_cwl_references() -> None:
           out:
             label: out
             outputSource: double-{hsh_double}/out
-            type: [int, double]
+            type: 
+            - int
+            - double
         steps:
           increment-{hsh_increment}:
             run: increment
@@ -370,7 +379,9 @@ def test_complex_cwl_references() -> None:
           out:
             label: out
             outputSource: sum-1/out
-            type: [int, double]
+            type: 
+            - int
+            - double
         steps:
           increment-1:
             run: increment
@@ -510,4 +521,35 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             out:
             - out
             run: sum
+    """)
+
+
+def test_tuple_floats() -> None:
+    """Check whether we can link between multiple steps.
+
+    Produces CWL that has references between multiple steps.
+    """
+    result = tuple_float_return()
+    workflow = construct(result, simplify_ids=True)
+    rendered = render(workflow)
+
+    assert rendered == yaml.safe_load("""
+        cwlVersion: 1.2
+        class: Workflow
+        inputs: {}
+        outputs:
+          out:
+            label: out
+            outputSource: tuple_float_return-1/out
+            type: 
+              items: [
+                float,
+                float
+              ]
+              type: array
+        steps:
+          tuple_float_return-1:
+            run: tuple_float_return
+            in: {}
+            out: [out]
     """)

@@ -256,7 +256,12 @@ def test_pair_can_be_returned_from_step() -> None:
           out:
             label: out
             outputSource: pair-1/out
-            type: array
+            type: 
+              items: [
+                float,
+                float,
+              ]
+              type: array
         steps:
           pair-1:
             in:
@@ -292,7 +297,9 @@ def test_list_can_be_returned_from_step() -> None:
           out:
             label: out
             outputSource: list_cast-1/out
-            type: array
+            type:
+              items: float
+              type: array
         steps:
           list_cast-1:
             in:
