@@ -18,6 +18,7 @@ Outputs a [Common Workflow Language](https://www.commonwl.org/) representation o
 current workflow.
 """
 
+from re import search, escape
 from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstance
 from dataclasses import dataclass, is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
@@ -38,7 +39,9 @@ from dewret.workflow import (
 )
 from dewret.utils import RawType, flatten, DataclassProtocol
 
-InputSchemaType = Union[str, "CommandInputSchema", list[str], list["InputSchemaType"]]
+InputSchemaType = Union[
+    str, "CommandInputSchema", list[str], list["InputSchemaType"], dict[str, str]
+]
 
 
 @dataclass
@@ -174,7 +177,7 @@ class StepDefinition:
         }
 
 
-def cwl_type_from_value(val: RawType | Unset) -> str | list[str]:
+def cwl_type_from_value(val: RawType | Unset) -> str | list[str] | dict[str, Any]:
     """Find a CWL type for a given (possibly Unset) value.
 
     Args:
@@ -191,7 +194,46 @@ def cwl_type_from_value(val: RawType | Unset) -> str | list[str]:
     return to_cwl_type(raw_type)
 
 
-def to_cwl_type(typ: type) -> str | list[str]:
+def _handle_complex_types(typ: type) -> dict[str, Any]:
+    # Changing this code for some reason changes the conditional on line 137
+    # Converts for example [int, double] into:
+    # - int
+    # - double
+    type_mapping = {
+        "int": "int",
+        "float": "float",
+        "str": "string",
+        "bool": "boolean",
+        "bytes": "bytes",
+    }
+
+    found_types = []
+    if isinstance(typ, str):
+        # Check if the string contains any of the basic types
+        for key in type_mapping.keys():
+            if search(r"\b" + escape(key) + r"\b", typ):
+                found_types.append(type_mapping[key])
+        if found_types:
+            return {"type": "array", "items": found_types}
+        else:
+            raise ValueError(f"Cannot render complex type {typ}")
+    else:
+        # Check if it's a basic type
+        for item in get_args(typ):
+            if item.__name__ in type_mapping:
+                found_types.append(item.__name__)
+            else:
+                raise ValueError(f"Cannot render complex type {item}")
+
+        if len(found_types) == 1:
+            return {"type": "array", "items": found_types[0]}
+        elif len(found_types) > 1:
+            return {"type": "array", "items": found_types}
+        else:
+            raise ValueError(f"Cannot render complex type {item}")
+
+
+def to_cwl_type(typ: type) -> str | dict[str, Any] | list[str]:
     """Map Python types to CWL types.
 
     Args:
@@ -211,13 +253,13 @@ def to_cwl_type(typ: type) -> str | list[str]:
     elif typ == dict or attrs_has(typ):
         return "record"
     elif typ == float:
-        return "double"
+        return "float"
     elif typ == str:
         return "string"
     elif typ == bytes:
         return "bytes"
     elif isinstance(typ, Iterable):
-        return "array"
+        return _handle_complex_types(typ=typ)
     else:
         if configuration("allow_complex_types"):
             return typ if isinstance(typ, str) else typ.__name__
