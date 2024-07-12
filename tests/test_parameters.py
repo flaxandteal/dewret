@@ -63,7 +63,6 @@ def test_complex_parameters() -> None:
     result = sum(left=double(num=rotate(num=num)), right=rotate(num=rotate(num=23)))
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
-
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
