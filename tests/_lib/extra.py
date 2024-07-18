@@ -23,7 +23,7 @@ def double(num: int | float) -> int | float:
 
 @task()
 def mod10(num: int) -> int:
-    """Double an integer."""
+    """Remainder of an integer divided by 10."""
     return num % 10
 
 
