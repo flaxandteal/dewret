@@ -83,7 +83,7 @@ def test_complex_parameters() -> None:
           out:
             label: out
             outputSource: sum-1/out
-            type: [int, double]
+            type: [int, float]
         steps:
           rotate-1:
             run: rotate
