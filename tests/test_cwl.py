@@ -61,7 +61,7 @@ def test_basic_cwl() -> None:
           out:
             label: out
             outputSource: pi-{hsh}/out
-            type: double
+            type: float
         steps:
           pi-{hsh}:
             run: pi
@@ -279,7 +279,7 @@ def test_cwl_with_subworkflow() -> None:
             outputSource: sum-1-2/out
             type:
             - int
-            - double
+            - float
         steps:
           double-1-1:
             in:
@@ -337,7 +337,7 @@ def test_cwl_references() -> None:
             outputSource: double-{hsh_double}/out
             type: 
             - int
-            - double
+            - float
         steps:
           increment-{hsh_increment}:
             run: increment
@@ -381,7 +381,7 @@ def test_complex_cwl_references() -> None:
             outputSource: sum-1/out
             type: 
             - int
-            - double
+            - float
         steps:
           increment-1:
             run: increment
@@ -482,7 +482,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             label: num
             type: [
               int,
-              double
+              float
             ]
           sum-1-2-right:
             default: 1
@@ -494,7 +494,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             outputSource: sum-1-2/out
             type:
             - int
-            - double
+            - float
         steps:
           double-1-1:
             in:
@@ -542,10 +542,9 @@ def test_tuple_floats() -> None:
             label: out
             outputSource: tuple_float_return-1/out
             type: 
-              items: [
-                float,
-                float
-              ]
+              items: 
+                - float
+                - float
               type: array
         steps:
           tuple_float_return-1:

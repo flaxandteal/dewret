@@ -99,7 +99,7 @@ def test_nested_task() -> None:
                     type: int
                 second:
                     label: second
-                    type: double
+                    type: float
         steps:
           split-1:
             in: {}
@@ -109,7 +109,7 @@ def test_nested_task() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split
     """)
 
@@ -137,7 +137,7 @@ def test_field_of_nested_task() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split
     """)
 
@@ -165,7 +165,7 @@ def test_field_of_nested_task_into_dataclasses() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split_into_dataclass
     """)
 
@@ -183,7 +183,7 @@ def test_complex_field_of_nested_task() -> None:
           out:
             label: out
             outputSource: combine-1/out
-            type: double
+            type: float
         steps:
           combine-1:
             in:
@@ -201,7 +201,7 @@ def test_complex_field_of_nested_task() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split
     """)
 
@@ -220,7 +220,7 @@ def test_complex_field_of_nested_task_with_dataclasses() -> None:
           out:
             label: out
             outputSource: combine-1/out
-            type: double
+            type: float
         steps:
           combine-1:
             in:
@@ -238,7 +238,7 @@ def test_complex_field_of_nested_task_with_dataclasses() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split_into_dataclass
     """)
 
@@ -257,10 +257,9 @@ def test_pair_can_be_returned_from_step() -> None:
             label: out
             outputSource: pair-1/out
             type: 
-              items: [
-                float,
-                float,
-              ]
+              items: 
+                - float
+                - float
               type: array
         steps:
           pair-1:
@@ -279,7 +278,7 @@ def test_pair_can_be_returned_from_step() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float 
             run: split_into_dataclass
     """)
 
@@ -323,6 +322,6 @@ def test_list_can_be_returned_from_step() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split_into_dataclass
     """)
