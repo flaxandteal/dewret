@@ -226,7 +226,7 @@ def to_cwl_type(typ: type) -> str | dict[str, Any] | list[str]:
             if len(basic_types) > 1:
                 return {
                     "type": "array",
-                    "items": [to_cwl_type(t) for t in get_args(typ)],
+                    "items": [{"type": to_cwl_type(t)} for t in basic_types],
                 }
             else:
                 return {"type": "array", "items": to_cwl_type(basic_types[0])}
