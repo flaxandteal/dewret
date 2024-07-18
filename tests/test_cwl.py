@@ -532,7 +532,7 @@ def test_tuple_floats() -> None:
     result = tuple_float_return()
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
-
+    print(yaml.dump(rendered))
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
@@ -543,8 +543,8 @@ def test_tuple_floats() -> None:
             outputSource: tuple_float_return-1/out
             type: 
               items: 
-                - float
-                - float
+                - type: float
+                - type: float
               type: array
         steps:
           tuple_float_return-1:
