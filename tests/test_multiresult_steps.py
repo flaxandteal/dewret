@@ -258,8 +258,8 @@ def test_pair_can_be_returned_from_step() -> None:
             outputSource: pair-1/out
             type: 
               items: 
-                - float
-                - float
+                - type: float
+                - type: float
               type: array
         steps:
           pair-1:
