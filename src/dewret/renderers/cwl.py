@@ -218,10 +218,10 @@ def to_cwl_type(typ: type) -> str | dict[str, Any] | list[str]:
         return "string"
     elif typ == bytes:
         return "bytes"
-    else:
-        if configuration("allow_complex_types"):
-            return typ if isinstance(typ, str) else typ.__name__
-        elif isinstance(typ, Iterable):
+    elif configuration("allow_complex_types"):
+        return typ if isinstance(typ, str) else typ.__name__
+    elif isinstance(typ, Iterable):
+        try:
             basic_types = get_args(typ)
             if len(basic_types) > 1:
                 return {
@@ -230,6 +230,11 @@ def to_cwl_type(typ: type) -> str | dict[str, Any] | list[str]:
                 }
             else:
                 return {"type": "array", "items": to_cwl_type(basic_types[0])}
+        except IndexError as err:
+            raise TypeError(
+                f"Cannot render complex type ({typ}) to CWL, have you enabled allow_complex_types configuration?"
+            ) from err
+    else:
         raise TypeError(f"Cannot render complex type ({typ}) to CWL")
 
 
