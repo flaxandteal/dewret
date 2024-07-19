@@ -8,7 +8,7 @@
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# with WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
@@ -465,7 +465,7 @@ class Workflow:
         new.tasks.update(right.tasks)
 
         for step in new.steps:
-            step.set_workflow(new, False)
+            step.set_workflow(new, with_arguments=True)
 
         # TODO: should we combine as a result array?
         result = left.result or right.result
@@ -742,7 +742,7 @@ class BaseStep(WorkflowComponent):
             and self.arguments == other.arguments
         )
 
-    def set_workflow(self, workflow: Workflow, without_arguments: bool = False) -> None:
+    def set_workflow(self, workflow: Workflow, with_arguments: bool = True) -> None:
         """Move the step reference to another workflow.
 
         Primarily intended to be called by its step, as a cascade.
@@ -750,10 +750,10 @@ class BaseStep(WorkflowComponent):
 
         Args:
             workflow: the new target workflow.
-            without_arguments: do not set workflows for the arguments.
+            with_arguments: set workflows for the arguments..
         """
         self.__workflow__ = workflow
-        if not without_arguments:
+        if with_arguments:
             for argument in self.arguments.values():
                 if hasattr(argument, "__workflow__"):
                     try:
