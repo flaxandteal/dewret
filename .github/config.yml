@@ -1,0 +1,32 @@
+# .github/config.yml
+
+issues:
+  - type: bug
+    name: "🐛 Bug report"
+    about: "Report a bug to help us improve"
+    title: "Bug: "
+    labels: ["bug"]
+    assignees: ['']
+    template: "issue_templates/bug_report.md"
+
+  - type: feature
+    name: "✨ Feature request"
+    about: "Suggest an idea for this project"
+    title: "Feature: "
+    labels: ["enhancement"]
+    assignees: ['']
+    template: "issue_templates/feature_request.md"
+
+  - type: improvement
+    name: "🛠 Improvement"
+    about: "Improve an existing feature"
+    title: "Improvement: "
+    labels: ["enhancement"]
+    assignees: ['']
+    template: "issue_templates/improve_existing_functionality.md"
+
+blank_issues_enabled: false
+# contact_links:
+#   - name: "Contact support"
+#     url: "https://example.com/support"
+#     about: "Contact our support team for help"
