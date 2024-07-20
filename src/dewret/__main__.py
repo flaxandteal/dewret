@@ -21,12 +21,13 @@ this may be of use.
 
 import importlib
 from pathlib import Path
+import re
 import yaml
 import sys
 import click
 import json
 
-from .renderers.cwl import render as cwl_render
+from .render import get_render_method, RawRenderModule, StructuredRenderModule
 from .tasks import Backend, construct
 
 
@@ -45,11 +46,15 @@ from .tasks import Backend, construct
     default=Backend.DASK.name,
     help="Backend to use for workflow evaluation.",
 )
+@click.option(
+    "--renderer",
+    default="@cwl"
+)
 @click.argument("workflow_py")
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
 def render(
-    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend
+    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend, renderer: str
 ) -> None:
     """Render a workflow.
 
@@ -70,18 +75,22 @@ def render(
         key, val = arg.split(":", 1)
         kwargs[key] = json.loads(val)
 
+    render_module: Path | RawRenderModule | StructuredRenderModule
+    if (mtch := re.match(r"@([a-z_0-9-.]+)", renderer)):
+        render_module = importlib.import_module(f"dewret.renderers.{mtch.group(1)}")
+    else:
+        render_module = Path(renderer)
+
+    render = get_render_method(render_module, pretty=pretty)
     try:
-        cwl = cwl_render(construct(task_fn(**kwargs), simplify_ids=True))
+        rendered = render(construct(task_fn(**kwargs), simplify_ids=True))
     except Exception as exc:
         import traceback
 
         print(exc, exc.__cause__, exc.__context__)
         traceback.print_exc()
     else:
-        if pretty:
-            yaml.dump(cwl, sys.stdout, indent=2)
-        else:
-            print(cwl)
+        print(rendered)
 
 
 render()
