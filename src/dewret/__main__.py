@@ -23,6 +23,7 @@ import importlib
 from pathlib import Path
 import re
 import yaml
+from typing import Any
 import sys
 import click
 import json
@@ -48,13 +49,17 @@ from .tasks import Backend, construct
 )
 @click.option(
     "--renderer",
-    default="@cwl"
+    default="cwl"
+)
+@click.option(
+    "--renderer-args",
+    default="simplify_ids:true"
 )
 @click.argument("workflow_py")
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
 def render(
-    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend, renderer: str
+    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend, renderer: str, renderer_args: str
 ) -> None:
     """Render a workflow.
 
@@ -76,14 +81,25 @@ def render(
         kwargs[key] = json.loads(val)
 
     render_module: Path | RawRenderModule | StructuredRenderModule
-    if (mtch := re.match(r"@([a-z_0-9-.]+)", renderer)):
+    if (mtch := re.match(r"^([a-z_0-9-.]+)$", renderer)):
         render_module = importlib.import_module(f"dewret.renderers.{mtch.group(1)}")
+    elif renderer.startswith("@"):
+        render_module = Path(renderer[1:])
     else:
-        render_module = Path(renderer)
+        raise RuntimeError("Renderer argument should be a known dewret renderer, or '@FILENAME' where FILENAME is a renderer")
+
+    renderer_kwargs: dict[str, Any]
+    if renderer_args.startswith("@"):
+        with Path(renderer_args[1:]).open() as renderer_args_f:
+            renderer_kwargs = yaml.load(renderer_args_f)
+    elif not renderer_args:
+        renderer_kwargs = {}
+    else:
+        renderer_kwargs = dict(pair.split(":") for pair in renderer_args.split(","))
 
     render = get_render_method(render_module, pretty=pretty)
     try:
-        rendered = render(construct(task_fn(**kwargs), simplify_ids=True))
+        rendered = render(construct(task_fn(**kwargs), **renderer_kwargs))
     except Exception as exc:
         import traceback
 
