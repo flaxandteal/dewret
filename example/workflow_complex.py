@@ -7,13 +7,13 @@ $ python -m dewret workflow_complex.py --pretty nested_workflow
 ```
 """
 
-from dewret.tasks import nested_task
+from dewret.tasks import subworkflow
 from workflow_tasks import sum, double, increase
 
 STARTING_NUMBER: int = 23
 
 
-@nested_task()
+@subworkflow()
 def nested_workflow() -> int | float:
     """Creates a graph of task calls."""
     left = double(num=increase(num=STARTING_NUMBER))
