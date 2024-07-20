@@ -43,7 +43,7 @@ def test_basic_cwl() -> None:
     """
     result = pi()
     workflow = construct(result)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
     hsh = hasher(("pi",))
 
     assert rendered == yaml.safe_load(f"""
@@ -76,7 +76,7 @@ def test_input_factories() -> None:
     now = factory(get_now)()
     result = days_in_future(now=now, num=3)
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow, allow_complex_types=True, factories_as_params=True)
+    rendered = render(workflow, allow_complex_types=True, factories_as_params=True)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -105,7 +105,7 @@ def test_input_factories() -> None:
             out: [out]
     """)
 
-    rendered = render(workflow, allow_complex_types=True)
+    rendered = render(workflow, allow_complex_types=True)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -144,7 +144,7 @@ def test_cwl_with_parameter() -> None:
     """
     result = increment(num=3)
     workflow = construct(result)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
     num_param = list(workflow.find_parameters())[0]
     hsh = hasher(("increment", ("num", f"int|:param:{num_param.unique_name}")))
 
@@ -180,7 +180,7 @@ def test_cwl_without_default() -> None:
 
     result = increment(num=my_param)
     workflow = construct(result)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
     hsh = hasher(("increment", ("num", "int|:param:my_param")))
 
     assert rendered == yaml.safe_load(f"""
@@ -210,7 +210,9 @@ def test_cwl_with_subworkflow() -> None:
     my_param = param("num", typ=int)
     result = increment(num=floor(num=triple_and_one(num=increment(num=my_param))))
     workflow = construct(result, simplify_ids=True)
-    rendered, subworkflows = render(workflow)
+    subworkflows = render(workflow)
+    rendered = subworkflows["__root__"]
+    del subworkflows["__root__"]
 
     assert len(subworkflows) == 1
     assert isinstance(subworkflows, dict)
@@ -309,7 +311,7 @@ def test_cwl_references() -> None:
     """
     result = double(num=increment(num=3))
     workflow = construct(result)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
     num_param = list(workflow.find_parameters())[0]
     hsh_increment = hasher(
         ("increment", ("num", f"int|:param:{num_param.unique_name}"))
@@ -352,7 +354,7 @@ def test_complex_cwl_references() -> None:
     """
     result = sum(left=double(num=increment(num=23)), right=mod10(num=increment(num=23)))
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -412,8 +414,10 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
     my_param = param("num", typ=int)
     result = increment(num=floor(num=triple_and_one(num=sum(left=my_param, right=3))))
     workflow = construct(result, simplify_ids=True)
-    rendered, subworkflows = render(workflow)
+    subworkflows = render(workflow)
+    rendered = subworkflows["__root__"]
 
+    del subworkflows["__root__"]
     assert len(subworkflows) == 1
     assert isinstance(subworkflows, dict)
     name, subworkflow = list(subworkflows.items())[0]

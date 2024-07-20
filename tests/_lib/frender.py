@@ -10,6 +10,7 @@ from contextvars import ContextVar
 
 from dewret.utils import RawType
 from dewret.workflow import Workflow, Step, NestedStep
+from dewret.render import base_render
 
 from extra import JUMP
 
@@ -91,7 +92,7 @@ It probably got made with JUMP={JUMP}
 
 def render_raw(
     workflow: Workflow, **kwargs: Unpack[FrenderRendererConfiguration]
-) -> str | tuple[str, dict[str, str]]:
+) -> dict[str, str]:
     """Render to a dict-like structure.
 
     Args:
@@ -103,15 +104,7 @@ def render_raw(
         serialization.
     """
     CONFIGURATION.get().update(kwargs)
-    primary_workflow = WorkflowDefinition.from_workflow(workflow).render()
-    subworkflows = {}
-    for step in workflow.steps:
-        if isinstance(step, NestedStep):
-            subworkflows[step.name] = WorkflowDefinition.from_workflow(
-                step.subworkflow
-            ).render()
-
-    if subworkflows:
-        return primary_workflow, subworkflows
-
-    return primary_workflow
+    return base_render(
+        workflow,
+        lambda workflow: WorkflowDefinition.from_workflow(workflow).render()
+    )

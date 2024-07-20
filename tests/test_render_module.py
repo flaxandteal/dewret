@@ -12,7 +12,7 @@ def test_can_load_render_module():
     frender_py = Path(__file__).parent / "_lib/frender.py"
     render = get_render_method(frender_py)
 
-    assert render(workflow) == ("""
+    assert render(workflow) == {"__root__": """
 I found a workflow called Fred.
 It has 2 steps!
 They are:
@@ -22,7 +22,7 @@ They are:
   whose name is triple_and_one
 
 It probably got made with JUMP=1.0
-""", {"triple_and_one-1": """
+""", "triple_and_one-1": """
 I found a workflow called triple_and_one.
 It has 3 steps!
 They are:
@@ -33,4 +33,4 @@ They are:
 * Something called sum-1-2
 
 It probably got made with JUMP=1.0
-"""})
+"""}

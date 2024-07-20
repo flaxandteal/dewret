@@ -23,7 +23,7 @@ def test_nested_task() -> None:
     Produces CWL that has references between multiple steps.
     """
     workflow = construct(algorithm(), simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2

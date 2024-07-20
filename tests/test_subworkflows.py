@@ -59,9 +59,10 @@ def test_subworkflows_can_use_globals() -> None:
     my_param = param("num", typ=int)
     result = increment(num=add_constant(num=increment(num=my_param)))
     workflow = construct(result, simplify_ids=True)
-    rendered, subworkflows = render(workflow)
+    subworkflows = render(workflow)
+    rendered = subworkflows["__root__"]
 
-    assert len(subworkflows) == 1
+    assert len(subworkflows) == 2
     assert isinstance(subworkflows, dict)
 
     assert rendered == yaml.safe_load("""
@@ -109,9 +110,10 @@ def test_subworkflows_can_use_factories() -> None:
     my_param = param("num", typ=int)
     result = pop(queue=make_queue(num=increment(num=my_param)))
     workflow = construct(result, simplify_ids=True)
-    rendered, subworkflows = render(workflow, allow_complex_types=True)
+    subworkflows = render(workflow, allow_complex_types=True)
+    rendered = subworkflows["__root__"]
 
-    assert len(subworkflows) == 1
+    assert len(subworkflows) == 2
     assert isinstance(subworkflows, dict)
 
     assert rendered == yaml.safe_load("""
@@ -153,9 +155,10 @@ def test_subworkflows_can_use_global_factories() -> None:
     my_param = param("num", typ=int)
     result = pop(queue=get_global_queue(num=increment(num=my_param)))
     workflow = construct(result, simplify_ids=True)
-    rendered, subworkflows = render(workflow, allow_complex_types=True)
+    subworkflows = render(workflow, allow_complex_types=True)
+    rendered = subworkflows["__root__"]
 
-    assert len(subworkflows) == 1
+    assert len(subworkflows) == 2
     assert isinstance(subworkflows, dict)
 
     assert rendered == yaml.safe_load("""
