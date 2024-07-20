@@ -240,7 +240,7 @@ class OutputDefinition:
         """
         # TODO: Error handling
         # TODO: Better way to handling input/output files
-        output_file = step.arguments["output_file"]
+        output_file = step.arguments.get("output_file", Raw("OUTPUT_FILE"))
         if isinstance(output_file, Raw):
             args = to_snakemake_type(output_file)
 
