@@ -90,7 +90,10 @@ def render(
         print(exc, exc.__cause__, exc.__context__)
         traceback.print_exc()
     else:
-        print(rendered)
+        if len(rendered) == 1:
+            print(rendered["__root__"])
+        else:
+            print(rendered)
 
 
 render()

@@ -37,6 +37,7 @@ from dewret.workflow import (
     Unset,
 )
 from dewret.utils import RawType, flatten, DataclassProtocol
+from dewret.render import base_render
 
 InputSchemaType = Union[
     str, "CommandInputSchema", list[str], list["InputSchemaType"], dict[str, str]
@@ -57,21 +58,12 @@ class CWLRendererConfiguration(TypedDict):
 
 
 CONFIGURATION: ContextVar[CWLRendererConfiguration] = ContextVar("cwl-configuration")
-
-
-def set_configuration(configuration: CWLRendererConfiguration) -> None:
-    """Set configuration for this rendering.
-
-    Args:
-        configuration: overridden settings as dict.
-    """
-    CONFIGURATION.set(
-        CWLRendererConfiguration(
-            allow_complex_types=False,
-            factories_as_params=False,
-        )
-    )
-    CONFIGURATION.get().update(configuration)
+DEFAULT_CONFIGURATION: CWLRendererConfiguration = {
+    "allow_complex_types": False,
+    "factories_as_params": False,
+}
+CONFIGURATION.set({})
+CONFIGURATION.get().update(DEFAULT_CONFIGURATION)
 
 
 def configuration(key: str) -> Any:
@@ -544,7 +536,7 @@ class WorkflowDefinition:
 
 def render(
     workflow: Workflow, **kwargs: Unpack[CWLRendererConfiguration]
-) -> dict[str, RawType] | tuple[dict[str, RawType], dict[str, dict[str, RawType]]]:
+) -> dict[str, dict[str, RawType]]:
     """Render to a dict-like structure.
 
     Args:
@@ -555,16 +547,10 @@ def render(
         Reduced form as a native Python dict structure for
         serialization.
     """
-    set_configuration(kwargs)
-    primary_workflow = WorkflowDefinition.from_workflow(workflow).render()
-    subworkflows = {}
-    for step in workflow.steps:
-        if isinstance(step, NestedStep):
-            subworkflows[step.name] = WorkflowDefinition.from_workflow(
-                step.subworkflow
-            ).render()
-
-    if subworkflows:
-        return primary_workflow, subworkflows
-
-    return primary_workflow
+    CONFIGURATION.get().update(kwargs)
+    rendered = base_render(
+        workflow,
+        lambda workflow: WorkflowDefinition.from_workflow(workflow).render()
+    )
+    CONFIGURATION.get().update(DEFAULT_CONFIGURATION)
+    return rendered

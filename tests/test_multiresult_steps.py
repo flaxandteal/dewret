@@ -82,7 +82,7 @@ def test_nested_task() -> None:
     Produces CWL that has references between multiple steps.
     """
     workflow = construct(split(), simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -117,7 +117,7 @@ def test_nested_task() -> None:
 def test_field_of_nested_task() -> None:
     """Tests whether a directly-output nested task can have fields."""
     workflow = construct(split().first, simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -145,7 +145,7 @@ def test_field_of_nested_task() -> None:
 def test_field_of_nested_task_into_dataclasses() -> None:
     """Tests whether a directly-output nested task can have fields."""
     workflow = construct(split_into_dataclass().first, simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -173,7 +173,7 @@ def test_field_of_nested_task_into_dataclasses() -> None:
 def test_complex_field_of_nested_task() -> None:
     """Tests whether a task can sum complex structures."""
     workflow = construct(algorithm(), simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -210,7 +210,7 @@ def test_complex_field_of_nested_task_with_dataclasses() -> None:
     """Tests whether a task can insert result fields into other steps."""
     result = algorithm_with_dataclasses()
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow

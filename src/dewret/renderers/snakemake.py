@@ -35,6 +35,7 @@ from dewret.workflow import (
     Lazy,
     BaseStep,
 )
+from dewret.render import base_render
 
 MainTypes = typing.Union[
     BasicType, list[str], list["MainTypes"], dict[str, "MainTypes"]
@@ -448,7 +449,7 @@ def raw_render(workflow: Workflow) -> dict[str, MainTypes]:
     return WorkflowDefinition.from_workflow(workflow).render()
 
 
-def render(workflow: Workflow) -> str:
+def render(workflow: Workflow) -> dict[str, typing.Any]:
     """Render the workflow as a Snakemake (SMK) string.
 
     This function converts a Workflow object into a Snakemake-compatible yaml.
@@ -468,6 +469,9 @@ def render(workflow: Workflow) -> str:
         }
     )
 
-    return yaml.dump(
-        WorkflowDefinition.from_workflow(workflow).render(), indent=4
-    ).translate(trans_table)
+    return base_render(
+        workflow,
+        lambda workflow: yaml.dump(
+            WorkflowDefinition.from_workflow(workflow).render(), indent=4
+        ).translate(trans_table)
+    )
