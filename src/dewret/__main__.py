@@ -21,6 +21,8 @@ this may be of use.
 
 import importlib
 from pathlib import Path
+from contextlib import contextmanager
+import sys
 import re
 import yaml
 from typing import Any
@@ -55,11 +57,15 @@ from .tasks import Backend, construct
     "--renderer-args",
     default="simplify_ids:true"
 )
+@click.option(
+    "--output",
+    default="-"
+)
 @click.argument("workflow_py")
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
 def render(
-    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend, renderer: str, renderer_args: str
+    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend, renderer: str, renderer_args: str, output: str
 ) -> None:
     """Render a workflow.
 
@@ -97,6 +103,21 @@ def render(
     else:
         renderer_kwargs = dict(pair.split(":") for pair in renderer_args.split(","))
 
+    if output == "-":
+        @contextmanager
+        def _opener(key, _):
+            print(" ------ ", key, " ------ ")
+            yield sys.stdout
+            print()
+        opener = _opener
+    else:
+        @contextmanager
+        def _opener(key, mode):
+            output_file = output.replace("%", key)
+            with Path(output_file).open(mode) as output_f:
+                yield output_f
+        opener = _opener
+
     render = get_render_method(render_module, pretty=pretty)
     try:
         rendered = render(construct(task_fn(**kwargs), **renderer_kwargs))
@@ -107,9 +128,21 @@ def render(
         traceback.print_exc()
     else:
         if len(rendered) == 1:
-            print(rendered["__root__"])
+            with opener("", "w") as output_f:
+                output_f.write(rendered["__root__"])
+        elif "%" in output:
+            for key, value in rendered.items():
+                if key == "__root__":
+                    key = "ROOT"
+                with opener(key, "w") as output_f:
+                    output_f.write(value)
         else:
-            print(rendered)
-
+            with opener("ROOT", "w") as output_f:
+                output_f.write(rendered["__root__"])
+            del rendered["__root__"]
+            for key, value in rendered.items():
+                with opener(key, "a") as output_f:
+                    output_f.write("\n---\n")
+                    output_f.write(value)
 
 render()

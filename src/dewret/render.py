@@ -21,7 +21,7 @@ class StructuredRenderModule(Protocol):
 
 def structured_to_raw(rendered: RawType, pretty: bool=False) -> str:
     if pretty:
-        output = yaml.dumps(rendered, indent=2)
+        output = yaml.safe_dump(rendered, indent=2)
     else:
         output = str(rendered)
     return output
@@ -45,7 +45,7 @@ def get_render_method(renderer: Path | RawRenderModule | StructuredRenderModule,
             for key, value in rendered.items()
         }
 
-    return partial(_render, render_module=render_module)
+    return partial(_render, render_module=render_module, pretty=pretty)
 
 T = TypeVar("T")
 def base_render(
