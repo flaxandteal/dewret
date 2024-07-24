@@ -330,7 +330,7 @@ class Workflow:
 
     steps: list["BaseStep"]
     tasks: MutableMapping[str, "Task"]
-    result: StepReference[Any] | None
+    result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]] | None
     _remapping: dict[str, str] | None
     _name: str | None
 
@@ -467,15 +467,32 @@ class Workflow:
         for step in new.steps:
             step.set_workflow(new, with_arguments=True)
 
-        # TODO: should we combine as a result array?
-        result = left.result or right.result
+        if left.result == right.result:
+            result = left.result
+        elif not left.result:
+            result = right.result
+        elif not right.result:
+            result = left.result
+        else:
+            if not isinstance(left.result, tuple | list):
+                left.result = [left.result]
+            if not isinstance(right.result, tuple | list):
+                right.result = [right.result]
+            result = list(left.result) + list(right.result)
 
         if result:
-            new.set_result(
-                StepReference(
-                    new, result.step, typ=result.return_type, field=result.field
+            if isinstance(result, list | tuple):
+                new.set_result([
+                    StepReference(
+                        new, entry.step, typ=entry.return_type, field=entry.field
+                    ) for entry in result
+                ])
+            else:
+                new.set_result(
+                    StepReference(
+                        new, result.step, typ=result.return_type, field=result.field
+                    )
                 )
-            )
 
         return new
 
@@ -592,19 +609,26 @@ class Workflow:
 
     @staticmethod
     def from_result(
-        result: StepReference[Any], simplify_ids: bool = False, nested: bool = True
+        result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]], simplify_ids: bool = False, nested: bool = True
     ) -> Workflow:
         """Create from a desired result.
 
         Starts from a result, and builds a workflow to output it.
         """
-        workflow = result.__workflow__
+        if isinstance(result, list | tuple):
+            workflow = result[0].__workflow__
+            # Ensure that we have exactly one workflow, even if multiple results.
+            for entry in result[1:]:
+                if entry.__workflow__ != workflow:
+                    raise RuntimeError("If multiple results, they must share a single workflow")
+        else:
+            workflow = result.__workflow__
         workflow.set_result(result)
         if simplify_ids:
             workflow.simplify_ids()
         return workflow
 
-    def set_result(self, result: StepReference[Any]) -> None:
+    def set_result(self, result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]]) -> None:
         """Choose the result step.
 
         Sets a step as being the result for the entire workflow.
@@ -616,9 +640,23 @@ class Workflow:
         Args:
             result: reference to the chosen step.
         """
-        if result.step.__workflow__ != self:
-            raise RuntimeError("Output must be from a step in this workflow.")
+        if isinstance(result, list | tuple):
+            to_check = result
+        else:
+            to_check = [result]
+        for entry in to_check:
+            if entry.step.__workflow__ != self:
+                raise RuntimeError("Output must be from a step in this workflow.")
         self.result = result
+
+    @property
+    def result_type(self):
+        if self.result is None:
+            return type(None)
+        if isinstance(self.result, tuple | list):
+            # TODO: get individual types!
+            return type(self.result)
+        return self.result.return_type
 
 
 class WorkflowComponent:
@@ -774,7 +812,7 @@ class BaseStep(WorkflowComponent):
         """
         if isinstance(self.task, Workflow):
             if self.task.result:
-                return self.task.result.return_type
+                return self.task.result_type
             else:
                 raise AttributeError(
                     "Cannot determine return type of a workflow with an unspecified result"
@@ -866,7 +904,7 @@ class NestedStep(BaseStep):
         """
         if not self.__subworkflow__.result:
             raise RuntimeError("Can only use a subworkflow if the reference exists.")
-        return self.__subworkflow__.result.return_type
+        return self.__subworkflow__.result_type
 
 
 class Step(BaseStep):
