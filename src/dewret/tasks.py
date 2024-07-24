@@ -132,7 +132,7 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def evaluate(self, task: Lazy, __workflow__: Workflow, **kwargs: Any) -> Any:
+    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy], __workflow__: Workflow, **kwargs: Any) -> Any:
         """Evaluate a single task for a known workflow.
 
         Args:
@@ -141,12 +141,26 @@ class TaskManager:
             **kwargs: any arguments to pass to the task.
         """
         result = self.backend.run(__workflow__, task, **kwargs)
-        result.__workflow__.set_result(result)
-        if __workflow__ is not None and result.__workflow__ != __workflow__:
-            workflow = Workflow.assimilate(__workflow__, result.__workflow__)
+        to_check: list[StepReference] | tuple[StepReference]
+        if isinstance(result, list | tuple):
+            to_check = result
         else:
-            workflow = result.__workflow__
-        return workflow.result
+            to_check = [result]
+
+        # Build a unified workflow
+        collected_workflow = __workflow__ or to_check[0].__workflow__
+        for step_result in to_check:
+            new_workflow = step_result.__workflow__
+            if collected_workflow != new_workflow and collected_workflow and new_workflow:
+                collected_workflow = Workflow.assimilate(collected_workflow, new_workflow)
+
+        # Make sure all the results share it
+        for step_result in to_check:
+            step_result.__workflow__ = collected_workflow
+
+        # Then we set the result to be the whole thing
+        collected_workflow.set_result(result)
+        return collected_workflow.result
 
     def unwrap(self, task: Lazy) -> Target:
         """Unwraps a lazy-evaluated function to get the function.
