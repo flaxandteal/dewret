@@ -435,11 +435,11 @@ class OutputsDefinition:
         outputs: sequence of results from a workflow.
     """
 
-    outputs: dict[str, "CommandOutputSchema"]
+    outputs: dict[str, "CommandOutputSchema"] | list["CommandOutputSchema"]
 
     @classmethod
     def from_results(
-        cls, results: dict[str, StepReference[Any]]
+        cls, results: dict[str, StepReference[Any]] | list[StepReference[Any]] | tuple[StepReference[Any]]
     ) -> "OutputsDefinition":
         """Takes a mapping of results into a CWL structure.
 
@@ -449,7 +449,12 @@ class OutputsDefinition:
             CWL-like structure representing all workflow outputs.
         """
         return cls(
-            outputs={
+            outputs=[
+                    to_output_schema(
+                        result.field, result.return_type, output_source=result.name
+                    ) for result in results
+                ]
+                if isinstance(results, list | tuple) else {
                 key: to_output_schema(
                     result.field, result.return_type, output_source=result.name
                 )
@@ -457,14 +462,19 @@ class OutputsDefinition:
             }
         )
 
-    def render(self) -> dict[str, RawType]:
+    def render(self) -> dict[str, RawType] | list[RawType]:
         """Render to a dict-like structure.
 
         Returns:
             Reduced form as a native Python dict structure for
             serialization.
         """
-        return {key: flatten(output) for key, output in self.outputs.items()}
+        return [
+            flatten(output) for output in self.outputs
+        ] if isinstance(self.outputs, list) else {
+            key: flatten(output)
+            for key, output in self.outputs.items()
+        }
 
 
 @define
@@ -513,7 +523,11 @@ class WorkflowDefinition:
             ],
             inputs=InputsDefinition.from_parameters(parameters),
             outputs=OutputsDefinition.from_results(
-                {workflow.result.field: workflow.result} if workflow.result else {}
+                workflow.result
+                if isinstance(workflow.result, list | tuple) else
+                {workflow.result.field: workflow.result}
+                if workflow.result else
+                {}
             ),
             name=name,
         )

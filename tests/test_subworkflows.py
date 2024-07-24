@@ -47,6 +47,14 @@ def get_global_queue(num: int | float) -> "Queue[int]":
     """Add a number to a global queue."""
     return add_and_queue(num=to_int(num=num), queue=GLOBAL_QUEUE)
 
+@subworkflow()
+def get_global_queues(num: int | float) -> list["Queue[int] | int"]:
+    """Add a number to a global queue."""
+    return [
+        add_and_queue(num=to_int(num=num), queue=GLOBAL_QUEUE),
+        add_constant(num=num)
+    ]
+
 
 @subworkflow()
 def add_constant(num: int | float) -> int:
@@ -192,4 +200,185 @@ def test_subworkflows_can_use_global_factories() -> None:
                  source: get_global_queue-1/out
              out: [out]
              run: pop
+    """)
+
+
+def test_subworkflows_can_return_lists() -> None:
+    """Check whether we can produce a subworkflow that returns a list."""
+    my_param = param("num", typ=int)
+    result = get_global_queues(num=increment(num=my_param))
+    workflow = construct(result, simplify_ids=True)
+    subworkflows = render(workflow, allow_complex_types=True)
+    rendered = subworkflows["__root__"]
+    del subworkflows["__root__"]
+
+    assert len(subworkflows) == 2
+    assert isinstance(subworkflows, dict)
+    osubworkflows = sorted(list(subworkflows.items()))
+
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          num:
+            label: num
+            type: int
+        outputs:
+          out:
+            label: out
+            outputSource: get_global_queues-1/out
+            type: array
+        steps:
+          increment-1:
+             in:
+               num:
+                 source: num
+             out: [out]
+             run: increment
+          get_global_queues-1:
+             in:
+               num:
+                 source: increment-1/out
+             out: [out]
+             run: get_global_queues
+    """)
+
+    assert osubworkflows[0] == ("add_constant-1-1", yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          num:
+            label: num
+            type: int
+          sum-1-1-1-right:
+            default: 3
+            label: sum-1-1-1-right
+            type: int
+        outputs:
+          out:
+            label: out
+            outputSource: to_int-1-1-1/out
+            type: int
+        steps:
+          sum-1-1-1:
+            in:
+              left:
+                source: num
+              right:
+                source: sum-1-1-1-right
+            out:
+            - out
+            run: sum
+          to_int-1-1-1:
+            in:
+              num:
+                source: sum-1-1-1/out
+            out:
+            - out
+            run: to_int
+    """))
+
+    assert osubworkflows[1] == ("get_global_queues-1", yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          CONSTANT:
+            default: 3
+            label: CONSTANT
+            type: int
+          num:
+            label: num
+            type: int
+        outputs:
+          - label: out
+            outputSource: add_and_queue-1-1/out
+            type: Queue[int]
+          - label: out
+            outputSource: add_constant-1-1/out
+            type: int
+        steps:
+          Queue-1-1:
+            in: {}
+            out:
+            - out
+            run: Queue
+          add_and_queue-1-1:
+            in:
+              num:
+                source: to_int-1-1/out
+              queue:
+                source: Queue-1-1/out
+            out:
+            - out
+            run: add_and_queue
+          add_constant-1-1:
+            in:
+              CONSTANT:
+                source: CONSTANT
+              num:
+                source: num
+            out:
+            - out
+            run: add_constant
+          to_int-1-1:
+            in:
+              num:
+                source: num
+            out:
+            - out
+            run: to_int
+    """))
+
+def test_can_merge_workflows() -> None:
+    """Check whether we can merge workflows."""
+    my_param = param("num", typ=int)
+    value = to_int(num=increment(num=my_param))
+    result = sum(left=value, right=increment(num=value))
+    workflow = construct(result, simplify_ids=True)
+    subworkflows = render(workflow, allow_complex_types=True)
+    rendered = subworkflows["__root__"]
+    del subworkflows["__root__"]
+
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          num:
+            label: num
+            type: int
+        outputs:
+          out:
+            label: out
+            outputSource: sum-1/out
+            type: [
+              int,
+              double
+            ]
+        steps:
+          increment-1:
+             in:
+               num:
+                 source: num
+             out: [out]
+             run: increment
+          increment-2:
+             in:
+               num:
+                 source: to_int-1/out
+             out: [out]
+             run: increment
+          sum-1:
+             in:
+               left:
+                 source: to_int-1/out
+               right:
+                 source: increment-2/out
+             out: [out]
+             run: sum
+          to_int-1:
+             in:
+               num:
+                 source: increment-1/out
+             out: [out]
+             run: to_int
     """)
