@@ -22,7 +22,7 @@ from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstanc
 from dataclasses import dataclass, is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
 from contextvars import ContextVar
-from typing import TypedDict, NotRequired, get_args, Union, cast, Any, Unpack
+from typing import TypedDict, NotRequired, get_args, Union, cast, Any, Iterable, Unpack
 from types import UnionType
 
 from dewret.workflow import (
@@ -38,7 +38,9 @@ from dewret.workflow import (
 )
 from dewret.utils import RawType, flatten, DataclassProtocol
 
-InputSchemaType = Union[str, "CommandInputSchema", list[str], list["InputSchemaType"]]
+InputSchemaType = Union[
+    str, "CommandInputSchema", list[str], list["InputSchemaType"], dict[str, str]
+]
 
 
 @dataclass
@@ -174,7 +176,7 @@ class StepDefinition:
         }
 
 
-def cwl_type_from_value(val: RawType | Unset) -> str | list[str]:
+def cwl_type_from_value(val: RawType | Unset) -> str | list[str] | dict[str, Any]:
     """Find a CWL type for a given (possibly Unset) value.
 
     Args:
@@ -191,7 +193,7 @@ def cwl_type_from_value(val: RawType | Unset) -> str | list[str]:
     return to_cwl_type(raw_type)
 
 
-def to_cwl_type(typ: type) -> str | list[str]:
+def to_cwl_type(typ: type) -> str | dict[str, Any] | list[str]:
     """Map Python types to CWL types.
 
     Args:
@@ -201,24 +203,37 @@ def to_cwl_type(typ: type) -> str | list[str]:
         CWL specification type name, or a list
         if a union.
     """
-    if isinstance(typ, UnionType):
-        return [to_cwl_type(item) for item in get_args(typ)]
-
     if typ == int:
         return "int"
     elif typ == bool:
         return "boolean"
     elif typ == dict or attrs_has(typ):
         return "record"
-    elif typ == list:
-        return "array"
     elif typ == float:
-        return "double"
+        return "float"
     elif typ == str:
         return "string"
+    elif typ == bytes:
+        return "bytes"
+    elif configuration("allow_complex_types"):
+        return typ if isinstance(typ, str) else typ.__name__
+    elif isinstance(typ, UnionType):
+        return [to_cwl_type(item) for item in get_args(typ)]
+    elif isinstance(typ, Iterable):
+        try:
+            basic_types = get_args(typ)
+            if len(basic_types) > 1:
+                return {
+                    "type": "array",
+                    "items": [{"type": to_cwl_type(t)} for t in basic_types],
+                }
+            else:
+                return {"type": "array", "items": to_cwl_type(basic_types[0])}
+        except IndexError as err:
+            raise TypeError(
+                f"Cannot render complex type ({typ}) to CWL, have you enabled allow_complex_types configuration?"
+            ) from err
     else:
-        if configuration("allow_complex_types"):
-            return typ if isinstance(typ, str) else typ.__name__
         raise TypeError(f"Cannot render complex type ({typ}) to CWL")
 
 

@@ -3,6 +3,7 @@
 import yaml
 from attr import define
 from dataclasses import dataclass
+from typing import Iterable
 from dewret.tasks import task, construct, nested_task
 from dewret.renderers.cwl import render
 
@@ -31,6 +32,18 @@ def combine(left: int, right: float) -> float:
     return left + right
 
 
+@task()
+def list_cast(iterable: Iterable[float]) -> list[float]:
+    """Converts an iterable structure with float elements into a list of floats."""
+    return list(iterable)
+
+
+@task()
+def pair(left: int, right: float) -> tuple[int, float]:
+    """Pairs two values."""
+    return (left, right)
+
+
 @nested_task()
 def algorithm() -> float:
     """Sum two split values."""
@@ -38,8 +51,14 @@ def algorithm() -> float:
 
 
 @nested_task()
+def algorithm_with_pair() -> tuple[int, float]:
+    """Pairs two split dataclass values."""
+    return pair(left=split_into_dataclass().first, right=split_into_dataclass().second)
+
+
+@nested_task()
 def algorithm_with_dataclasses() -> float:
-    """Sum two split values."""
+    """Sums two split dataclass values."""
     return combine(
         left=split_into_dataclass().first, right=split_into_dataclass().second
     )
@@ -47,7 +66,7 @@ def algorithm_with_dataclasses() -> float:
 
 @task()
 def split() -> SplitResult:
-    """Create a result with two fields."""
+    """Create a split result with two fields."""
     return SplitResult(first=1, second=2)
 
 
@@ -80,7 +99,7 @@ def test_nested_task() -> None:
                     type: int
                 second:
                     label: second
-                    type: double
+                    type: float
         steps:
           split-1:
             in: {}
@@ -90,7 +109,7 @@ def test_nested_task() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split
     """)
 
@@ -118,7 +137,7 @@ def test_field_of_nested_task() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split
     """)
 
@@ -146,13 +165,13 @@ def test_field_of_nested_task_into_dataclasses() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split_into_dataclass
     """)
 
 
 def test_complex_field_of_nested_task() -> None:
-    """Tests whether a task can insert result fields into other steps."""
+    """Tests whether a task can sum complex structures."""
     workflow = construct(algorithm(), simplify_ids=True)
     rendered = render(workflow)
 
@@ -164,7 +183,7 @@ def test_complex_field_of_nested_task() -> None:
           out:
             label: out
             outputSource: combine-1/out
-            type: double
+            type: float
         steps:
           combine-1:
             in:
@@ -182,7 +201,7 @@ def test_complex_field_of_nested_task() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
             run: split
     """)
 
@@ -201,7 +220,7 @@ def test_complex_field_of_nested_task_with_dataclasses() -> None:
           out:
             label: out
             outputSource: combine-1/out
-            type: double
+            type: float
         steps:
           combine-1:
             in:
@@ -219,6 +238,90 @@ def test_complex_field_of_nested_task_with_dataclasses() -> None:
                 type: int
               second:
                 label: second
-                type: double
+                type: float
+            run: split_into_dataclass
+    """)
+
+
+def test_pair_can_be_returned_from_step() -> None:
+    """Tests whether a task can insert result fields into other steps."""
+    workflow = construct(algorithm_with_pair(), simplify_ids=True)
+    rendered = render(workflow)
+
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs: {}
+        outputs:
+          out:
+            label: out
+            outputSource: pair-1/out
+            type: 
+              items: 
+                - type: int
+                - type: float
+              type: array
+        steps:
+          pair-1:
+            in:
+                left:
+                    source: split_into_dataclass-1/first
+                right:
+                    source: split_into_dataclass-1/second
+            out: [out]
+            run: pair
+          split_into_dataclass-1:
+            in: {}
+            out:
+              first:
+                label: first
+                type: int
+              second:
+                label: second
+                type: float 
+            run: split_into_dataclass
+    """)
+
+
+def test_list_can_be_returned_from_step() -> None:
+    """Tests whether a task can insert result fields into other steps."""
+    workflow = construct(list_cast(iterable=algorithm_with_pair()), simplify_ids=True)
+    rendered = render(workflow)
+
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs: {}
+        outputs:
+          out:
+            label: out
+            outputSource: list_cast-1/out
+            type:
+              items: float
+              type: array
+        steps:
+          list_cast-1:
+            in:
+                iterable:
+                    source: pair-1/out
+            out: [out]
+            run: list_cast
+          pair-1:
+            in:
+                left:
+                    source: split_into_dataclass-1/first
+                right:
+                    source: split_into_dataclass-1/second
+            out: [out]
+            run: pair
+          split_into_dataclass-1:
+            in: {}
+            out:
+              first:
+                label: first
+                type: int
+              second:
+                label: second
+                type: float
             run: split_into_dataclass
     """)
