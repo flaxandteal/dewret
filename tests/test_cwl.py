@@ -525,9 +525,9 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
 
 
 def test_tuple_floats() -> None:
-    """Check whether we can link between multiple steps.
+    """Checks whether we can return a tuple.
 
-    Produces CWL that has references between multiple steps.
+    Produces CWL that has a tuple of 2 values of type float.
     """
     result = tuple_float_return()
     workflow = construct(result, simplify_ids=True)
