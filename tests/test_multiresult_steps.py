@@ -34,13 +34,13 @@ def combine(left: int, right: float) -> float:
 
 @task()
 def list_cast(iterable: Iterable[float]) -> list[float]:
-    """Sum two values."""
+    """Converts an iterable structure with float elements into a list of floats."""
     return list(iterable)
 
 
 @task()
-def pair(left: int, right: float) -> tuple[float, float]:
-    """Sum two values."""
+def pair(left: int, right: float) -> tuple[int, float]:
+    """Pairs two values."""
     return (left, right)
 
 
@@ -51,14 +51,14 @@ def algorithm() -> float:
 
 
 @nested_task()
-def algorithm_with_pair() -> tuple[float, float]:
-    """Sum two split values."""
+def algorithm_with_pair() -> tuple[int, float]:
+    """Pairs two split dataclass values."""
     return pair(left=split_into_dataclass().first, right=split_into_dataclass().second)
 
 
 @nested_task()
 def algorithm_with_dataclasses() -> float:
-    """Sum two split values."""
+    """Sums two split dataclass values."""
     return combine(
         left=split_into_dataclass().first, right=split_into_dataclass().second
     )
@@ -66,7 +66,7 @@ def algorithm_with_dataclasses() -> float:
 
 @task()
 def split() -> SplitResult:
-    """Create a result with two fields."""
+    """Create a split result with two fields."""
     return SplitResult(first=1, second=2)
 
 
@@ -171,7 +171,7 @@ def test_field_of_nested_task_into_dataclasses() -> None:
 
 
 def test_complex_field_of_nested_task() -> None:
-    """Tests whether a task can insert result fields into other steps."""
+    """Tests whether a task can sum complex structures."""
     workflow = construct(algorithm(), simplify_ids=True)
     rendered = render(workflow)
 
@@ -258,7 +258,7 @@ def test_pair_can_be_returned_from_step() -> None:
             outputSource: pair-1/out
             type: 
               items: 
-                - type: float
+                - type: int
                 - type: float
               type: array
         steps:
