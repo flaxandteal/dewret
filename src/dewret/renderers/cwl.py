@@ -203,9 +203,6 @@ def to_cwl_type(typ: type) -> str | dict[str, Any] | list[str]:
         CWL specification type name, or a list
         if a union.
     """
-    if isinstance(typ, UnionType):
-        return [to_cwl_type(item) for item in get_args(typ)]
-
     if typ == int:
         return "int"
     elif typ == bool:
@@ -220,6 +217,8 @@ def to_cwl_type(typ: type) -> str | dict[str, Any] | list[str]:
         return "bytes"
     elif configuration("allow_complex_types"):
         return typ if isinstance(typ, str) else typ.__name__
+    elif isinstance(typ, UnionType):
+        return [to_cwl_type(item) for item in get_args(typ)]
     elif isinstance(typ, Iterable):
         try:
             basic_types = get_args(typ)

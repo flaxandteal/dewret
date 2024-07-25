@@ -743,14 +743,15 @@ class BaseStep(WorkflowComponent):
         )
 
     def set_workflow(self, workflow: Workflow, with_arguments: bool = True) -> None:
-        """Move the step reference to another workflow.
+        """Move the step reference to a different workflow.
 
-        Primarily intended to be called by its step, as a cascade.
-        It will attempt to update its arguments, similarly.
+        This method is primarily intended to be called by a step, allowing it to
+        switch to a new workflow. It also updates the workflow reference for any
+        arguments that are steps themselves, if specified.
 
         Args:
-            workflow: the new target workflow.
-            with_arguments: set workflows for the arguments..
+            workflow: The new target workflow to which the step should be moved.
+            with_arguments: If True, also update the workflow reference for the step's arguments.
         """
         self.__workflow__ = workflow
         if with_arguments:
@@ -1052,7 +1053,7 @@ class StepReference(Generic[U], Reference):
         """Hashable reference to the step (and field)."""
         return f"{self.step.id}/{self.field}"
 
-    def __getattr__(self, attr: str) -> "StepReference"[Any]:
+    def __getattr__(self, attr: str) -> "StepReference[Any]":
         """Reference to a field within this result, if possible.
 
         If the result is an attrs-class or dataclass, this will pull out an individual
