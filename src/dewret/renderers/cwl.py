@@ -44,7 +44,6 @@ InputSchemaType = Union[
 ]
 
 
-@dataclass
 class CWLRendererConfiguration(TypedDict):
     """Configuration for the renderer.
 
