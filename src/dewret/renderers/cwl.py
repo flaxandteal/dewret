@@ -526,7 +526,7 @@ class WorkflowDefinition:
                 workflow.result
                 if isinstance(workflow.result, list | tuple) else
                 {workflow.result.field: workflow.result}
-                if workflow.result else
+                if workflow.has_result else
                 {}
             ),
             name=name,

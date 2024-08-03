@@ -24,7 +24,7 @@ import base64
 from attrs import define, has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated
 from uuid import uuid4
 
 import logging
@@ -35,6 +35,10 @@ from .utils import hasher, RawType, is_raw, make_traceback, is_raw_type
 
 T = TypeVar("T")
 RetType = TypeVar("RetType")
+
+
+class UnevaluatableError(Exception):
+    ...
 
 
 @define
@@ -369,6 +373,10 @@ class Workflow:
         )
 
     @property
+    def has_result(self) -> bool:
+        return not(self.result is None or self.result is [])
+
+    @property
     def name(self) -> str:
         """Get the name of the workflow.
 
@@ -698,6 +706,27 @@ class WorkflowLinkedComponent(Protocol):
 class Reference:
     """Superclass for all symbolic references to values."""
 
+    def _raise_unevaluatable_error(self):
+        raise UnevaluatableError(f"This reference, {self.name}, cannot be evaluated during construction.")
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Reference):
+            print(self, other)
+            self._raise_unevaluatable_error()
+        return super().__eq__(other)
+
+    def __float__(self) -> bool:
+        self._raise_unevaluatable_error()
+        return False
+
+    def __int__(self) -> bool:
+        self._raise_unevaluatable_error()
+        return False
+
+    def __bool__(self) -> bool:
+        self._raise_unevaluatable_error()
+        return False
+
     @property
     def name(self) -> str:
         """Referral name for this reference."""
@@ -902,7 +931,7 @@ class NestedStep(BaseStep):
         Returns:
             Expected type of the return value.
         """
-        if not self.__subworkflow__.result:
+        if self.__subworkflow__.result is None or self.__subworkflow__.result is []:
             raise RuntimeError("Can only use a subworkflow if the reference exists.")
         return self.__subworkflow__.result_type
 
