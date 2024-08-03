@@ -18,8 +18,13 @@ Lazy-evaluation via `dask.delayed`.
 """
 
 from dask.delayed import delayed, DelayedLeaf
-from dewret.workflow import Workflow, Lazy, StepReference, Target
+from dask.config import config
+import contextvars
+from functools import partial
 from typing import Protocol, runtime_checkable, Any, cast
+from concurrent.futures import Executor, ThreadPoolExecutor
+from dewret.workflow import Workflow, Lazy, StepReference, Target
+from dewret.tasks import CONSTRUCT_CONFIGURATION
 
 
 @runtime_checkable
@@ -86,8 +91,18 @@ def is_lazy(task: Any) -> bool:
 
 lazy = delayed
 
+CONTEXT = []
+def _initializer():
+    for var, value in CONTEXT:
+        var.set(value)
+    CONSTRUCT_CONFIGURATION.get()
+
+CONNECTION_POOL = ThreadPoolExecutor(initializer=_initializer)
+config["pool"] = CONNECTION_POOL
+
 
 def run(workflow: Workflow | None, task: Lazy | list[Lazy] | tuple[Lazy]) -> StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]]:
+    global CONTEXT
     """Execute a task as the output of a workflow.
 
     Runs a task with dask.
@@ -110,5 +125,6 @@ def run(workflow: Workflow | None, task: Lazy | list[Lazy] | tuple[Lazy]) -> Ste
             )
         return task
     computable = _check_delayed(task)
-    result = computable.compute(__workflow__=workflow)
+    CONTEXT = contextvars.copy_context().items()
+    result = computable.compute(__workflow__=workflow, initializer=_initializer)
     return result
