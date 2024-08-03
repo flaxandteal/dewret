@@ -45,6 +45,7 @@ from contextlib import contextmanager
 
 from .utils import is_raw, make_traceback
 from .workflow import (
+    Reference,
     StepReference,
     ParameterReference,
     Workflow,
@@ -59,6 +60,7 @@ from .workflow import (
     is_task,
 )
 from .backends._base import BackendModule
+from .annotations import FunctionAnalyser
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
@@ -446,9 +448,14 @@ def task(
                     workflow = merge_workflows(*workflows)
                 else:
                     workflow = Workflow()
+
+                analyser = FunctionAnalyser(fn)
+
                 if not is_in_nested_task():
                     for var, value in kwargs.items():
-                        if is_raw(value):
+                        if analyser.is_at_construct_arg(var):
+                            kwargs[var] = value
+                        elif is_raw(value):
                             # We leave this reference dangling for a consumer to pick up ("tethered"), unless
                             # we are in a nested task, that does not have any existence of its own.
                             kwargs[var] = ParameterReference(
@@ -478,7 +485,9 @@ def task(
                     #       raise TypeError(
                     #           "Captured parameter {var} (global variable in task) shadows an argument"
                     #        )
-                    if isinstance(value, Parameter):
+                    if analyser.is_at_construct_arg(var):
+                        kwargs[var] = value
+                    elif isinstance(value, Parameter):
                         kwargs[var] = ParameterReference(workflow, value)
                     elif is_raw(value):
                         kwargs[var] = ParameterReference(
@@ -525,10 +534,14 @@ def task(
                             var: ParameterReference(
                                 nested_workflow,
                                 param(
-                                    var, typ=value.__type__, tethered=nested_workflow
+                                    var,
+                                    typ=(
+                                        value.__type__
+                                    ),
+                                    tethered=nested_workflow
                                 ),
-                            )
-                            for var, value in original_kwargs.items()
+                            ) if isinstance(var, Reference) else value
+                            for var, value in kwargs.items()
                         }
                         with in_nested_task():
                             output = fn(**nested_kwargs)
@@ -536,7 +549,7 @@ def task(
                         step_reference = workflow.add_nested_step(
                             fn.__name__, nested_workflow, kwargs
                         )
-                    if isinstance(step_reference, StepReference):
+                    if isinstance(step_reference, StepReference): # RMV: What if it's a list?
                         return cast(RetType, step_reference)
                     raise TypeError(
                         f"Nested tasks must return a step reference, not {type(step_reference)} to ensure graph makes sense."
