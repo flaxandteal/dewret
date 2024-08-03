@@ -540,8 +540,9 @@ def task(
                                     ),
                                     tethered=nested_workflow
                                 ),
-                            ) if isinstance(var, Reference) else value
+                            ) if isinstance(value, Reference) else value
                             for var, value in kwargs.items()
+                            if var in original_kwargs
                         }
                         with in_nested_task():
                             output = fn(**nested_kwargs)
