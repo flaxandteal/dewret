@@ -41,7 +41,8 @@ from types import TracebackType
 from attrs import has as attrs_has
 from dataclasses import dataclass, is_dataclass
 import traceback
-from contextvars import ContextVar
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import ContextVar, copy_context
 from contextlib import contextmanager
 
 from .utils import is_raw, make_traceback
@@ -78,9 +79,9 @@ def set_configuration(**kwargs: Unpack[ConstructConfiguration]):
             flatten_all_nested=False,
             allow_positional_args=False
         )
+        CONSTRUCT_CONFIGURATION.set({})
 
     try:
-        CONSTRUCT_CONFIGURATION.set({})
         CONSTRUCT_CONFIGURATION.get().update(previous)
         CONSTRUCT_CONFIGURATION.get().update(kwargs)
 
@@ -163,7 +164,7 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy], __workflow__: Workflow, **kwargs: Any) -> Any:
+    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy], __workflow__: Workflow, thread_pool=None, **kwargs: Any) -> Any:
         """Evaluate a single task for a known workflow.
 
         Args:
@@ -171,7 +172,7 @@ class TaskManager:
             __workflow__: workflow within which this exists.
             **kwargs: any arguments to pass to the task.
         """
-        result = self.backend.run(__workflow__, task, **kwargs)
+        result = self.backend.run(__workflow__, task, thread_pool=thread_pool, **kwargs)
         to_check: list[StepReference] | tuple[StepReference]
         if isinstance(result, list | tuple):
             to_check = result
@@ -246,7 +247,14 @@ class TaskManager:
             A reusable reference to this individual step.
         """
         workflow = __workflow__ or Workflow()
-        result = self.evaluate(task, workflow, **kwargs)
+
+        context = copy_context().items()
+        def _initializer():
+            for var, value in context:
+                var.set(value)
+        thread_pool = ThreadPoolExecutor(initializer=_initializer)
+
+        result = self.evaluate(task, workflow, thread_pool=thread_pool, **kwargs)
         return Workflow.from_result(result, simplify_ids=simplify_ids)
 
 
