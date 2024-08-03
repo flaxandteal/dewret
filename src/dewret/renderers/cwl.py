@@ -42,7 +42,6 @@ from dewret.render import base_render
 InputSchemaType = Union[str, "CommandInputSchema", list[str], list["InputSchemaType"]]
 
 
-@dataclass
 class CWLRendererConfiguration(TypedDict):
     """Configuration for the renderer.
 

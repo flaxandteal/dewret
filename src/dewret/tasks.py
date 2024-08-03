@@ -32,13 +32,14 @@ Typical usage example:
 import inspect
 import importlib
 import sys
+from typing import TypedDict, NotRequired, Unpack
 from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
 from typing import Any, ParamSpec, TypeVar, cast, Generator
 from types import TracebackType
 from attrs import has as attrs_has
-from dataclasses import is_dataclass
+from dataclasses import dataclass, is_dataclass
 import traceback
 from contextvars import ContextVar
 from contextlib import contextmanager
@@ -61,6 +62,34 @@ from .workflow import (
 )
 from .backends._base import BackendModule
 from .annotations import FunctionAnalyser
+
+class ConstructConfiguration(TypedDict):
+    flatten_all_nested: NotRequired[bool]
+    allow_positional_args: NotRequired[bool]
+
+CONSTRUCT_CONFIGURATION: ContextVar[ConstructConfiguration] = ContextVar("construct-configuration")
+
+@contextmanager
+def set_configuration(**kwargs: Unpack[ConstructConfiguration]):
+    try:
+        previous = CONSTRUCT_CONFIGURATION.get()
+    except LookupError:
+        previous = ConstructConfiguration(
+            flatten_all_nested=False,
+            allow_positional_args=False
+        )
+
+    try:
+        CONSTRUCT_CONFIGURATION.set({})
+        CONSTRUCT_CONFIGURATION.get().update(previous)
+        CONSTRUCT_CONFIGURATION.get().update(kwargs)
+
+        yield CONSTRUCT_CONFIGURATION
+    finally:
+        CONSTRUCT_CONFIGURATION.set(previous)
+
+def get_configuration(key: str):
+    return CONSTRUCT_CONFIGURATION.get()[key]
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
