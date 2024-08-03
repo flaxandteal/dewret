@@ -488,7 +488,7 @@ class Workflow:
                 right.result = [right.result]
             result = list(left.result) + list(right.result)
 
-        if result:
+        if result is not None and result != []:
             if isinstance(result, list | tuple):
                 new.set_result([
                     StepReference(
@@ -706,12 +706,17 @@ class WorkflowLinkedComponent(Protocol):
 class Reference:
     """Superclass for all symbolic references to values."""
 
+    @property
+    def __type__(self):
+        raise NotImplementedError()
+
     def _raise_unevaluatable_error(self):
         raise UnevaluatableError(f"This reference, {self.name}, cannot be evaluated during construction.")
 
     def __eq__(self, other) -> bool:
+        if isinstance(other, list) or other is None:
+            return False
         if not isinstance(other, Reference):
-            print(self, other)
             self._raise_unevaluatable_error()
         return super().__eq__(other)
 

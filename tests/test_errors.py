@@ -3,6 +3,7 @@
 import pytest
 from dewret.workflow import Task, Lazy
 from dewret.tasks import construct, task, nested_task, TaskException
+from dewret.annotations import AtConstruct
 from ._lib.extra import increment  # noqa: F401
 
 
@@ -12,7 +13,7 @@ def add_task(left: int, right: int) -> int:
     return left + right
 
 
-ADD_TASK_LINE_NO = 9
+ADD_TASK_LINE_NO = 10
 
 
 @nested_task()
@@ -95,7 +96,7 @@ def unacceptable_object_usage() -> int:
 
 
 @nested_task()
-def unacceptable_nested_return(int_not_global: bool) -> int | Lazy:
+def unacceptable_nested_return(int_not_global: AtConstruct[bool]) -> int | Lazy:
     """Bad nested_task that fails to return a task."""
     add_task(left=3, right=4)
     return 7 if int_not_global else ADD_TASK_LINE_NO
