@@ -91,10 +91,6 @@ def is_lazy(task: Any) -> bool:
 
 lazy = delayed
 
-CONTEXT = []
-
-
-
 def run(workflow: Workflow | None, task: Lazy | list[Lazy] | tuple[Lazy], thread_pool: ThreadPoolExecutor | None=None) -> StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]]:
     """Execute a task as the output of a workflow.
 

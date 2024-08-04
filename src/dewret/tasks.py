@@ -509,11 +509,7 @@ def task(
                         elif isinstance(value, Parameter):
                             kwargs[var] = ParameterReference(workflow, value)
                 original_kwargs = dict(kwargs)
-                try:
-                    fn_globals = dict(inspect.getclosurevars(fn).globals)
-                # This covers the case of wrapping, rather than decorating.
-                except TypeError:
-                    fn_globals = {}
+                fn_globals = analyser.globals
 
                 for var, value in fn_globals.items():
                     # This error is redundant as it triggers a SyntaxError in Python.
@@ -567,7 +563,7 @@ def task(
                         step_reference = evaluate(lazy_fn, __workflow__=workflow)
                     else:
                         nested_workflow = Workflow(name=fn.__name__)
-                        nested_kwargs: Param.kwargs = {
+                        nested_globals: Param.kwargs = {
                             var: ParameterReference(
                                 nested_workflow,
                                 param(
@@ -579,10 +575,10 @@ def task(
                                 ),
                             ) if isinstance(value, Reference) else value
                             for var, value in kwargs.items()
-                            if var in original_kwargs
                         }
+                        nested_kwargs = {key: value for key, value in nested_globals.items() if key in original_kwargs}
                         with in_nested_task():
-                            output = fn(**nested_kwargs)
+                            output = analyser.with_new_globals(nested_globals)(**nested_kwargs)
                         nested_workflow = _manager(output, __workflow__=nested_workflow)
                         step_reference = workflow.add_nested_step(
                             fn.__name__, nested_workflow, kwargs

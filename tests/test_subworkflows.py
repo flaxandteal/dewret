@@ -59,7 +59,14 @@ def get_global_queues(num: int | float) -> list["Queue[int] | int"]:
 @subworkflow()
 def add_constant(num: int | float) -> int:
     """Add a global constant to a number."""
+    print(CONSTANT, type(CONSTANT))
     return to_int(num=sum(left=num, right=CONSTANT))
+
+@subworkflow()
+def add_constants(num: int | float) -> int:
+    """Add a global constant to a number."""
+    print(CONSTANT, type(CONSTANT))
+    return to_int(num=sum(left=sum(left=num, right=CONSTANT), right=CONSTANT))
 
 
 def test_subworkflows_can_use_globals() -> None:
@@ -382,3 +389,99 @@ def test_can_merge_workflows() -> None:
              out: [out]
              run: to_int
     """)
+
+
+def test_subworkflows_can_use_globals_in_right_scope() -> None:
+    """Produce a subworkflow that uses a global."""
+    my_param = param("num", typ=int)
+    result = increment(num=add_constants(num=increment(num=my_param)))
+    workflow = construct(result, simplify_ids=True)
+    subworkflows = render(workflow)
+    rendered = subworkflows["__root__"]
+    del subworkflows["__root__"]
+
+    assert len(subworkflows) == 1
+    assert isinstance(subworkflows, dict)
+    osubworkflows = sorted(list(subworkflows.items()))
+
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          CONSTANT:
+            label: CONSTANT
+            default: 3
+            type: int
+          num:
+            label: num
+            type: int
+        outputs:
+          out:
+            label: out
+            outputSource: increment-2/out
+            type: int
+        steps:
+          increment-1:
+             in:
+               num:
+                 source: num
+             out: [out]
+             run: increment
+          increment-2:
+             in:
+               num:
+                 source: add_constants-1/out
+             out: [out]
+             run: increment
+          add_constants-1:
+             in:
+               CONSTANT:
+                 source: CONSTANT
+               num:
+                 source: increment-1/out
+             out: [out]
+             run: add_constants
+    """)
+
+    assert osubworkflows[0] == ("add_constants-1", yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          num:
+            label: num
+            type: int
+          CONSTANT:
+            label: CONSTANT
+            type: int
+        outputs:
+          out:
+            label: out
+            outputSource: to_int-1-1/out
+            type: int
+        steps:
+          sum-1-1:
+            in:
+              left:
+                source: num
+              right:
+                source: CONSTANT
+            out:
+            - out
+            run: sum
+          sum-1-2:
+            in:
+              left:
+                source: sum-1-1/out
+              right:
+                source: CONSTANT
+            out:
+            - out
+            run: sum
+          to_int-1-1:
+            in:
+              num:
+                source: sum-1-2/out
+            out:
+            - out
+            run: to_int
+    """))
