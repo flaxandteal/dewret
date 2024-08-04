@@ -1,6 +1,7 @@
 import inspect
 from functools import lru_cache
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Callable, get_origin, get_args
+from types import FunctionType
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Callable, get_origin, get_args, Mapping
 
 T = TypeVar("T")
 AtConstruct = Annotated[T, "AtConstruct"]
@@ -50,3 +51,26 @@ class FunctionAnalyser:
 
     def is_at_construct_arg(self, arg: str) -> bool:
         return self.argument_has(arg, AtConstruct)
+
+    @property
+    @lru_cache
+    def globals(self) -> Mapping[str, Any]:
+        try:
+            fn_globals = inspect.getclosurevars(self.fn).globals
+        # This covers the case of wrapping, rather than decorating.
+        except TypeError:
+            fn_globals = {}
+        return fn_globals
+
+    def with_new_globals(self, new_globals: dict[str, Any]) -> Callable[..., Any]:
+        code = self.fn.__code__
+        fn_name = self.fn.__name__
+        all_globals = dict(self.globals)
+        all_globals.update(new_globals)
+        return FunctionType(
+            code,
+            all_globals,
+            name=fn_name,
+            closure=self.fn.__closure__,
+            argdefs=self.fn.__defaults__,
+        )
