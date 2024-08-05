@@ -479,6 +479,7 @@ Here, we show the same example with `dataclasses`.
 >>> @task()
 ... def sum(left: int, right: int) -> int:
 ...    return left + right
+>>>
 >>> red_total = sum(
 ...     left=shuffle(max_cards_per_suit=13).hearts,
 ...     right=shuffle(max_cards_per_suit=13).diamonds
@@ -559,26 +560,7 @@ dewret will produce multiple output workflows that reference each other.
 
 ```python
 >>> from dewret.tasks import subworkflow
->>> from attrs import define
->>> from numpy import random
->>> @define
-... class PackResult:
-...     hearts: int
-...     clubs: int
-...     spades: int
-...     diamonds: int
->>>
->>> @task()
-... def shuffle(max_cards_per_suit: int) -> PackResult:
-...    """Fill a random pile from a card deck, suit by suit."""
-...    return PackResult(
-...        hearts=random.randint(max_cards_per_suit),
-...        clubs=random.randint(max_cards_per_suit),
-...        spades=random.randint(max_cards_per_suit),
-...        diamonds=random.randint(max_cards_per_suit)
-...    )
->>>
->>> my_param = param("num", typ=int)
+>>> my_param = param(name="num", typ=int)
 >>> @subworkflow()
 ... def red_total():
 ...     return sum(
@@ -591,10 +573,6 @@ dewret will produce multiple output workflows that reference each other.
 ...         left=shuffle(max_cards_per_suit=13).spades,
 ...         right=shuffle(max_cards_per_suit=13).clubs
 ...     )
->>> @task()
-... def sum(left: int, right: int) -> int:
-...    return left + right
->>>
 >>> total = sum(left=red_total(), right=black_total())
 >>> workflow = construct(total, simplify_ids=True)
 >>> cwl, subworkflows = render(workflow)
@@ -634,7 +612,7 @@ As we have used subworkflow to wrap the colour totals, the outer workflow
 contains references to them only. The subworkflows are now returned by `render`
 as a second term.
 
-```python
+```
 >>> yaml.dump(subworkflows["red_total-1"], sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
@@ -711,18 +689,11 @@ the chosen renderer has the capability.
 
 Below is the default output, treating `Pack` as a task.
 
-```python
+```
 >>> from dewret.tasks import subworkflow, factory
->>> @define
-... class PackResult:
-...     hearts: int
-...     clubs: int
-...     spades: int
-...     diamonds: int
->>>
 >>> my_param = param("num", typ=int)
 >>> Pack = factory(PackResult)
->>> @subworkflow()
+>>> @nested_task()
 ... def black_total(pack: PackResult):
 ...     return sum(
 ...         left=pack.spades,
@@ -796,18 +767,12 @@ steps:
 The CWL renderer is also able to treat `pack` as a parameter, if complex
 types are allowed.
 
+In this example we take 
 ```python
 >>> from dewret.tasks import subworkflow, factory
->>> @define
-... class PackResult:
-...     hearts: int
-...     clubs: int
-...     spades: int
-...     diamonds: int
->>>
 >>> my_param = param("num", typ=int)
 >>> Pack = factory(PackResult)
->>> @subworkflow()
+>>> @nested_task()
 ... def black_total(pack: PackResult):
 ...     return sum(
 ...         left=pack.spades,
