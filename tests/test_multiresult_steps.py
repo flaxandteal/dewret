@@ -246,7 +246,7 @@ def test_complex_field_of_nested_task_with_dataclasses() -> None:
 def test_pair_can_be_returned_from_step() -> None:
     """Tests whether a task can insert result fields into other steps."""
     workflow = construct(algorithm_with_pair(), simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -256,11 +256,10 @@ def test_pair_can_be_returned_from_step() -> None:
           out:
             label: out
             outputSource: pair-1/out
-            type: 
-              items: 
-                - type: int
-                - type: float
-              type: array
+            items: 
+              - int
+              - float
+            type: array
         steps:
           pair-1:
             in:
@@ -286,7 +285,7 @@ def test_pair_can_be_returned_from_step() -> None:
 def test_list_can_be_returned_from_step() -> None:
     """Tests whether a task can insert result fields into other steps."""
     workflow = construct(list_cast(iterable=algorithm_with_pair()), simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -296,9 +295,8 @@ def test_list_can_be_returned_from_step() -> None:
           out:
             label: out
             outputSource: list_cast-1/out
-            type:
-              items: float
-              type: array
+            items: float
+            type: array
         steps:
           list_cast-1:
             in:

@@ -29,6 +29,10 @@ RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
 FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
 
 
+class Unset:
+    """Unset variable, with no default value."""
+
+
 class DataclassProtocol(Protocol):
     """Format of a dataclass.
 
@@ -55,6 +59,19 @@ def make_traceback(skip: int = 2) -> TracebackType | None:
         frame = frame.f_back
     return tb
 
+
+def flatten_if_set(value: Any) -> RawType | Unset:
+    """Takes a Raw-like structure and makes it RawType or Unset.
+
+    Flattens if the value is set, but otherwise returns the unset
+    sentinel value as-is.
+
+    Args:
+        value: value to squash
+    """
+    if isinstance(value, Unset):
+        return value
+    return flatten(value)
 
 def flatten(value: Any) -> RawType:
     """Takes a Raw-like structure and makes it RawType.

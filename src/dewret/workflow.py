@@ -31,7 +31,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .utils import hasher, RawType, is_raw, make_traceback, is_raw_type
+from .utils import hasher, RawType, is_raw, make_traceback, is_raw_type, Unset
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -109,10 +109,6 @@ class LazyEvaluation(Lazy, Generic[RetType]):
 Target = Callable[..., Any]
 StepExecution = Callable[..., Lazy]
 LazyFactory = Callable[[Target], Lazy]
-
-
-class Unset:
-    """Unset variable, with no default value."""
 
 
 class UnsetType(Unset, Generic[T]):
@@ -1178,7 +1174,6 @@ class StepReference(FieldableMixin, Reference[U]):
     """
 
     step: BaseStep
-    _tethered_workflow: Workflow | None
 
     class StepReferenceMetadata:
         def __init__(
@@ -1212,7 +1207,6 @@ class StepReference(FieldableMixin, Reference[U]):
             typ: the type that the step will output.
             field: if provided, a specific field to pull out of an attrs result class.
         """
-        self._tethered_workflow = None
         typ = typ or step.return_type
         self._ = self.StepReferenceMetadata(step, typ=typ)
         super().__init__(*args, typ=typ, **kwargs)
@@ -1268,24 +1262,16 @@ class StepReference(FieldableMixin, Reference[U]):
         Returns:
             Workflow that the referee is related to.
         """
-        return self._tethered_workflow or self.step.__workflow__
+        return self._.step.__workflow__
 
     @__workflow__.setter
     def __workflow__(self, workflow: Workflow) -> None:
         """Sets related workflow.
 
-        We update the tethered workflow. If the step is missing from
-        this workflow then, by construction, it should have at least
-        been through an indexing process once, so we should be able
-        to get it back by name.
-
         Args:
             workflow: workflow to update the step
         """
-        self._tethered_workflow = workflow
-        if self._tethered_workflow:
-            if self._.step not in self._tethered_workflow.steps:
-                self._.step = self._tethered_workflow._indexed_steps[self.step.id]
+        self._.step.set_workflow(workflow)
 
 
 def merge_workflows(*workflows: Workflow) -> Workflow:
