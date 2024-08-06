@@ -22,7 +22,7 @@ from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstanc
 from dataclasses import dataclass, is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
 from contextvars import ContextVar
-from typing import TypedDict, NotRequired, get_args, Union, cast, Any, Unpack
+from typing import TypedDict, NotRequired, get_origin, get_args, Union, cast, Any, Unpack
 from types import UnionType
 
 from dewret.workflow import (
@@ -60,8 +60,6 @@ DEFAULT_CONFIGURATION: CWLRendererConfiguration = {
     "allow_complex_types": False,
     "factories_as_params": False,
 }
-CONFIGURATION.set({})
-CONFIGURATION.get().update(DEFAULT_CONFIGURATION)
 
 
 def configuration(key: str) -> Any:
@@ -166,7 +164,7 @@ class StepDefinition:
         }
 
 
-def cwl_type_from_value(val: RawType | Unset) -> str | list[str]:
+def cwl_type_from_value(label: str, val: RawType | Unset) -> str | list[str]:
     """Find a CWL type for a given (possibly Unset) value.
 
     Args:
@@ -180,10 +178,10 @@ def cwl_type_from_value(val: RawType | Unset) -> str | list[str]:
     else:
         raw_type = type(val)
 
-    return to_cwl_type(raw_type)
+    return to_cwl_type(label, raw_type)["type"]
 
 
-def to_cwl_type(typ: type) -> str | list[str]:
+def to_cwl_type(label: str, typ: type) -> dict[str, Any]:
     """Map Python types to CWL types.
 
     Args:
@@ -193,27 +191,47 @@ def to_cwl_type(typ: type) -> str | list[str]:
         CWL specification type name, or a list
         if a union.
     """
+    typ_dict = {
+        "label": label
+    }
     if isinstance(typ, UnionType):
-        return [to_cwl_type(item) for item in get_args(typ)]
+        typ_dict.update({"type": [to_cwl_type(label, item)["type"] for item in get_args(typ)]})
+        return typ_dict
 
-    if typ == int:
-        return "int"
-    elif typ == bool:
-        return "boolean"
+    base: Any | None = typ
+    args = get_args(typ)
+    if args:
+        base = get_origin(typ)
+
+    if base == int:
+        typ_dict["type"] = "int"
+    elif typ == type(None):
+        typ_dict["type"] = "null"
+    elif base == bool:
+        typ_dict["type"] = "boolean"
     elif typ == dict or attrs_has(typ):
-        return "record"
-    elif typ == list:
-        return "array"
-    elif typ == float:
-        return "double"
-    elif typ == str:
-        return "string"
-    elif typ == tuple:
-        return "record"
+        typ_dict["type"] = "record"
+    elif base == list or base == tuple:
+        if args:
+            subtypes = list(to_cwl_type(label, subtyp)["type"] for subtyp in args)
+            typ_dict.update({
+                "type": "array",
+                "items": subtypes[0] if len(set(subtypes)) == 1 else subtypes
+            })
+        else:
+            typ_dict["type"] = "array"
+    elif base == float:
+        typ_dict["type"] = "double"
+    elif base == str:
+        typ_dict["type"] = "string"
+    elif base == tuple:
+        typ_dict["type"] = "array"
     else:
         if configuration("allow_complex_types"):
-            return typ if isinstance(typ, str) else typ.__name__
-        raise TypeError(f"Cannot render complex type ({typ}) to CWL")
+            typ_dict["type"] = typ if isinstance(typ, str) else typ.__name__
+        else:
+            raise TypeError(f"Cannot render complex type ({typ}) to CWL")
+    return typ_dict
 
 
 class CommandInputSchema(TypedDict):
@@ -263,9 +281,9 @@ def raw_to_command_input_schema(label: str, value: RawType | Unset) -> InputSche
         Structure used to define (possibly compound) basic types for input.
     """
     if isinstance(value, dict) or isinstance(value, list):
-        return _raw_to_command_input_schema_internal(label, value)
+        return {"type": _raw_to_command_input_schema_internal(label, value)}
     else:
-        return cwl_type_from_value(value)
+        return cwl_type_from_value(label, value)
 
 
 def to_output_schema(
@@ -309,8 +327,7 @@ def to_output_schema(
         )
     else:
         output = CommandOutputSchema(
-            type=to_cwl_type(typ),
-            label=label,
+            **to_cwl_type(label, typ)
         )
     if output_source is not None:
         output["outputSource"] = output_source
@@ -320,7 +337,7 @@ def to_output_schema(
 def _raw_to_command_input_schema_internal(
     label: str, value: RawType | Unset
 ) -> CommandInputSchema:
-    typ = cwl_type_from_value(value)
+    typ = cwl_type_from_value(label, value)
     structure: CommandInputSchema = {"type": typ, "label": label}
     if isinstance(value, dict):
         structure["fields"] = {
@@ -336,7 +353,7 @@ def _raw_to_command_input_schema_internal(
                 "For CWL, an input array must have a consistent type, "
                 "and we need at least one element to infer it, or an explicit typehint."
             )
-        structure["items"] = to_cwl_type(typeset.pop())
+        structure["items"] = to_cwl_type(label, typeset.pop())["type"]
     elif not isinstance(value, Unset):
         structure["default"] = value
     return structure
@@ -553,10 +570,12 @@ def render(
         Reduced form as a native Python dict structure for
         serialization.
     """
-    CONFIGURATION.get().update(kwargs)
+    config = CWLRendererConfiguration(**DEFAULT_CONFIGURATION)
+    config.update(kwargs)
+    CONFIGURATION.set(config)
     rendered = base_render(
         workflow,
         lambda workflow: WorkflowDefinition.from_workflow(workflow).render()
     )
-    CONFIGURATION.get().update(DEFAULT_CONFIGURATION)
+    CONFIGURATION.set(DEFAULT_CONFIGURATION)
     return rendered
