@@ -33,9 +33,9 @@ def test_nested_task() -> None:
             label: JUMP
             type: float
             default: 1.0
-          increase-3-num:
+          STARTING_NUMBER:
             default: 23
-            label: increase-3-num
+            label: STARTING_NUMBER
             type: int
           increase-1-num:
             default: 17
@@ -69,7 +69,7 @@ def test_nested_task() -> None:
                 JUMP:
                     source: JUMP
                 num:
-                    source: increase-3-num
+                    source: STARTING_NUMBER
             out: [out]
           double-1:
             run: double

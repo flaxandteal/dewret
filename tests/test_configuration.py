@@ -40,28 +40,26 @@ def test_cwl_with_parameter(configuration) -> None:
         cwlVersion: 1.2
         class: Workflow
         inputs:
-          floor-1-num:
-            label: floor-1-num
+          num:
+            label: num
             type: int
             default: 3
         outputs:
           out:
             label: out
-            outputSource: increment-1/out
+            outputSource: increment-2/out
             type: int
         steps:
-          floor-1:
-            run: floor
-            in:
-                expected:
-                    default: true
-                num:
-                    source: floor-1-num
-            out: [out]
           increment-1:
             run: increment
             in:
                 num:
-                    source: floor-1/out
+                    source: num
+            out: [out]
+          increment-2:
+            run: increment
+            in:
+                num:
+                    source: increment-1/out
             out: [out]
     """)
