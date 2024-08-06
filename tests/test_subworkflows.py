@@ -80,30 +80,30 @@ def test_cwl_for_pairs() -> None:
         return pi(), pi()
 
     with set_configuration(flatten_all_nested=True):
-      result = pair_pi()
-      workflow = construct(result, simplify_ids=True)
+        result = pair_pi()
+        workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)["__root__"]
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
-        inputs: {{}}
+        inputs: {}
         outputs: [
-          {{
+          {
             label: out,
             outputSource: pi-1/out,
-            type: double
-          }},
-          {{
+            type: float
+          },
+          {
             label: out,
             outputSource: pi-1/out,
-            type: double
-          }}
+            type: float
+          }
         ]
         steps:
           pi-1:
             run: pi
-            in: {{}}
+            in: {}
             out: [out]
     """)
 
@@ -397,7 +397,7 @@ def test_can_merge_workflows() -> None:
             outputSource: sum-1/out
             type: [
               int,
-              double
+              float
             ]
         steps:
           increment-1:
