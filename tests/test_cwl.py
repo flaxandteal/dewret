@@ -153,7 +153,7 @@ def test_cwl_with_parameter() -> None:
     workflow = construct(result)
     rendered = render(workflow)["__root__"]
     num_param = list(workflow.find_parameters())[0]
-    hsh = hasher(("increment", ("num", f"int|:param:{num_param.unique_name}")))
+    hsh = hasher(("increment", ("num", f"int|:param:{num_param._.unique_name}")))
 
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
@@ -321,9 +321,9 @@ def test_cwl_references() -> None:
     rendered = render(workflow)["__root__"]
     num_param = list(workflow.find_parameters())[0]
     hsh_increment = hasher(
-        ("increment", ("num", f"int|:param:{num_param.unique_name}"))
+        ("increment", ("num", f"int|:param:{num_param._.unique_name}"))
     )
-    hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}/out")))
+    hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}")))
 
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
