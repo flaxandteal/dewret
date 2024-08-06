@@ -585,7 +585,10 @@ def task(
                         step_reference = workflow.add_nested_step(
                             fn.__name__, nested_workflow, kwargs
                         )
-                    if isinstance(step_reference, StepReference): # RMV: What if it's a list?
+                    if isinstance(step_reference, StepReference) or (
+                        isinstance(step_reference, tuple | list) and
+                        all(isinstance(elt, StepReference) for elt in step_reference)
+                    ):
                         return cast(RetType, step_reference)
                     raise TypeError(
                         f"Nested tasks must return a step reference, not {type(step_reference)} to ensure graph makes sense."

@@ -3,7 +3,7 @@
 from typing import Callable
 from queue import Queue
 import yaml
-from dewret.tasks import construct, subworkflow, task, factory
+from dewret.tasks import construct, subworkflow, task, factory, set_configuration
 from dewret.renderers.cwl import render
 from dewret.workflow import param
 
@@ -76,25 +76,33 @@ def test_cwl_for_pairs() -> None:
     """Check whether we can produce CWL of pairs."""
 
     @subworkflow()
-    def pair_pi():
-        return (pi(), pi())
+    def pair_pi() -> tuple[float, float]:
+        return pi(), pi()
 
-    result = pair_pi()
-    workflow = construct(result, simplify_ids=True)
+    with set_configuration(flatten_all_nested=True):
+      result = pair_pi()
+      workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
         class: Workflow
         inputs: {{}}
-        outputs:
-          out:
-            label: out
-            outputSource: pair_pi-1/out
-            type: record
+        outputs: [
+          {{
+            label: out,
+            outputSource: pi-1/out,
+            type: double
+          }},
+          {{
+            label: out,
+            outputSource: pi-1/out,
+            type: double
+          }}
+        ]
         steps:
-          pair_pi-1:
-            run: pair_pi
+          pi-1:
+            run: pi
             in: {{}}
             out: [out]
     """)
