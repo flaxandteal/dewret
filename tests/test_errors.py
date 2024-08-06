@@ -245,5 +245,5 @@ def test_nested_tasks_must_return_a_task() -> None:
         construct(result)
     assert (
         str(exc.value)
-        == "Task unacceptable_nested_return returned output of type <class 'int'>, which is not a lazy function for this backend."
+        == "Task unacceptable_nested_return returned output of type <class 'dewret.workflow.ParameterReference'>, which is not a lazy function for this backend."
     )
