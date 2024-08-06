@@ -86,7 +86,10 @@ def is_lazy(task: Any) -> bool:
     Returns:
         True if so, False otherwise.
     """
-    return isinstance(task, Delayed)
+    return isinstance(task, Delayed) or (
+        isinstance(task, tuple | list) and
+        all(is_lazy(elt) for elt in task)
+    )
 
 
 lazy = delayed
