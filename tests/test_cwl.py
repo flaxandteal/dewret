@@ -532,7 +532,6 @@ def test_tuple_floats() -> None:
     result = tuple_float_return()
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)
-    print(yaml.dump(rendered))
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
