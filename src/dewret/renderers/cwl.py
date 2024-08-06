@@ -225,6 +225,8 @@ def to_cwl_type(typ: type) -> str | dict[str, Any] | list[str]:
             raise TypeError(
                 f"Cannot render complex type ({typ}) to CWL, have you enabled allow_complex_types configuration?"
             ) from err
+    elif typ == tuple:
+        return "record"
     else:
         raise TypeError(f"Cannot render complex type ({typ}) to CWL")
 

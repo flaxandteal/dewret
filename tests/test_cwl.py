@@ -8,6 +8,7 @@ from dewret.utils import hasher
 from dewret.workflow import param
 
 from ._lib.extra import (
+    pi,
     increment,
     double,
     mod10,
@@ -15,15 +16,6 @@ from ._lib.extra import (
     triple_and_one,
     tuple_float_return,
 )
-
-
-@task()
-def pi() -> float:
-    """Returns pi."""
-    import math
-
-    return math.pi
-
 
 @task()
 def floor(num: int | float) -> int:

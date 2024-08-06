@@ -7,7 +7,7 @@ from dewret.tasks import construct, subworkflow, task, factory
 from dewret.renderers.cwl import render
 from dewret.workflow import param
 
-from ._lib.extra import increment, sum
+from ._lib.extra import increment, sum, pi
 
 CONSTANT = 3
 
@@ -70,6 +70,34 @@ def add_constants(num: int | float) -> int:
 def get_values(num: int | float) -> tuple[int | float, int]:
     """Add a global constant to a number."""
     return (sum(left=num, right=CONSTANT), add_constant(CONSTANT))
+
+
+def test_cwl_for_pairs() -> None:
+    """Check whether we can produce CWL of pairs."""
+
+    @subworkflow()
+    def pair_pi():
+        return (pi(), pi())
+
+    result = pair_pi()
+    workflow = construct(result, simplify_ids=True)
+    rendered = render(workflow)["__root__"]
+
+    assert rendered == yaml.safe_load(f"""
+        cwlVersion: 1.2
+        class: Workflow
+        inputs: {{}}
+        outputs:
+          out:
+            label: out
+            outputSource: pair_pi-1/out
+            type: record
+        steps:
+          pair_pi-1:
+            run: pair_pi
+            in: {{}}
+            out: [out]
+    """)
 
 
 def test_subworkflows_can_use_globals() -> None:
