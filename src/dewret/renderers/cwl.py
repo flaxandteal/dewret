@@ -208,6 +208,8 @@ def to_cwl_type(typ: type) -> str | list[str]:
         return "double"
     elif typ == str:
         return "string"
+    elif typ == tuple:
+        return "record"
     else:
         if configuration("allow_complex_types"):
             return typ if isinstance(typ, str) else typ.__name__

@@ -7,15 +7,7 @@ from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.workflow import param
 
-from ._lib.extra import increment, double, mod10, sum, triple_and_one
-
-
-@task()
-def pi() -> float:
-    """Returns pi."""
-    import math
-
-    return math.pi
+from ._lib.extra import pi, increment, double, mod10, sum, triple_and_one
 
 
 @task()

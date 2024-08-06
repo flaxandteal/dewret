@@ -891,7 +891,7 @@ class BaseStep(WorkflowComponent):
         if not isinstance(other, BaseStep):
             return False
         return (
-            self.__workflow__ == other.__workflow__
+            self.__workflow__ is other.__workflow__
             and self.task == other.task
             and self.arguments == other.arguments
         )
