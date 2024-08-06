@@ -28,6 +28,7 @@ from types import UnionType
 from dewret.workflow import (
     FactoryCall,
     Reference,
+    FieldableMixin,
     Raw,
     Workflow,
     BaseStep,
@@ -91,7 +92,7 @@ class ReferenceDefinition:
         Args:
             ref: reference to convert.
         """
-        return cls(source=ref.name)
+        return cls(source=to_name(ref))
 
     def render(self) -> dict[str, RawType]:
         """Render to a dict-like structure.
@@ -392,11 +393,11 @@ class InputsDefinition:
         """
         return cls(
             inputs={
-                input.name: cls.CommandInputParameter(
-                    label=input.name,
-                    default=input.default,
+                input.__name__: cls.CommandInputParameter(
+                    label=input.__name__,
+                    default=input.__default__,
                     type=raw_to_command_input_schema(
-                        label=input.name, value=input.default
+                        label=input.__name__, value=input.__default__
                     ),
                 )
                 for input in parameters
@@ -424,6 +425,11 @@ class InputsDefinition:
         return result
 
 
+def to_name(result: FieldableMixin):
+    if not result.__field__ and isinstance(result, StepReference):
+        return f"{result.__name__}/out"
+    return result.__name__
+
 @define
 class OutputsDefinition:
     """CWL-renderable set of workflow outputs.
@@ -450,12 +456,12 @@ class OutputsDefinition:
         return cls(
             outputs=[
                     to_output_schema(
-                        result.field, result.return_type, output_source=result.name
+                        "/".join(result.__field__) or "out", result.__type__, output_source=to_name(result)
                     ) for result in results
                 ]
                 if isinstance(results, list | tuple) else {
                 key: to_output_schema(
-                    result.field, result.return_type, output_source=result.name
+                    "/".join(result.__field__) or "out", result.__type__, output_source=to_name(result)
                 )
                 for key, result in results.items()
             }
@@ -524,7 +530,7 @@ class WorkflowDefinition:
             outputs=OutputsDefinition.from_results(
                 workflow.result
                 if isinstance(workflow.result, list | tuple) else
-                {workflow.result.field: workflow.result}
+                {"/".join(workflow.result.__field__) or "out": workflow.result}
                 if workflow.has_result else
                 {}
             ),

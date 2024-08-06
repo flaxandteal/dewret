@@ -59,13 +59,11 @@ def get_global_queues(num: int | float) -> list["Queue[int] | int"]:
 @subworkflow()
 def add_constant(num: int | float) -> int:
     """Add a global constant to a number."""
-    print(CONSTANT, type(CONSTANT))
     return to_int(num=sum(left=num, right=CONSTANT))
 
 @subworkflow()
 def add_constants(num: int | float) -> int:
     """Add a global constant to a number."""
-    print(CONSTANT, type(CONSTANT))
     return to_int(num=sum(left=sum(left=num, right=CONSTANT), right=CONSTANT))
 
 
@@ -257,9 +255,8 @@ def test_subworkflows_can_return_lists() -> None:
           num:
             label: num
             type: int
-          sum-1-1-1-right:
-            default: 3
-            label: sum-1-1-1-right
+          CONSTANT:
+            label: CONSTANT
             type: int
         outputs:
           out:
@@ -272,7 +269,7 @@ def test_subworkflows_can_return_lists() -> None:
               left:
                 source: num
               right:
-                source: sum-1-1-1-right
+                source: CONSTANT
             out:
             - out
             run: sum
