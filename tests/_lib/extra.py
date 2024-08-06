@@ -33,6 +33,14 @@ def sum(left: int | float, right: int | float) -> int | float:
     return left + right
 
 
+@task()
+def pi() -> float:
+    """Returns pi."""
+    import math
+
+    return math.pi
+
+
 @subworkflow()
 def triple_and_one(num: int | float) -> int | float:
     """Triple a number by doubling and adding again, then add 1."""
