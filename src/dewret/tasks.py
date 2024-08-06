@@ -248,13 +248,14 @@ class TaskManager:
         """
         workflow = __workflow__ or Workflow()
 
-        context = copy_context().items()
-        def _initializer():
-            for var, value in context:
-                var.set(value)
-        thread_pool = ThreadPoolExecutor(initializer=_initializer)
+        with set_configuration():
+            context = copy_context().items()
+            def _initializer():
+                for var, value in context:
+                    var.set(value)
+            thread_pool = ThreadPoolExecutor(initializer=_initializer)
 
-        result = self.evaluate(task, workflow, thread_pool=thread_pool, **kwargs)
+            result = self.evaluate(task, workflow, thread_pool=thread_pool, **kwargs)
         return Workflow.from_result(result, simplify_ids=simplify_ids)
 
 
@@ -455,7 +456,7 @@ def task(
             try:
                 # Ensure that all arguments are passed as keyword args and prevent positional args.
                 # passed at all.
-                if args:
+                if args and not get_configuration("allow_positional_args"):
                     raise TypeError(
                         f"""
                         Calling {fn.__name__}: Arguments must _always_ be named,
@@ -501,7 +502,9 @@ def task(
                                     var,
                                     value,
                                     tethered=(
-                                        False if nested and flatten_nested else None
+                                        False if nested and (
+                                            flatten_nested or get_configuration("flatten_all_nested")
+                                        ) else None
                                     ),
                                     autoname=True,
                                 ),
@@ -551,7 +554,7 @@ def task(
                             f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}"
                         )
                 if nested:
-                    if flatten_nested:
+                    if flatten_nested or get_configuration("flatten_all_nested"):
                         output = fn(**original_kwargs)
                         lazy_fn = ensure_lazy(output)
                         if lazy_fn is None:
