@@ -47,6 +47,7 @@ from contextlib import contextmanager
 
 from .utils import is_raw, make_traceback
 from .workflow import (
+    UNSET,
     Reference,
     StepReference,
     ParameterReference,
@@ -507,6 +508,7 @@ def task(
                                         ) else None
                                     ),
                                     autoname=True,
+                                    typ=analyser.all_annotations.get(var, UNSET)
                                 ),
                             )
                         elif isinstance(value, Parameter):
@@ -521,13 +523,26 @@ def task(
                     #       raise TypeError(
                     #           "Captured parameter {var} (global variable in task) shadows an argument"
                     #        )
-                    if analyser.is_at_construct_arg(var) or isinstance(value, Reference):
+                    if (
+                        analyser.is_at_construct_arg(var) or
+                        isinstance(value, Reference) or
+                        value is evaluate or value is construct  # Allow manual building.
+                    ):
                         kwargs[var] = value
                     elif isinstance(value, Parameter):
                         kwargs[var] = ParameterReference(workflow=workflow, parameter=value)
-                    elif is_raw(value) or ((attrs_has(value) or is_dataclass(value)) and not inspect.isclass(value)):
+                    elif is_raw(value) or (
+                        (attrs_has(value) or is_dataclass(value)) and
+                        not inspect.isclass(value)
+                    ):
                         kwargs[var] = ParameterReference(
-                            workflow=workflow, parameter=param(var, value, tethered=False)
+                            workflow=workflow,
+                            parameter=param(
+                                var,
+                                value,
+                                tethered=False,
+                                typ=analyser.all_annotations.get(var, UNSET)
+                            )
                         )
                     elif is_task(value) or ensure_lazy(value) is not None:
                         if not nested and _workaround_check_value_is_task(
