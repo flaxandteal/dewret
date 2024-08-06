@@ -66,6 +66,11 @@ def add_constants(num: int | float) -> int:
     """Add a global constant to a number."""
     return to_int(num=sum(left=sum(left=num, right=CONSTANT), right=CONSTANT))
 
+@subworkflow()
+def get_values(num: int | float) -> tuple[int | float, int]:
+    """Add a global constant to a number."""
+    return (sum(left=num, right=CONSTANT), add_constant(CONSTANT))
+
 
 def test_subworkflows_can_use_globals() -> None:
     """Produce a subworkflow that uses a global."""

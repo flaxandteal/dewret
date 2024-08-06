@@ -73,7 +73,7 @@ CONSTRUCT_CONFIGURATION: ContextVar[ConstructConfiguration] = ContextVar("constr
 @contextmanager
 def set_configuration(**kwargs: Unpack[ConstructConfiguration]):
     try:
-        previous = CONSTRUCT_CONFIGURATION.get()
+        previous = ConstructConfiguration(**CONSTRUCT_CONFIGURATION.get())
     except LookupError:
         previous = ConstructConfiguration(
             flatten_all_nested=False,
@@ -555,7 +555,8 @@ def task(
                         )
                 if nested:
                     if flatten_nested or get_configuration("flatten_all_nested"):
-                        output = fn(**original_kwargs)
+                        with in_nested_task():
+                            output = analyser.with_new_globals(kwargs)(**original_kwargs)
                         lazy_fn = ensure_lazy(output)
                         if lazy_fn is None:
                             raise TypeError(
