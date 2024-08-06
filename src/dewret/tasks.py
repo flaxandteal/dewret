@@ -496,8 +496,8 @@ def task(
                             # We leave this reference dangling for a consumer to pick up ("tethered"), unless
                             # we are in a nested task, that does not have any existence of its own.
                             kwargs[var] = ParameterReference(
-                                workflow,
-                                param(
+                                workflow=workflow,
+                                parameter=param(
                                     var,
                                     value,
                                     tethered=(
@@ -507,7 +507,7 @@ def task(
                                 ),
                             )
                         elif isinstance(value, Parameter):
-                            kwargs[var] = ParameterReference(workflow, value)
+                            kwargs[var] = ParameterReference(workflow=workflow, parameter=value)
                 original_kwargs = dict(kwargs)
                 fn_globals = analyser.globals
 
@@ -518,13 +518,13 @@ def task(
                     #       raise TypeError(
                     #           "Captured parameter {var} (global variable in task) shadows an argument"
                     #        )
-                    if analyser.is_at_construct_arg(var):
+                    if analyser.is_at_construct_arg(var) or isinstance(value, Reference):
                         kwargs[var] = value
                     elif isinstance(value, Parameter):
-                        kwargs[var] = ParameterReference(workflow, value)
-                    elif is_raw(value):
+                        kwargs[var] = ParameterReference(workflow=workflow, parameter=value)
+                    elif is_raw(value) or ((attrs_has(value) or is_dataclass(value)) and not inspect.isclass(value)):
                         kwargs[var] = ParameterReference(
-                            workflow, param(var, value, tethered=False)
+                            workflow=workflow, parameter=param(var, value, tethered=False)
                         )
                     elif is_task(value) or ensure_lazy(value) is not None:
                         if not nested and _workaround_check_value_is_task(
@@ -546,8 +546,6 @@ def task(
                                     ...
                                 """
                             )
-                    elif attrs_has(value) or is_dataclass(value):
-                        ...
                     elif nested:
                         raise NotImplementedError(
                             f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}"
@@ -565,8 +563,8 @@ def task(
                         nested_workflow = Workflow(name=fn.__name__)
                         nested_globals: Param.kwargs = {
                             var: ParameterReference(
-                                nested_workflow,
-                                param(
+                                workflow=nested_workflow,
+                                parameter=param(
                                     var,
                                     typ=(
                                         value.__type__
