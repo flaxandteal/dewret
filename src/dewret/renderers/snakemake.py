@@ -243,7 +243,7 @@ class OutputDefinition:
         output_file = step.arguments["output_file"]
         if isinstance(output_file, Raw):
             args = to_snakemake_type(output_file)
-        else: 
+        else:
             args = ""
 
         return cls(output_file=args)

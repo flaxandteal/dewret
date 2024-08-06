@@ -1,12 +1,8 @@
-from unittest.mock import patch, MagicMock
-from dewret.renderers.cwl import cwl_type_from_value, to_cwl_type, set_configuration, configuration
-from dewret.tasks import factory
-from dewret.workflow import Unset
+from dewret.renderers.cwl import cwl_type_from_value, to_cwl_type, set_configuration
 from queue import Queue
 from collections import OrderedDict
 from types import UnionType
-from collections.abc import Iterable
-from typing import Tuple, Union, List
+from typing import Tuple, List
 
 ############################################
 #
@@ -14,8 +10,10 @@ from typing import Tuple, Union, List
 #
 ############################################
 
+
 def return_union_type(a) -> UnionType:
     return a
+
 
 def test_cwl_basic_types():
     integer = type(12)
@@ -24,7 +22,7 @@ def test_cwl_basic_types():
     fl = type(12.2)
     string = type("12")
     byt = type(bytes([104, 101, 108, 108, 111]))
-    
+
     assert "int" == to_cwl_type(integer)
     assert "boolean" == to_cwl_type(boolean)
     assert "record" == to_cwl_type(dictionary)
@@ -32,28 +30,27 @@ def test_cwl_basic_types():
     assert "string" == to_cwl_type(string)
     assert "bytes" == to_cwl_type(byt)
 
+
 def test_allow_complex_types():
-    custom_config = {
-        "allow_complex_types": True,
-        "factories_as_params": False
-    }
+    custom_config = {"allow_complex_types": True, "factories_as_params": False}
     set_configuration(custom_config)
 
     queue = Queue(1)
     queue.put(4)
 
     od = OrderedDict()
-    od['one'] = 1
+    od["one"] = 1
     assert "Queue" == to_cwl_type(type(queue))
     assert "OrderedDict" == to_cwl_type(type(od))
 
-def test_union_type():
 
+def test_union_type():
     uti = return_union_type(4)
     uts = return_union_type("4")
 
     assert "int" == to_cwl_type(type(uti))
     assert "string" == to_cwl_type(type(uts))
+
 
 def test_list_with_multiple_basic_types():
     # Set default configurations
@@ -62,11 +59,13 @@ def test_list_with_multiple_basic_types():
     result = to_cwl_type(typ)
     assert result == {"type": "array", "items": "int"}
 
+
 def test_list_with_single_basic_type():
     # Set default configurations
     set_configuration({})
     result = to_cwl_type(List[int])
     assert result == {"type": "array", "items": "int"}
+
 
 def test_tuple_with_multiple_basic_types():
     # Set default configurations
@@ -77,6 +76,7 @@ def test_tuple_with_multiple_basic_types():
         "items": [{"type": "int"}, {"type": "string"}],
     }
     assert result == expected, f"Expected {expected}, but got {result}"
+
 
 def test_tuple_with_single_basic_type():
     # Set default configurations
@@ -99,11 +99,13 @@ def test_cwl_type_from_int():
     expected = "int"
     assert result == expected
 
+
 def test_cwl_type_from_float():
     val = 3.14
     result = cwl_type_from_value(val)
     expected = "float"
     assert result == expected
+
 
 def test_cwl_type_from_str():
     val = "hello"
@@ -111,11 +113,13 @@ def test_cwl_type_from_str():
     expected = "string"
     assert result == expected
 
+
 def test_cwl_type_from_bytes():
     val = b"binary data"
     result = cwl_type_from_value(val)
     expected = "bytes"
     assert result == expected
+
 
 def test_cwl_type_from_dict():
     val = {"key": "value"}
@@ -126,7 +130,7 @@ def test_cwl_type_from_dict():
 
 # Question: Why doesn't it work with complex types
 
-# def test_cwl_type_from_list_of_ints(): 
+# def test_cwl_type_from_list_of_ints():
 #     # Set default configurations
 #     set_configuration({})
 #     val = [1,2,3]
@@ -144,7 +148,7 @@ def test_cwl_type_from_dict():
 #     assert result == expected
 
 # def test_cwl_type_from_unset():
-#     val = Unset 
+#     val = Unset
 #     result = cwl_type_from_value(val)
 #     expected = "unset"
 #     print("**********************",result)
