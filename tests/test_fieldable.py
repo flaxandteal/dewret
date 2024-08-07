@@ -26,12 +26,12 @@ def test_fields_of_parameters_usable() -> None:
       class: Workflow
       cwlVersion: 1.2
       inputs:
-        SIDES/left:
-          label: SIDES/left
-          type: Sides
-        SIDES/right:
-          label: SIDES/right
-          type: Sides
+        SIDES:
+          label: SIDES
+          type: record
+          items:
+            left: int
+            right: int
       outputs:
         out:
           label: out
@@ -43,9 +43,11 @@ def test_fields_of_parameters_usable() -> None:
         sum-1-1:
           in:
             left:
-              source: SIDES/left
+              source: SIDES
+              valueFrom: $(self.left)
             right:
-              source: SIDES/right
+              source: SIDES
+              valueFrom: $(self.right)
           out:
           - out
           run: sum

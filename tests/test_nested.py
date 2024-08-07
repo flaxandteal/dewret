@@ -2,12 +2,14 @@ import yaml
 from dewret.tasks import construct, task, factory
 from dewret.renderers.cwl import render
 
+from ._lib.extra import pi
+
 @task()
 def reverse_list(to_sort: list[int]) -> list[int]:
     return to_sort[::-1]
 
 def test_can_supply_nested_raw():
-    result = reverse_list(to_sort=[1, 3, 5])
+    result = reverse_list(to_sort=[1, 3, pi()])
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)["__root__"]
     assert rendered == yaml.safe_load("""

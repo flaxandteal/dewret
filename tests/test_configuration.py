@@ -4,7 +4,7 @@ from dewret.tasks import construct, task, factory, subworkflow, TaskException
 from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.tasks import set_configuration
-from dewret.annotations import AtConstruct
+from dewret.annotations import AtRender
 from ._lib.extra import increment, double, mod10, sum, triple_and_one
 
 @pytest.fixture
@@ -13,7 +13,7 @@ def configuration():
         yield configuration.get()
 
 @subworkflow()
-def floor(num: int, expected: AtConstruct[bool]) -> int:
+def floor(num: int, expected: AtRender[bool]) -> int:
     """Converts int/float to int."""
     from dewret.tasks import get_configuration
     if get_configuration("flatten_all_nested") != expected:
