@@ -35,6 +35,10 @@ graph TD
 In code, this would be:
 
 ```python
+>>> import sys
+>>> import yaml
+>>> from dewret.tasks import task, construct
+>>> from dewret.renderers.cwl import render
 >>> @task()
 ... def increment(num: int) -> int:
 ...     """Increment an integer."""
@@ -123,6 +127,31 @@ Notice that the `increment` tasks appears twice in the CWL workflow definition, 
 This duplication can be avoided by explicitly indicating that the parameters are the same, with the `param` function.
 
 ```python
+>>> import sys
+>>> import yaml
+>>> from dewret.workflow import param
+>>> from dewret.tasks import task, construct
+>>> from dewret.renderers.cwl import render
+>>> @task()
+... def increment(num: int) -> int:
+...     """Increment an integer."""
+...     return num + 1
+>>> 
+>>> @task()
+... def double(num: int) -> int:
+...     """Double an integer."""
+...     return 2 * num
+>>> 
+>>> @task()
+... def mod10(num: int) -> int:
+...     """Take num mod 10."""
+...     return num % 10
+>>> 
+>>> @task()
+... def sum(left: int, right: int) -> int:
+...     """Add two integers."""
+...     return left + right
+>>>
 >>> num = param("num", default=3)
 >>> result = sum(
 ...     left=double(num=increment(num=num)),
@@ -191,6 +220,11 @@ While global variables are implicit input to the Python function **note that**:
 
 For example:
 ```python
+>>> import sys
+>>> import yaml
+>>> from dewret.workflow import param
+>>> from dewret.tasks import task, construct
+>>> from dewret.renderers.cwl import render
 >>> INPUT_NUM = 3
 >>> @task()
 ... def rotate(num: int) -> int:
@@ -248,7 +282,16 @@ graph TD
 As code:
 
 ```python
->>> from dewret.tasks import nested_task
+>>> import sys
+>>> import yaml
+>>> from dewret.tasks import task, construct, nested_task
+>>> from dewret.renderers.cwl import render
+>>> INPUT_NUM = 3
+>>> @task()
+... def rotate(num: int) -> int:
+...    """Rotate an integer."""
+...    return (num + INPUT_NUM) % INPUT_NUM
+>>>
 >>> @nested_task()
 ... def double_rotate(num: int) -> int:
 ...    """Rotate an integer twice."""
@@ -304,6 +347,7 @@ nested task does not have an impact on the return value,
 it will disappear__.
 For example, the following code renders the same workflow as in the previous example:
 
+
 ```python
 @nested_task()
 def double_rotate(num: int) -> int:
@@ -336,8 +380,12 @@ graph TD
 As code:
 
 ```python
+>>> import sys
+>>> import yaml
 >>> from attrs import define
 >>> from numpy import random
+>>> from dewret.tasks import task, construct
+>>> from dewret.renderers.cwl import render
 >>> @define
 ... class PackResult:
 ...     hearts: int
@@ -431,9 +479,13 @@ steps:
 
 Here, we show the same example with `dataclasses`.
 
-```python
+```python 
+>>> import sys
+>>> import yaml
 >>> from dataclasses import dataclass
 >>> from numpy import random
+>>> from dewret.tasks import task, construct
+>>> from dewret.renderers.cwl import render
 >>> @dataclass
 ... class PackResult:
 ...     hearts: int
@@ -453,6 +505,7 @@ Here, we show the same example with `dataclasses`.
 >>> @task()
 ... def sum(left: int, right: int) -> int:
 ...    return left + right
+>>>
 >>> red_total = sum(
 ...     left=shuffle(max_cards_per_suit=13).hearts,
 ...     right=shuffle(max_cards_per_suit=13).diamonds
@@ -531,9 +584,33 @@ A special form of nested task is available to help divide up
 more complex workflows: the *subworkflow*. By wrapping logic in subflows,
 dewret will produce multiple output workflows that reference each other.
 
-```
->>> from dewret.tasks import subworkflow
->>> my_param = param("num", typ=int)
+```python
+>>> import sys
+>>> import yaml
+>>> from attrs import define
+>>> from numpy import random
+>>> from dewret.tasks import task, construct, subworkflow
+>>> from dewret.renderers.cwl import render
+>>> @define
+... class PackResult:
+...     hearts: int
+...     clubs: int
+...     spades: int
+...     diamonds: int
+>>>
+>>> @task()
+... def sum(left: int, right: int) -> int:
+...    return left + right
+>>>
+>>> @task()
+... def shuffle(max_cards_per_suit: int) -> PackResult:
+...    """Fill a random pile from a card deck, suit by suit."""
+...    return PackResult(
+...        hearts=random.randint(max_cards_per_suit),
+...        clubs=random.randint(max_cards_per_suit),
+...        spades=random.randint(max_cards_per_suit),
+...        diamonds=random.randint(max_cards_per_suit)
+...    )
 >>> @subworkflow()
 ... def red_total():
 ...     return sum(
@@ -585,7 +662,48 @@ As we have used subworkflow to wrap the colour totals, the outer workflow
 contains references to them only. The subworkflows are now returned by `render`
 as a second term.
 
-```
+```python
+>>> import sys
+>>> import yaml
+>>> from attrs import define
+>>> from numpy import random
+>>> from dewret.tasks import task, construct, subworkflow
+>>> from dewret.renderers.cwl import render
+>>> @define
+... class PackResult:
+...     hearts: int
+...     clubs: int
+...     spades: int
+...     diamonds: int
+>>>
+>>> @task()
+... def shuffle(max_cards_per_suit: int) -> PackResult:
+...    """Fill a random pile from a card deck, suit by suit."""
+...    return PackResult(
+...        hearts=random.randint(max_cards_per_suit),
+...        clubs=random.randint(max_cards_per_suit),
+...        spades=random.randint(max_cards_per_suit),
+...        diamonds=random.randint(max_cards_per_suit)
+...    )
+>>> @task()
+... def sum(left: int, right: int) -> int:
+...    return left + right
+>>>
+>>> @subworkflow()
+... def red_total():
+...     return sum(
+...         left=shuffle(max_cards_per_suit=13).hearts,
+...         right=shuffle(max_cards_per_suit=13).diamonds
+...     )
+>>> @subworkflow()
+... def black_total():
+...     return sum(
+...         left=shuffle(max_cards_per_suit=13).spades,
+...         right=shuffle(max_cards_per_suit=13).clubs
+...     )
+>>> total = sum(left=red_total(), right=black_total())
+>>> workflow = construct(total, simplify_ids=True)
+>>> cwl, subworkflows = render(workflow)
 >>> yaml.dump(subworkflows["red_total-1"], sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
@@ -662,10 +780,25 @@ the chosen renderer has the capability.
 
 Below is the default output, treating `Pack` as a task.
 
-```
->>> from dewret.tasks import subworkflow, factory
->>> my_param = param("num", typ=int)
+```python
+>>> import sys
+>>> import yaml
+>>> from dewret.tasks import subworkflow, factory, nested_task, construct, task
+>>> from attrs import define
+>>> from dewret.renderers.cwl import render
+>>> @define
+... class PackResult:
+...     hearts: int
+...     clubs: int
+...     spades: int
+...     diamonds: int
+>>>
 >>> Pack = factory(PackResult)
+>>>
+>>> @task()
+... def sum(left: int, right: int) -> int:
+...    return left + right
+>>>
 >>> @nested_task()
 ... def black_total(pack: PackResult):
 ...     return sum(
@@ -740,10 +873,24 @@ steps:
 The CWL renderer is also able to treat `pack` as a parameter, if complex
 types are allowed.
 
-```
->>> from dewret.tasks import subworkflow, factory
->>> my_param = param("num", typ=int)
+```python
+>>> import sys
+>>> import yaml
+>>> from dewret.tasks import task, factory, nested_task, construct
+>>> from attrs import define
+>>> from dewret.renderers.cwl import render
+>>> @define
+... class PackResult:
+...     hearts: int
+...     clubs: int
+...     spades: int
+...     diamonds: int
+>>>
 >>> Pack = factory(PackResult)
+>>> @task()
+... def sum(left: int, right: int) -> int:
+...    return left + right
+>>>
 >>> @nested_task()
 ... def black_total(pack: PackResult):
 ...     return sum(
@@ -759,7 +906,7 @@ cwlVersion: 1.2
 inputs:
   PackResult-1:
     label: PackResult-1
-    type: PackResult
+    type: record
 outputs:
   out:
     label: out
