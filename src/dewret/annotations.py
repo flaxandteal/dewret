@@ -4,7 +4,7 @@ from types import FunctionType
 from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Callable, get_origin, get_args, Mapping
 
 T = TypeVar("T")
-AtConstruct = Annotated[T, "AtConstruct"]
+AtRender = Annotated[T, "AtRender"]
 
 class FunctionAnalyser:
     _fn: Callable[..., Any]
@@ -50,7 +50,7 @@ class FunctionAnalyser:
         return False
 
     def is_at_construct_arg(self, arg: str) -> bool:
-        return self.argument_has(arg, AtConstruct)
+        return self.argument_has(arg, AtRender)
 
     @property
     @lru_cache
