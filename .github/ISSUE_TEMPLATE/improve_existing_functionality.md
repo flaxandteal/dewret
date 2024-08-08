@@ -1,6 +1,13 @@
+---
+name: "🛠 Improvement proposal"
+about: "Improve an existing feature"
+title: "🛠 Title"
+labels: ["enhancement"]
+assignees: ['']
+---
 ### Improvement Proposal
 
-Describe the improvement you would like to propose. Be clear and concise.
+Describe the improvement you would like to see. Be clear and concise.
 
 #### Current Functionality
 
@@ -22,13 +29,13 @@ Outline the benefits or outcomes you expect from implementing this improvement.
 
 If you have ideas or suggestions on how this improvement could be implemented, outline them here.
 
-#### Alternative Approaches Considered (Optional)
+#### Alternative Approaches or Workaround used before (Optional)
 
 If applicable, describe any alternative approaches you considered or explored.
 
 #### Screenshots or Additional Information
 
-Include any screenshots, diagrams, or additional information that might help illustrate your proposal.
+If applicable.
 
 #### Checklist
 
