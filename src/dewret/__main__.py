@@ -74,9 +74,6 @@ def render(
     ARGUMENTS is zero or more pairs representing constant arguments to pass to the task, in the format `key:val` where val is a JSON basic type.
     """
     sys.path.append(str(Path(workflow_py).parent))
-    loader = importlib.machinery.SourceFileLoader("workflow", workflow_py)
-    workflow = loader.load_module()
-    task_fn = getattr(workflow, task)
     kwargs = {}
     for arg in arguments:
         if ":" not in arg:
@@ -97,7 +94,7 @@ def render(
     renderer_kwargs: dict[str, Any]
     if renderer_args.startswith("@"):
         with Path(renderer_args[1:]).open() as renderer_args_f:
-            renderer_kwargs = yaml.load(renderer_args_f)
+            renderer_kwargs = yaml.safe_load(renderer_args_f)
     elif not renderer_args:
         renderer_kwargs = {}
     else:
@@ -119,6 +116,10 @@ def render(
         opener = _opener
 
     render = get_render_method(render_module, pretty=pretty)
+    loader = importlib.machinery.SourceFileLoader("workflow", workflow_py)
+    workflow = loader.load_module()
+    task_fn = getattr(workflow, task)
+
     try:
         rendered = render(construct(task_fn(**kwargs), **renderer_kwargs))
     except Exception as exc:
