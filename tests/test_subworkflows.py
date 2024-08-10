@@ -11,13 +11,13 @@ from ._lib.extra import increment, sum, pi
 
 CONSTANT = 3
 
-QueueFactory: Callable[..., "Queue[int]"] = factory(Queue)
+QueueFactory: Callable[..., Queue[int]] = factory(Queue)
 
 GLOBAL_QUEUE = QueueFactory()
 
 
 @task()
-def pop(queue: "Queue[int]") -> int:
+def pop(queue: Queue[int]) -> int:
     """Remove element of a queue."""
     return queue.get()
 
@@ -29,26 +29,26 @@ def to_int(num: int | float) -> int:
 
 
 @task()
-def add_and_queue(num: int, queue: "Queue[int]") -> "Queue[int]":
+def add_and_queue(num: int, queue: Queue[int]) -> Queue[int]:
     """Add a global constant to a number."""
     queue.put(num)
     return queue
 
 
 @subworkflow()
-def make_queue(num: int | float) -> "Queue[int]":
+def make_queue(num: int | float) -> Queue[int]:
     """Add a number to a queue."""
     queue = QueueFactory()
     return add_and_queue(num=to_int(num=num), queue=queue)
 
 
 @subworkflow()
-def get_global_queue(num: int | float) -> "Queue[int]":
+def get_global_queue(num: int | float) -> Queue[int]:
     """Add a number to a global queue."""
     return add_and_queue(num=to_int(num=num), queue=GLOBAL_QUEUE)
 
 @subworkflow()
-def get_global_queues(num: int | float) -> list["Queue[int] | int"]:
+def get_global_queues(num: int | float) -> list[Queue[int] | int]:
     """Add a number to a global queue."""
     return [
         add_and_queue(num=to_int(num=num), queue=GLOBAL_QUEUE),
@@ -272,6 +272,9 @@ def test_subworkflows_can_return_lists() -> None:
         outputs:
           out:
             label: out
+            items:
+            - Queue
+            - int
             outputSource: get_global_queues-1/out
             type: array
         steps:
@@ -337,7 +340,7 @@ def test_subworkflows_can_return_lists() -> None:
         outputs:
           - label: out
             outputSource: add_and_queue-1-1/out
-            type: Queue[int]
+            type: Queue
           - label: out
             outputSource: add_constant-1-1/out
             type: int

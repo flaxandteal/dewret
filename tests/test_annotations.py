@@ -72,7 +72,9 @@ def test_at_construct() -> None:
           out:
             label: out
             outputSource: to_int-1/out
-            type: int
+            type:
+            - int
+            - double
         steps:
           increment-1:
             in:

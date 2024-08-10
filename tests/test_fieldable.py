@@ -2,12 +2,13 @@ import yaml
 from dataclasses import dataclass
 
 import pytest
+from typing import Unpack, TypedDict
 
 from dewret.tasks import task, construct, subworkflow
 from dewret.workflow import param
 from dewret.renderers.cwl import render
 
-from ._lib.extra import double, mod10, sum
+from ._lib.extra import double, mod10, sum, pi
 
 @dataclass
 class Sides:
@@ -68,3 +69,40 @@ def test_can_get_field_reference_iff_parent_type_has_field():
 
     assert str(param_reference.left) == "my_param/left"
     assert param_reference.left.__type__ == int
+
+def test_can_get_field_references_from_dataclass():
+    @dataclass
+    class MyDataclass:
+        left: int
+        right: float
+
+    @subworkflow()
+    def test_dataclass(my_dataclass: MyDataclass) -> MyDataclass:
+        result: MyDataclass = MyDataclass(left=mod10(num=my_dataclass.left), right=pi())
+        return result
+
+    @subworkflow()
+    def get_left(my_dataclass: MyDataclass) -> int:
+        return my_dataclass.left
+
+    result = get_left(my_dataclass=test_dataclass(my_dataclass=MyDataclass(left=3, right=4.)))
+    workflow = construct(result, simplify_ids=True)
+
+    assert str(workflow.result) == "get_left-1"
+    assert workflow.result.__type__ == int
+
+def test_can_get_field_references_from_typed_dict():
+    class MyDict(TypedDict):
+        left: int
+        right: float
+
+    @subworkflow()
+    def test_dict(**my_dict: Unpack[MyDict]) -> MyDict:
+        result: MyDict = {"left": mod10(num=my_dict["left"]), "right": pi()}
+        return result
+
+    result = test_dict(left=3, right=4.)
+    workflow = construct(result, simplify_ids=True)
+
+    assert str(workflow.result["left"]) == "test_dict-1/left"
+    assert workflow.result["left"].__type__ == int

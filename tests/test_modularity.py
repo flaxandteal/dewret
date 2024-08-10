@@ -37,9 +37,9 @@ def test_nested_task() -> None:
             default: 23
             label: STARTING_NUMBER
             type: int
-          increase-3-num:
+          increase-2-num:
             default: 17
-            label: increase-3-num
+            label: increase-2-num
             type: int
         outputs:
           out:
@@ -47,21 +47,21 @@ def test_nested_task() -> None:
             outputSource: sum-1/out
             type: [int, float]
         steps:
-          increase-3:
-            run: increase
-            in:
-                JUMP:
-                    source: JUMP
-                num:
-                    source: increase-3-num
-            out: [out]
           increase-2:
             run: increase
             in:
                 JUMP:
                     source: JUMP
                 num:
-                    source: increase-3/out
+                    source: increase-2-num
+            out: [out]
+          increase-3:
+            run: increase
+            in:
+                JUMP:
+                    source: JUMP
+                num:
+                    source: increase-2/out
             out: [out]
           increase-1:
             run: increase
@@ -83,6 +83,6 @@ def test_nested_task() -> None:
                 left:
                     source: double-1/out
                 right:
-                    source: increase-2/out
+                    source: increase-3/out
             out: [out]
     """)
