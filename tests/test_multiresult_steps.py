@@ -256,7 +256,7 @@ def test_pair_can_be_returned_from_step() -> None:
           out:
             label: out
             outputSource: pair-1/out
-            items: 
+            items:
               - int
               - float
             type: array

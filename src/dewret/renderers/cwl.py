@@ -25,6 +25,7 @@ from contextvars import ContextVar
 from typing import TypedDict, NotRequired, get_origin, get_args, Union, cast, Any, Iterable, Unpack
 from types import UnionType
 from inspect import isclass
+from sympy import Expr, Basic, Tuple
 
 from dewret.workflow import (
     FactoryCall,
@@ -36,7 +37,7 @@ from dewret.workflow import (
     ParameterReference,
     Unset,
 )
-from dewret.utils import RawType, flatten, DataclassProtocol, flatten_if_set
+from dewret.utils import RawType, flatten, DataclassProtocol, firm_to_raw, FirmType, flatten_if_set
 from dewret.render import base_render
 
 class CommandInputSchema(TypedDict):
@@ -176,7 +177,9 @@ class StepDefinition:
             "in": {
                 key: (
                     ref.render()
-                    if isinstance(ref, ReferenceDefinition)
+                    if isinstance(ref, ReferenceDefinition) else
+                    {"expression": f"$({ref})"}
+                    if isinstance(ref, Basic)
                     else {"default": ref.value}
                 )
                 for key, ref in self.in_.items()
@@ -236,7 +239,7 @@ def to_cwl_type(label: str, typ: type) -> CommandInputSchema:
     elif base == bytes:
         typ_dict["type"] = "bytes"
     elif isinstance(typ, UnionType):
-        typ_dict.update({"type": [to_cwl_type(label, item)["type"] for item in args]})
+        typ_dict.update({"type": tuple(to_cwl_type(label, item)["type"] for item in args)})
     elif isclass(base) and issubclass(base, Iterable):
         try:
             if len(args) > 1:
@@ -355,7 +358,7 @@ def _raw_to_command_input_schema_internal(
     elif isinstance(value, list):
         typeset = set(get_args(value))
         if not typeset:
-            typeset = {type(item) for item in value}
+            typeset = {item.__type__ if item is not None and hasattr(item, "__type__") else type(item) for item in value}
         if len(typeset) != 1:
             raise RuntimeError(
                 "For CWL, an input array must have a consistent type, "
@@ -428,7 +431,7 @@ class InputsDefinition:
             item = {
                 # Would rather not cast, but CommandInputSchema is dict[RawType]
                 # by construction, where type is seen as a TypedDict subclass.
-                "type": cast(RawType, input.type),
+                "type": firm_to_raw(cast(FirmType, input.type)),
                 "label": input.label,
             }
             if not isinstance(input.default, Unset):
@@ -471,7 +474,7 @@ class OutputsDefinition:
                         "/".join(result.__field__) or "out", result.__type__, output_source=to_name(result)
                     ) for result in results
                 ]
-                if isinstance(results, list | tuple) else {
+                if isinstance(results, list | tuple | Tuple) else {
                 key: to_output_schema(
                     "/".join(result.__field__) or "out", result.__type__, output_source=to_name(result)
                 )
@@ -541,7 +544,7 @@ class WorkflowDefinition:
             inputs=InputsDefinition.from_parameters(parameters),
             outputs=OutputsDefinition.from_results(
                 workflow.result
-                if isinstance(workflow.result, list | tuple) else
+                if isinstance(workflow.result, list | tuple | Tuple) else
                 {"/".join(workflow.result.__field__) or "out": workflow.result}
                 if workflow.has_result else
                 {}

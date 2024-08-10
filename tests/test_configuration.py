@@ -47,19 +47,19 @@ def test_cwl_with_parameter(configuration) -> None:
         outputs:
           out:
             label: out
-            outputSource: increment-2/out
+            outputSource: increment-1/out
             type: int
         steps:
-          increment-1:
+          increment-2:
             run: increment
             in:
                 num:
                     source: num
             out: [out]
-          increment-2:
+          increment-1:
             run: increment
             in:
                 num:
-                    source: increment-1/out
+                    source: increment-2/out
             out: [out]
     """)

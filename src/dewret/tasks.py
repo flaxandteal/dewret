@@ -45,8 +45,10 @@ from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar, copy_context
 from contextlib import contextmanager
 
-from .utils import is_raw, make_traceback
+from .utils import is_raw, make_traceback, is_expr
 from .workflow import (
+    expr_to_references,
+    unify_workflows,
     UNSET,
     Reference,
     StepReference,
@@ -174,22 +176,7 @@ class TaskManager:
             **kwargs: any arguments to pass to the task.
         """
         result = self.backend.run(__workflow__, task, thread_pool=thread_pool, **kwargs)
-        to_check: list[StepReference] | tuple[StepReference]
-        if isinstance(result, list | tuple):
-            to_check = result
-        else:
-            to_check = [result]
-
-        # Build a unified workflow
-        collected_workflow = __workflow__ or to_check[0].__workflow__
-        for step_result in to_check:
-            new_workflow = step_result.__workflow__
-            if collected_workflow != new_workflow and collected_workflow and new_workflow:
-                collected_workflow = Workflow.assimilate(collected_workflow, new_workflow)
-
-        # Make sure all the results share it
-        for step_result in to_check:
-            step_result.__workflow__ = collected_workflow
+        result, collected_workflow = unify_workflows(result, __workflow__)
 
         # Then we set the result to be the whole thing
         collected_workflow.set_result(result)
@@ -475,9 +462,10 @@ def task(
                 sig = inspect.signature(fn)
                 sig.bind(*args, **kwargs)
 
+                _, refs = expr_to_references(kwargs.values(), include_parameters=True)
                 workflows = [
                     reference.__workflow__
-                    for reference in kwargs.values()
+                    for reference in refs
                     if hasattr(reference, "__workflow__")
                     and reference.__workflow__ is not None
                 ]
@@ -511,8 +499,6 @@ def task(
                                     typ=analyser.all_annotations.get(var, UNSET)
                                 ),
                             )
-                        elif isinstance(value, Parameter):
-                            kwargs[var] = ParameterReference(workflow=workflow, parameter=value)
                 original_kwargs = dict(kwargs)
                 fn_globals = analyser.globals
 
@@ -600,10 +586,7 @@ def task(
                         step_reference = workflow.add_nested_step(
                             fn.__name__, nested_workflow, kwargs
                         )
-                    if isinstance(step_reference, StepReference) or (
-                        isinstance(step_reference, tuple | list) and
-                        all(isinstance(elt, StepReference) for elt in step_reference)
-                    ):
+                    if is_expr(step_reference):
                         return cast(RetType, step_reference)
                     raise TypeError(
                         f"Nested tasks must return a step reference, not {type(step_reference)} to ensure graph makes sense."
