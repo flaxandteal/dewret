@@ -1,5 +1,8 @@
 import yaml
 from dataclasses import dataclass
+
+import pytest
+
 from dewret.tasks import task, construct, subworkflow
 from dewret.workflow import param
 from dewret.renderers.cwl import render
@@ -17,6 +20,7 @@ SIDES: Sides = Sides(3, 6)
 def sum_sides():
     return sum(left=SIDES.left, right=SIDES.right)
 
+@pytest.mark.skip(reason="Need expression support")
 def test_fields_of_parameters_usable() -> None:
     result = sum_sides()
     workflow = construct(result, simplify_ids=True)

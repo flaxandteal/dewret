@@ -21,8 +21,11 @@ import hashlib
 import json
 import sys
 from types import FrameType, TracebackType
-from typing import Any, cast, Union, Protocol, ClassVar
+from typing import Any, cast, Union, Protocol, ClassVar, Callable, Iterable
 from collections.abc import Sequence, Mapping
+from sympy import Basic, Integer, Float, Rational
+
+from .core import Reference
 
 BasicType = str | float | bool | bytes | int | None
 RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
@@ -73,7 +76,7 @@ def flatten_if_set(value: Any) -> RawType | Unset:
         return value
     return flatten(value)
 
-def flatten(value: Any) -> RawType:
+def crawl_raw(value: Any, action: Callable[[Any], Any]) -> RawType:
     """Takes a Raw-like structure and makes it RawType.
 
     Particularly useful for squashing any TypedDicts.
@@ -81,6 +84,9 @@ def flatten(value: Any) -> RawType:
     Args:
         value: value to squash
     """
+
+    value = action(value)
+
     if value is None:
         return value
     if isinstance(value, str) or isinstance(value, bytes):
@@ -93,13 +99,21 @@ def flatten(value: Any) -> RawType:
         return raw
     raise RuntimeError(f"Could not flatten: {value}")
 
+def firm_to_raw(value: FirmType) -> RawType:
+    return crawl_raw(value, lambda entry: list(entry) if isinstance(entry, tuple) else entry)
+
+def flatten(value: Any) -> RawType:
+    return crawl_raw(value, lambda entry: entry)
+
+def is_expr(value: Any) -> bool:
+    return is_raw(value, lambda x: isinstance(x, Basic))
 
 def is_raw_type(typ: type) -> bool:
     """Check if a type counts as "raw"."""
     return issubclass(typ, str | float | bool | bytes | int | None | list | dict)
 
 
-def is_raw(value: Any) -> bool:
+def is_raw(value: Any, check: Callable[[Any], bool] | None = None) -> bool:
     """Check if a variable counts as "raw".
 
     This works around a checking issue that isinstance of a union of types
@@ -109,10 +123,26 @@ def is_raw(value: Any) -> bool:
     # Ideally this would be:
     # isinstance(value, RawType | list[RawType] | dict[str, RawType])
     # but recursive types are problematic.
-    return isinstance(value, str | float | bool | bytes | int | None | list | dict)
+    if isinstance(value, str | float | bool | bytes | int | None | Integer | Float | Rational):
+        return True
+
+    if isinstance(value, Mapping):
+        return (
+            (isinstance(value, dict) or (check is not None and check(value))) and
+            all(is_raw(key, check) for key in value.keys()) and
+            all(is_raw(val, check) for val in value.values())
+        )
+
+    if isinstance(value, Iterable):
+        return (
+            (isinstance(value, list) or (check is not None and check(value))) and
+            all(is_raw(key, check) for key in value)
+        )
+
+    return check is not None and check(value)
 
 
-def ensure_raw(value: Any) -> RawType | None:
+def ensure_raw(value: Any, cast_tuple: bool = False) -> RawType | None:
     """Check if a variable counts as "raw".
 
     This works around a checking issue that isinstance of a union of types
@@ -138,7 +168,7 @@ def hasher(construct: FirmType) -> str:
         have not yet been explicitly calculated.
     """
     if isinstance(construct, Sequence) and not isinstance(construct, bytes | str):
-        if isinstance(construct, dict):
+        if isinstance(construct, Mapping):
             construct = list([k, hasher(v)] for k, v in sorted(construct.items()))
         else:
             # Cast to workaround recursive type

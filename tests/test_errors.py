@@ -4,7 +4,8 @@ import pytest
 from dewret.workflow import Task, Lazy
 from dewret.tasks import construct, task, nested_task, TaskException
 from dewret.annotations import AtRender
-from ._lib.extra import increment  # noqa: F401
+from dewret.renderers.cwl import render
+from ._lib.extra import increment, pi, reverse_list  # noqa: F401
 
 
 @task()  # This is expected to be the line number shown below.
@@ -13,7 +14,7 @@ def add_task(left: int, right: int) -> int:
     return left + right
 
 
-ADD_TASK_LINE_NO = 10
+ADD_TASK_LINE_NO = 11
 
 
 @nested_task()

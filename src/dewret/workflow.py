@@ -23,24 +23,47 @@ from collections.abc import Mapping, MutableMapping, Callable
 import base64
 from attrs import define, has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
-from collections import Counter
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated
+from collections import Counter, OrderedDict
+from types import GeneratorType
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable
 from uuid import uuid4
+from sympy import Symbol, Expr, Basic, sympify, Tuple
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-from .utils import hasher, RawType, is_raw, make_traceback, is_raw_type, Unset
+from .core import Reference
+from .utils import hasher, RawType, is_raw, make_traceback, is_raw_type, is_expr, Unset
 
 T = TypeVar("T")
 U = TypeVar("U")
 RetType = TypeVar("RetType")
 
 
-class UnevaluatableError(Exception):
-    ...
+def all_references_from(value: Any):
+    all_references: set = set()
 
+    # If Raw, we examine the internal value.
+    # In theory, this should not contain a reference,
+    # but this makes all_references_from useful for error-checking.
+    if isinstance(value, Raw):
+        value = value.value
+
+    if isinstance(value, Reference):
+        all_references.add(value)
+    elif isinstance(value, Basic):
+        symbols = value.free_symbols
+        if not all(isinstance(sym, Reference) for sym in symbols):
+            raise RuntimeError("Can only use symbols that are references to e.g. step or parameter.")
+        all_references |= symbols
+    elif isinstance(value, Mapping):
+        all_references |= all_references_from(value.keys())
+        all_references |= all_references_from(value.values())
+    elif isinstance(value, Iterable) and not isinstance(value, str | bytes):
+        all_references |= set().union(*(all_references_from(entry) for entry in value))
+
+    return all_references
 
 @define
 class Raw:
@@ -133,7 +156,7 @@ UNSET = Unset()
 
 
 
-class Parameter(Generic[T]):
+class Parameter(Generic[T], Symbol):
     """Global parameter.
 
     Independent parameter that will be used when a task is spotted
@@ -171,8 +194,8 @@ class Parameter(Generic[T]):
         self.__original_name__ = name
 
         # TODO: is using this in a step hash a risk of ambiguity? (full name is circular)
-        if autoname:
-            name = f"{name}-{uuid4()}"
+        #if autoname:
+        #    name = f"{name}-{uuid4()}"
         self.autoname = autoname
 
         self.__name__ = name
@@ -189,21 +212,25 @@ class Parameter(Generic[T]):
         else:
             raw_type = type(default)
         self.__type__: type[T] = raw_type
-        if self.__type__ == type:
-            asdffdsa
-
         if tethered and isinstance(tethered, BaseStep):
             self.register_caller(tethered)
 
     def __eq__(self, other):
+        if isinstance(other, ParameterReference) and other._.parameter == self and not other.__field__:
+            return True
         return hash(self) == hash(other)
+
+    def __new__(cls, *args, **kwargs):
+        instance = Expr.__new__(cls)
+        instance._assumptions0 = {}
+        return instance
 
     def __hash__(self) -> int:
         """Get a unique hash for this parameter."""
-        if self.__tethered__ is None:
-            raise RuntimeError(
-                f"Parameter {self.name} was never tethered but should have been"
-            )
+        # if self.__tethered__ is None:
+        #     raise RuntimeError(
+        #         f"Parameter {self.name} was never tethered but should have been"
+        #     )
         return hash(self.__name__)
 
     @property
@@ -346,9 +373,12 @@ class Workflow:
             return super().__str__()
         return self.name
 
+    def __repr__(self) -> str:
+        return self.name
+
     def __hash__(self) -> int:
         """Hashes for finding."""
-        return hash(self.name)
+        return hash(repr(self))
 
     def __eq__(self, other: object) -> bool:
         """Is this the same workflow?
@@ -396,19 +426,10 @@ class Workflow:
         Returns:
             Set of all references to parameters across the steps.
         """
-        return set().union(
-            *(
-                {
-                    arg
-                    for arg in step.arguments.values()
-                    if (
-                        isinstance(arg, ParameterReference)
-                        and (include_factory_calls or not isinstance(step, FactoryCall))
-                    )
-                }
-                for step in self.steps
-            )
+        references = all_references_from(
+            step.arguments for step in self.steps if (include_factory_calls or not isinstance(step, FactoryCall))
         )
+        return {ref for ref in references if isinstance(ref, ParameterReference)}
 
     @property
     def _indexed_steps(self) -> dict[str, BaseStep]:
@@ -421,7 +442,7 @@ class Workflow:
         Returns:
             Mapping of steps by ID.
         """
-        return {step.id: step for step in self.steps}
+        return OrderedDict(sorted((step.id, step) for step in self.steps))
 
     @classmethod
     def assimilate(cls, left: Workflow, right: Workflow) -> "Workflow":
@@ -446,9 +467,8 @@ class Workflow:
 
         for step in list(left_steps.values()) + list(right_steps.values()):
             step.set_workflow(new)
-            for arg in step.arguments:
-                if hasattr(arg, "__workflow__"):
-                    arg.__workflow__ = new
+            for arg in step.arguments.values():
+                unify_workflows(arg, new, set_only=True)
 
         for step_id in left_steps.keys() & right_steps.keys():
             if left_steps[step_id] != right_steps[step_id]:
@@ -483,11 +503,7 @@ class Workflow:
             result = list(left.result) + list(right.result)
 
         if result is not None and result != []:
-            if isinstance(result, list | tuple):
-                for entry in result:
-                    entry.__workflow__ = new
-            else:
-                result.__workflow__ = new
+            unify_workflows(result, new, set_only=True)
             new.set_result(result)
 
         return new
@@ -611,14 +627,13 @@ class Workflow:
 
         Starts from a result, and builds a workflow to output it.
         """
-        if isinstance(result, list | tuple):
-            workflow = result[0].__workflow__
-            # Ensure that we have exactly one workflow, even if multiple results.
-            for entry in result[1:]:
-                if entry.__workflow__ != workflow:
-                    raise RuntimeError("If multiple results, they must share a single workflow")
-        else:
-            workflow = result.__workflow__
+        result, refs = expr_to_references(result)
+        refs = list(refs)
+        workflow = refs[0].__workflow__
+        # Ensure that we have exactly one workflow, even if multiple results.
+        for entry in refs[1:]:
+            if entry.__workflow__ != workflow:
+                raise RuntimeError("If multiple results, they must share a single workflow")
         workflow.set_result(result)
         if simplify_ids:
             workflow.simplify_ids()
@@ -636,11 +651,8 @@ class Workflow:
         Args:
             result: reference to the chosen step.
         """
-        if isinstance(result, list | tuple):
-            to_check = result
-        else:
-            to_check = [result]
-        for entry in to_check:
+        _, refs = expr_to_references(result)
+        for entry in refs:
             if entry._.step.__workflow__ != self:
                 raise RuntimeError("Output must be from a step in this workflow.")
         self.result = result
@@ -649,10 +661,10 @@ class Workflow:
     def result_type(self):
         if self.result is None:
             return type(None)
-        if isinstance(self.result, tuple | list):
-            # TODO: get individual types!
-            return type(self.result)
-        return self.result.__type__
+        if hasattr(self.result, "__type__"):
+            return self.result.__type__
+        # TODO: get individual types!
+        return type(self.result)
 
 
 class WorkflowComponent:
@@ -690,64 +702,6 @@ class WorkflowLinkedComponent(Protocol):
             workflow: the `Workflow` to tie to.
         """
         ...
-
-
-class Reference(Generic[U]):
-    """Superclass for all symbolic references to values."""
-
-    _type: type[U] | None = None
-    __workflow__: Workflow
-
-    def __init__(self, *args, typ: type[U] | None = None, **kwargs):
-        self._type = typ
-        if typ == type:
-            asdf
-        super().__init__()
-
-    @property
-    def __root_name__(self) -> str:
-        raise NotImplementedError(
-            "Reference must have a '__root_name__' property or override '__name__'"
-        )
-
-    @property
-    def __type__(self):
-        if self._type is not None:
-            return self._type
-        raise NotImplementedError()
-
-    def _raise_unevaluatable_error(self):
-        raise UnevaluatableError(f"This reference, {self.__name__}, cannot be evaluated during construction.")
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, list) or other is None:
-            return False
-        if not isinstance(other, Reference):
-            self._raise_unevaluatable_error()
-        return super().__eq__(other)
-
-    def __float__(self) -> bool:
-        self._raise_unevaluatable_error()
-        return False
-
-    def __int__(self) -> bool:
-        self._raise_unevaluatable_error()
-        return False
-
-    def __bool__(self) -> bool:
-        self._raise_unevaluatable_error()
-        return False
-
-    @property
-    def __name__(self) -> str:
-        """Referral name for this reference."""
-        workflow = self.__workflow__
-        name = self.__root_name__
-        return workflow.remap(name)
-
-    def __str__(self) -> str:
-        """Global description of the reference."""
-        return self.__name__
 
 
 class FieldableProtocol(Protocol):
@@ -855,6 +809,7 @@ class BaseStep(WorkflowComponent):
                 or isinstance(value, Reference)
                 or isinstance(value, Raw)
                 or is_raw(value)
+                or is_expr(value)
             ):
                 # Avoid recursive type issues
                 if (
@@ -869,9 +824,21 @@ class BaseStep(WorkflowComponent):
                         )
                     else:
                         value = Raw(value)
-                if isinstance(value, ParameterReference):
-                    parameter = value._.parameter
-                    parameter.register_caller(self)
+
+                expr, refs = expr_to_references(value, include_parameters=True)
+                if expr is not None:
+                    for ref in set(refs):
+                        if isinstance(ref, Parameter):
+                            new_ref = ParameterReference(workflow=workflow, parameter=ref)
+                            expr = expr.subs(ref, new_ref)
+                            refs.remove(ref)
+                            refs.append(new_ref)
+                    value = expr
+
+                for ref in refs:
+                    if isinstance(ref, ParameterReference):
+                        parameter = ref._.parameter
+                        parameter.register_caller(self)
                 self.arguments[key] = value
             else:
                 raise RuntimeError(
@@ -906,11 +873,7 @@ class BaseStep(WorkflowComponent):
         self.__workflow__ = workflow
         if with_arguments:
             for argument in self.arguments.values():
-                if hasattr(argument, "__workflow__"):
-                    try:
-                        argument.__workflow__ = workflow
-                    except AttributeError:
-                        ...
+                unify_workflows(argument, workflow, set_only=True)
 
     @property
     def return_type(self) -> Any:
@@ -1126,7 +1089,9 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
                 workflow=self.__workflow__,
                 parameter=self._.parameter
             )
-        except AttributeError as _:
+        except AttributeError as exc:
+            if not "dask_graph" in str(exc):
+                raise
             return super().__getattribute__(attr)
 
     def __getitem__(self, attr: str) -> "ParameterReference":
@@ -1158,8 +1123,10 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
         Returns:
             True if the other parameter reference is materially the same, otherwise False.
         """
+        # We are equal to a parameter if we are a direct, fieldless, reference to it.
         return (
-            isinstance(other, ParameterReference) and self._.parameter == other._.parameter and self.__field__ == other.__field__
+            (isinstance(other, Parameter) and self._.parameter == other and not self.__field__) or
+            (isinstance(other, ParameterReference) and self._.parameter == other._.parameter and self.__field__ == other.__field__)
         )
 
 
@@ -1218,6 +1185,9 @@ class StepReference(FieldableMixin, Reference[U]):
     def __repr__(self) -> str:
         """Hashable reference to the step (and field)."""
         return "/".join([self._.step.id] + list(self.__field__))
+
+    def __hash__(self) -> int:
+        return hash((repr(self), id(self.__workflow__)))
 
     def __getattr__(self, attr: str) -> "StepReference[Any]":
         """Reference to a field within this result, if possible.
@@ -1305,3 +1275,41 @@ def is_task(task: Lazy) -> bool:
         True if `task` is indeed a task.
     """
     return isinstance(task, LazyEvaluation)
+
+def expr_to_references(expression: Any, include_parameters: bool=False) -> tuple[Basic | None, set[Reference | Parameter]]:
+    if isinstance(expression, Raw) or is_raw(expression):
+        return expression, set()
+
+    def _to_expr(value):
+        if not isinstance(value, str | bytes) and isinstance(value, Iterable):
+            return Tuple(*(_to_expr(entry) for entry in value))
+        return sympify(value)
+
+    if not isinstance(expression, Basic):
+        expression = _to_expr(expression)
+
+    symbols = list(expression.free_symbols)
+    to_check = [sym for sym in symbols if isinstance(sym, Reference) or (include_parameters and isinstance(sym, Parameter))]
+    if {sym for sym in symbols if not is_raw(sym)} != set(to_check):
+        raise RuntimeError("The only symbols allowed are references (to e.g. step or parameter)")
+    return expression, to_check
+
+def unify_workflows(expression: Any, base_workflow: Workflow | None, set_only: bool = False) -> Workflow | None:
+    expression, to_check = expr_to_references(expression)
+    if not to_check:
+        return expression, base_workflow
+
+    # Build a unified workflow
+    collected_workflow = base_workflow or next(iter(to_check)).__workflow__
+    if not set_only:
+        for step_result in to_check:
+            new_workflow = step_result.__workflow__
+            if collected_workflow != new_workflow and collected_workflow and new_workflow:
+                collected_workflow = Workflow.assimilate(collected_workflow, new_workflow)
+
+    # Make sure all the results share it
+    for step_result in to_check:
+        step_result.__workflow__ = collected_workflow
+        expression = expression.subs(step_result, step_result)
+
+    return expression, collected_workflow

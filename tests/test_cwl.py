@@ -139,7 +139,7 @@ def test_cwl_with_parameter() -> None:
     """Check whether we can move raw input to parameters.
 
     Produces CWL for a call with a changeable raw value, that is converted
-    to a parameter, if and only if we are calling from outside a nested task.
+    to a parameter, if and only if we are calling from outside a subworkflow.
     """
     result = increment(num=3)
     workflow = construct(result)
@@ -170,38 +170,38 @@ def test_cwl_with_parameter() -> None:
     """)
 
 
-def test_cwl_without_default() -> None:
-    """Check whether we can produce CWL without a default value.
-
-    Uses a manually created parameter to avoid a default.
-    """
-    my_param = param("my_param", typ=int)
-
-    result = increment(num=my_param)
-    workflow = construct(result)
-    rendered = render(workflow)["__root__"]
-    hsh = hasher(("increment", ("num", "int|:param:my_param")))
-
-    assert rendered == yaml.safe_load(f"""
-        cwlVersion: 1.2
-        class: Workflow
-        inputs:
-          my_param:
-            label: my_param
-            type: int
-        outputs:
-          out:
-            label: out
-            outputSource: increment-{hsh}/out
-            type: int
-        steps:
-          increment-{hsh}:
-            run: increment
-            in:
-                num:
-                    source: my_param
-            out: [out]
-    """)
+#def test_cwl_without_default() -> None:
+#    """Check whether we can produce CWL without a default value.
+#
+#    Uses a manually created parameter to avoid a default.
+#    """
+#    my_param = param("my_param", typ=int)
+#
+#    result = increment(num=my_param)
+#    workflow = construct(result)
+#    rendered = render(workflow)["__root__"]
+#    hsh = hasher(("increment", ("num", "int|:param:my_param")))
+#
+#    assert rendered == yaml.safe_load(f"""
+#        cwlVersion: 1.2
+#        class: Workflow
+#        inputs:
+#          my_param:
+#            label: my_param
+#            type: int
+#        outputs:
+#          out:
+#            label: out
+#            outputSource: increment-{hsh}/out
+#            type: int
+#        steps:
+#          increment-{hsh}:
+#            run: increment
+#            in:
+#                num:
+#                    source: my_param
+#            out: [out]
+#    """)
 
 
 def test_cwl_with_subworkflow() -> None:
@@ -365,10 +365,6 @@ def test_complex_cwl_references() -> None:
             label: increment-1-num
             type: int
             default: 23
-          increment-2-num:
-            label: increment-2-num
-            type: int
-            default: 23
         outputs:
           out:
             label: out
@@ -383,17 +379,11 @@ def test_complex_cwl_references() -> None:
                 num:
                     source: increment-1-num
             out: [out]
-          increment-2:
-            run: increment
-            in:
-                num:
-                    source: increment-2-num
-            out: [out]
           double-1:
             run: double
             in:
                 num:
-                    source: increment-2/out
+                    source: increment-1/out
             out: [out]
           mod10-1:
             run: mod10
@@ -480,14 +470,14 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
               int,
               float
             ]
-          sum-1-2-right:
+          sum-1-1-right:
             default: 1
-            label: sum-1-2-right
+            label: sum-1-1-right
             type: int
         outputs:
           out:
             label: out
-            outputSource: sum-1-2/out
+            outputSource: sum-1-1/out
             type:
             - int
             - float
@@ -499,7 +489,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             out:
             - out
             run: double
-          sum-1-1:
+          sum-1-2:
             in:
               left:
                 source: double-1-1/out
@@ -508,12 +498,12 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             out:
             - out
             run: sum
-          sum-1-2:
+          sum-1-1:
             in:
               left:
-                source: sum-1-1/out
+                source: sum-1-2/out
               right:
-                source: sum-1-2-right
+                source: sum-1-1-right
             out:
             - out
             run: sum

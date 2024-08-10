@@ -20,7 +20,6 @@ class FunctionAnalyser:
         )
 
     @property
-    @lru_cache
     def all_annotations(self):
         try:
             self._annotations = self.fn.__globals__["__annotations__"]
@@ -53,7 +52,6 @@ class FunctionAnalyser:
         return self.argument_has(arg, AtRender)
 
     @property
-    @lru_cache
     def globals(self) -> Mapping[str, Any]:
         try:
             fn_globals = inspect.getclosurevars(self.fn).globals

@@ -459,16 +459,16 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
             outputSource: increment-2/out
             type: int
         steps:
-          increment-1:
-             in:
-               num:
-                 source: num
-             out: [out]
-             run: increment
           increment-2:
              in:
                num:
                  source: add_constants-1/out
+             out: [out]
+             run: increment
+          increment-1:
+             in:
+               num:
+                 source: num
              out: [out]
              run: increment
           add_constants-1:
