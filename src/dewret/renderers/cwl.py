@@ -92,6 +92,17 @@ def configuration(key: str) -> Any:
     return current_configuration.get(key)
 
 
+def with_type(result: Any) -> type:
+    if hasattr(result, "__type__"):
+        return result.__type__
+    return type(result)
+
+def with_field(result: Any) -> str:
+    if hasattr(result, "__field__"):
+        return "/".join(result.__field__) or "out"
+    else:
+        return "out"
+
 @define
 class ReferenceDefinition:
     """CWL-renderable internal reference.
@@ -179,8 +190,10 @@ class StepDefinition:
                     ref.render()
                     if isinstance(ref, ReferenceDefinition) else
                     {"expression": f"$({ref})"}
-                    if isinstance(ref, Basic)
-                    else {"default": ref.value}
+                    if isinstance(ref, Basic) else
+                    {"default": ref.value}
+                    if hasattr(ref, "value")
+                    else ref
                 )
                 for key, ref in self.in_.items()
             },
@@ -471,12 +484,12 @@ class OutputsDefinition:
         return cls(
             outputs=[
                     to_output_schema(
-                        "/".join(result.__field__) or "out", result.__type__, output_source=to_name(result)
+                        with_field(result), result.__type__, output_source=to_name(result)
                     ) for result in results
                 ]
                 if isinstance(results, list | tuple | Tuple) else {
                 key: to_output_schema(
-                    "/".join(result.__field__) or "out", result.__type__, output_source=to_name(result)
+                    with_field(result), result.__type__, output_source=to_name(result)
                 )
                 for key, result in results.items()
             }
@@ -545,7 +558,7 @@ class WorkflowDefinition:
             outputs=OutputsDefinition.from_results(
                 workflow.result
                 if isinstance(workflow.result, list | tuple | Tuple) else
-                {"/".join(workflow.result.__field__) or "out": workflow.result}
+                {with_field(workflow.result): workflow.result}
                 if workflow.has_result else
                 {}
             ),

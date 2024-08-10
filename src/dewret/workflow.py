@@ -27,7 +27,7 @@ from collections import Counter, OrderedDict
 from types import GeneratorType
 from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable
 from uuid import uuid4
-from sympy import Symbol, Expr, Basic, sympify, Tuple
+from sympy import Symbol, Expr, Basic, Tuple, Dict
 
 import logging
 
@@ -173,7 +173,7 @@ class Parameter(Generic[T], Symbol):
     __name__: str
     __default__: T | UnsetType[T]
     __tethered__: Literal[False] | None | BaseStep | Workflow
-
+    __fixed_type__: type[T] | Unset
     autoname: bool = False
 
     def __init__(
@@ -182,6 +182,7 @@ class Parameter(Generic[T], Symbol):
         default: T | UnsetType[T],
         tethered: Literal[False] | None | Step | Workflow = None,
         autoname: bool = False,
+        typ: type[T] | Unset = UNSET
     ):
         """Construct a parameter.
 
@@ -202,7 +203,17 @@ class Parameter(Generic[T], Symbol):
         self.__default__ = default
         self.__tethered__ = tethered
         self.__callers__: list[BaseStep] = []
+        self.__fixed_type__ = typ
 
+        if tethered and isinstance(tethered, BaseStep):
+            self.register_caller(tethered)
+
+    @property
+    def __type__(self):
+        if self.__fixed_type__ is not UNSET:
+            return self.__fixed_type__
+
+        default = self.__default__
         if (
             default is not None
             and hasattr(default, "__type__")
@@ -211,9 +222,7 @@ class Parameter(Generic[T], Symbol):
             raw_type = default.__type__
         else:
             raw_type = type(default)
-        self.__type__: type[T] = raw_type
-        if tethered and isinstance(tethered, BaseStep):
-            self.register_caller(tethered)
+        return raw_type
 
     def __eq__(self, other):
         if isinstance(other, ParameterReference) and other._.parameter == self and not other.__field__:
@@ -282,7 +291,7 @@ def param(
             raise ValueError("Must provide a default or a type")
         default = UnsetType[T](typ)
     return cast(
-        T, Parameter(name, default=default, tethered=tethered, autoname=autoname)
+        T, Parameter(name, default=default, tethered=tethered, autoname=autoname, typ=typ)
     )
 
 
@@ -570,7 +579,7 @@ class Workflow:
         return task
 
     def add_nested_step(
-        self, name: str, subworkflow: Workflow, kwargs: dict[str, Any]
+        self, name: str, subworkflow: Workflow, return_type: type | None, kwargs: dict[str, Any]
     ) -> StepReference[Any]:
         """Append a nested step.
 
@@ -583,10 +592,10 @@ class Workflow:
         """
         step = NestedStep(self, name, subworkflow, kwargs)
         self.steps.append(step)
-        return_type = step.return_type
+        return_type = return_type or step.return_type
         if return_type is inspect._empty:
             raise TypeError("All tasks should have a type annotation.")
-        return StepReference(step, return_type)
+        return StepReference(step, typ=return_type)
 
     def add_step(
         self,
@@ -653,7 +662,7 @@ class Workflow:
         """
         _, refs = expr_to_references(result)
         for entry in refs:
-            if entry._.step.__workflow__ != self:
+            if entry.__workflow__ != self:
                 raise RuntimeError("Output must be from a step in this workflow.")
         self.result = result
 
@@ -755,6 +764,12 @@ class FieldableMixin:
                 field_type = getattr(attrs_fields(parent_type), field).type
             except AttributeError:
                 raise AttributeError(f"attrs-class {parent_type} does not have field {field}")
+        # TypedDict
+        elif inspect.isclass(parent_type) and issubclass(parent_type, dict) and hasattr(parent_type, "__annotations__"):
+            try:
+                field_type = parent_type.__annotations__[field]
+            except KeyError:
+                raise AttributeError(f"TypedDict {parent_type} does not have field {field}")
 
         if field_type:
             if not issubclass(self.__class__, Reference):
@@ -810,6 +825,8 @@ class BaseStep(WorkflowComponent):
                 or isinstance(value, Raw)
                 or is_raw(value)
                 or is_expr(value)
+                or is_dataclass(value)
+                or attr_has(value)
             ):
                 # Avoid recursive type issues
                 if (
@@ -886,7 +903,7 @@ class BaseStep(WorkflowComponent):
             Expected type of the return value.
         """
         if isinstance(self.task, Workflow):
-            if self.task.result:
+            if self.task.result is not None:
                 return self.task.result_type
             else:
                 raise AttributeError(
@@ -977,6 +994,7 @@ class NestedStep(BaseStep):
         Returns:
             Expected type of the return value.
         """
+        return super().return_type
         if self.__subworkflow__.result is None or self.__subworkflow__.result is []:
             raise RuntimeError("Can only use a subworkflow if the reference exists.")
         return self.__subworkflow__.result_type
@@ -1180,7 +1198,7 @@ class StepReference(FieldableMixin, Reference[U]):
 
     def __str__(self) -> str:
         """Global description of the reference."""
-        return "/".join([self._.step.id] + list(self.__field__))
+        return self.__name__
 
     def __repr__(self) -> str:
         """Hashable reference to the step (and field)."""
@@ -1209,8 +1227,14 @@ class StepReference(FieldableMixin, Reference[U]):
             return self.find_field(
                 workflow=self.__workflow__, step=self._.step, field=attr
             )
-        except AttributeError as _:
-            return super().__getattribute__(attr)
+        except AttributeError as exc:
+            try:
+                return super().__getattribute__(attr)
+            except AttributeError as inner_exc:
+                raise inner_exc from exc
+
+    def __getitem__(self, attr: str) -> "StepReference":
+        return getattr(self, attr)
 
     @property
     def __type__(self) -> type:
@@ -1280,18 +1304,37 @@ def expr_to_references(expression: Any, include_parameters: bool=False) -> tuple
     if isinstance(expression, Raw) or is_raw(expression):
         return expression, set()
 
+    if isinstance(expression, Reference):
+        return expression, {expression}
+
+    if is_dataclass(expression) or attr_has(expression):
+        refs = set()
+        fields = dataclass_fields(expression) if is_dataclass(expression) else {field.name for field in attrs_fields(expression)}
+        for field in fields:
+            if hasattr(expression, field.name) and isinstance((val := getattr(expression, field.name)), Reference):
+                _, field_refs = expr_to_references(val, include_parameters=include_parameters)
+                refs |= field_refs
+        return expression, refs
+
     def _to_expr(value):
-        if not isinstance(value, str | bytes) and isinstance(value, Iterable):
+        if hasattr(value, "__type__"):
+            return value
+
+        if isinstance(value, Mapping):
+            dct = Dict({key: _to_expr(val) for key, val in value.items()})
+            return dct
+        elif not isinstance(value, str | bytes) and isinstance(value, Iterable):
             return Tuple(*(_to_expr(entry) for entry in value))
-        return sympify(value)
+        return value
 
     if not isinstance(expression, Basic):
         expression = _to_expr(expression)
 
     symbols = list(expression.free_symbols)
     to_check = [sym for sym in symbols if isinstance(sym, Reference) or (include_parameters and isinstance(sym, Parameter))]
-    if {sym for sym in symbols if not is_raw(sym)} != set(to_check):
-        raise RuntimeError("The only symbols allowed are references (to e.g. step or parameter)")
+    #if {sym for sym in symbols if not is_raw(sym)} != set(to_check):
+    #    print(symbols, to_check, [type(r) for r in symbols])
+    #    raise RuntimeError("The only symbols allowed are references (to e.g. step or parameter)")
     return expression, to_check
 
 def unify_workflows(expression: Any, base_workflow: Workflow | None, set_only: bool = False) -> Workflow | None:
@@ -1310,6 +1353,5 @@ def unify_workflows(expression: Any, base_workflow: Workflow | None, set_only: b
     # Make sure all the results share it
     for step_result in to_check:
         step_result.__workflow__ = collected_workflow
-        expression = expression.subs(step_result, step_result)
 
     return expression, collected_workflow

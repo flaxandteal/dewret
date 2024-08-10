@@ -30,6 +30,10 @@ class FunctionAnalyser:
 
         return self._annotations
 
+    @property
+    def return_type(self):
+        return inspect.signature(inspect.unwrap(self.fn)).return_annotation
+
     @staticmethod
     def _typ_has(typ: type, annotation: type) -> bool:
         if not hasattr(annotation, "__metadata__"):

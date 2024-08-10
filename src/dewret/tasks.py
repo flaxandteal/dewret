@@ -462,7 +462,10 @@ def task(
                 sig = inspect.signature(fn)
                 sig.bind(*args, **kwargs)
 
-                _, refs = expr_to_references(kwargs.values(), include_parameters=True)
+                refs = []
+                for key, val in kwargs.items():
+                    _, kw_refs = expr_to_references(val, include_parameters=True)
+                    refs += kw_refs
                 workflows = [
                     reference.__workflow__
                     for reference in refs
@@ -584,7 +587,7 @@ def task(
                             output = analyser.with_new_globals(nested_globals)(**nested_kwargs)
                         nested_workflow = _manager(output, __workflow__=nested_workflow)
                         step_reference = workflow.add_nested_step(
-                            fn.__name__, nested_workflow, kwargs
+                            fn.__name__, nested_workflow, analyser.return_type, kwargs
                         )
                     if is_expr(step_reference):
                         return cast(RetType, step_reference)
