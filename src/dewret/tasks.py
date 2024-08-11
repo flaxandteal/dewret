@@ -37,7 +37,7 @@ from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
 from typing import Any, ParamSpec, TypeVar, cast, Generator
-from types import TracebackType, GeneratorType
+from types import TracebackType
 from attrs import has as attrs_has
 from dataclasses import dataclass, is_dataclass
 import traceback
@@ -66,7 +66,7 @@ from .workflow import (
 )
 from .backends._base import BackendModule
 from .annotations import FunctionAnalyser
-from .core import get_configuration, set_configuration, CONSTRUCT_CONFIGURATION
+from .core import get_configuration, set_configuration, CONSTRUCT_CONFIGURATION, IteratedGenerator
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
@@ -414,8 +414,14 @@ def task(
                 # Ensure that the passed arguments are, at least, a Python-match for the signature.
                 sig = inspect.signature(fn)
                 positional_args = {key: False for key in kwargs}
-                if args and isinstance(args[0], GeneratorType):
-                    for arg, (key, _) in zip(args[0], sig.parameters.items()):
+                for arg, (key, _) in zip(args, sig.parameters.items()):
+                    if isinstance(arg, IteratedGenerator):
+                        for inner_arg, (key, _) in zip(arg, sig.parameters.items()):
+                            if key in positional_args:
+                                continue
+                            kwargs[key] = inner_arg
+                            positional_args[key] = True
+                    else:
                         kwargs[key] = arg
                         positional_args[key] = True
                 sig.bind(**kwargs)
@@ -572,7 +578,7 @@ def task(
                     fn,
                     declaration_tb,
                     __traceback__,
-                    exc.args[0] if exc.args else "Could not call task {fn.__name__}",
+                    exc.args[0] if exc.args else f"Could not call task {fn.__name__}",
                 ) from exc
             finally:
                 if configuration:

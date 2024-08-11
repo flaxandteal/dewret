@@ -1,8 +1,10 @@
 """Verify CWL output is OK."""
 
 import yaml
+import pytest
 from datetime import datetime, timedelta
-from dewret.tasks import construct, task, factory
+from dewret.core import set_configuration
+from dewret.tasks import construct, task, factory, TaskException
 from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.workflow import param
@@ -144,6 +146,43 @@ def test_cwl_with_parameter() -> None:
     result = increment(num=3)
     workflow = construct(result)
     rendered = render(workflow)["__root__"]
+    num_param = list(workflow.find_parameters())[0]
+    hsh = hasher(("increment", ("num", f"int|:param:{num_param._.unique_name}")))
+
+    assert rendered == yaml.safe_load(f"""
+        cwlVersion: 1.2
+        class: Workflow
+        inputs:
+          increment-{hsh}-num:
+            label: increment-{hsh}-num
+            type: int
+            default: 3
+        outputs:
+          out:
+            label: out
+            outputSource: increment-{hsh}/out
+            type: int
+        steps:
+          increment-{hsh}:
+            run: increment
+            in:
+                num:
+                    source: increment-{hsh}-num
+            out: [out]
+    """)
+
+def test_cwl_with_parameter() -> None:
+    """Check whether we can move raw input to parameters.
+
+    Produces CWL for a call with a changeable raw value, that is converted
+    to a parameter, if and only if we are calling from outside a subworkflow.
+    """
+    with pytest.raises(TaskException) as exc:
+        result = increment(3)
+    with set_configuration(allow_positional_args=True):
+        result = increment(3)
+        workflow = construct(result)
+        rendered = render(workflow)["__root__"]
     num_param = list(workflow.find_parameters())[0]
     hsh = hasher(("increment", ("num", f"int|:param:{num_param._.unique_name}")))
 
