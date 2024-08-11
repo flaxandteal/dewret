@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired
+from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from sympy import Expr, Symbol
@@ -86,11 +86,7 @@ class Reference(Generic[U], Symbol):
         return False
 
     def __iter__(self) -> Iterator["Reference"]:
-        count = -1
-        yield (
-            Iterated(to_wrap=self, iteration=(count := iteration))
-            for iteration in iter(lambda: count + 1, -1)
-        )
+        yield IteratedGenerator(self)
 
     def __int__(self) -> bool:
         self._raise_unevaluatable_error()
@@ -110,6 +106,18 @@ class Reference(Generic[U], Symbol):
     def __str__(self) -> str:
         """Global description of the reference."""
         return self.__name__
+
+class IteratedGenerator(Generic[U]):
+    __wrapped__: Reference[U]
+
+    def __init__(self, to_wrap: Reference[U]):
+        self.__wrapped__ = to_wrap
+
+    def __iter__(self):
+        count = -1
+        while True:
+            yield Iterated(to_wrap=self.__wrapped__, iteration=(count := count + 1))
+
 
 class Iterated(Reference[U]):
     __wrapped__: Reference[U]
