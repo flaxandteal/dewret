@@ -20,8 +20,8 @@ General types and functions to centralize common logic.
 import hashlib
 import json
 import sys
-from types import FrameType, TracebackType
-from typing import Any, cast, Union, Protocol, ClassVar, Callable, Iterable
+from types import FrameType, TracebackType, UnionType
+from typing import Any, cast, Union, Protocol, ClassVar, Callable, Iterable, get_args
 from collections.abc import Sequence, Mapping
 from sympy import Basic, Integer, Float, Rational
 
@@ -110,6 +110,8 @@ def is_expr(value: Any) -> bool:
 
 def is_raw_type(typ: type) -> bool:
     """Check if a type counts as "raw"."""
+    if isinstance(typ, UnionType):
+        return all(is_raw_type(t) for t in get_args(typ))
     return issubclass(typ, str | float | bool | bytes | int | None | list | dict)
 
 
