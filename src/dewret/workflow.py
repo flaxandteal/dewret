@@ -423,7 +423,7 @@ class Workflow:
         Returns:
             Mapping of steps by ID.
         """
-        return OrderedDict(sorted((step.id, step) for step in self.steps))
+        return OrderedDict(sorted(((step.id, step) for step in self.steps), key=lambda x: x[0]))
 
     @classmethod
     def assimilate(cls, left: Workflow, right: Workflow) -> "Workflow":
