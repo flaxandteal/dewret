@@ -25,7 +25,7 @@ from typing import Any, cast, Union, Protocol, ClassVar, Callable, Iterable, get
 from collections.abc import Sequence, Mapping
 from sympy import Basic, Integer, Float, Rational
 
-from .core import Reference, BasicType, RawType, FirmType
+from .core import Reference, BasicType, RawType, FirmType, Raw
 
 
 class Unset:
@@ -102,7 +102,7 @@ def flatten(value: Any) -> RawType:
     return crawl_raw(value, lambda entry: entry)
 
 def is_expr(value: Any) -> bool:
-    return is_raw(value, lambda x: isinstance(x, Basic) or isinstance(x, tuple) or isinstance(x, Reference))
+    return is_raw(value, lambda x: isinstance(x, Basic) or isinstance(x, tuple) or isinstance(x, Reference) or isinstance(x, Raw))
 
 def is_raw_type(typ: type) -> bool:
     """Check if a type counts as "raw"."""
