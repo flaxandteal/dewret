@@ -32,7 +32,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .core import Reference, get_configuration, RawType, Raw
+from .core import Reference, get_configuration, RawType
 from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
 
 T = TypeVar("T")
