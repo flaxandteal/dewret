@@ -1,4 +1,6 @@
-from typing import Generic, TypeVar, Protocol, Iterator
+from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired
+from contextlib import contextmanager
+from contextvars import ContextVar
 from sympy import Expr, Symbol
 
 U = TypeVar("U")
@@ -9,6 +11,36 @@ class WorkflowProtocol(Protocol):
 class UnevaluatableError(Exception):
     ...
 
+
+class ConstructConfiguration(TypedDict):
+    flatten_all_nested: NotRequired[bool]
+    allow_positional_args: NotRequired[bool]
+    allow_plain_dict_fields: NotRequired[bool]
+
+CONSTRUCT_CONFIGURATION: ContextVar[ConstructConfiguration] = ContextVar("construct-configuration")
+
+@contextmanager
+def set_configuration(**kwargs: Unpack[ConstructConfiguration]):
+    try:
+        previous = ConstructConfiguration(**CONSTRUCT_CONFIGURATION.get())
+    except LookupError:
+        previous = ConstructConfiguration(
+            flatten_all_nested=False,
+            allow_positional_args=False,
+            allow_plain_dict_fields=False,
+        )
+        CONSTRUCT_CONFIGURATION.set({})
+
+    try:
+        CONSTRUCT_CONFIGURATION.get().update(previous)
+        CONSTRUCT_CONFIGURATION.get().update(kwargs)
+
+        yield CONSTRUCT_CONFIGURATION
+    finally:
+        CONSTRUCT_CONFIGURATION.set(previous)
+
+def get_configuration(key: str):
+    return CONSTRUCT_CONFIGURATION.get()[key]
 
 class Reference(Generic[U], Symbol):
     """Superclass for all symbolic references to values."""
