@@ -25,11 +25,7 @@ from typing import Any, cast, Union, Protocol, ClassVar, Callable, Iterable, get
 from collections.abc import Sequence, Mapping
 from sympy import Basic, Integer, Float, Rational
 
-from .core import Reference
-
-BasicType = str | float | bool | bytes | int | None
-RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
-FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
+from .core import Reference, BasicType, RawType, FirmType
 
 
 class Unset:
