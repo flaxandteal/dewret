@@ -5,6 +5,10 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from sympy import Expr, Symbol
 
+BasicType = str | float | bool | bytes | int | None
+RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
+FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
+
 U = TypeVar("U")
 
 BasicType = str | float | bool | bytes | int | None
@@ -113,32 +117,6 @@ class Reference(Generic[U], Symbol):
         """Global description of the reference."""
         return self.__name__
 
-@dataclass
-class Raw:
-    """Value object for any raw types.
-
-    This is able to hash raw types consistently and provides
-    a single type for validating type-consistency.
-
-    Attributes:
-        value: the real value, e.g. a `str`, `int`, ...
-    """
-
-    value: RawType
-
-    def __hash__(self) -> int:
-        """Provide a hash that is unique to the `value` member."""
-        return hash(repr(self))
-
-    def __repr__(self) -> str:
-        """Convert to a consistent, string representation."""
-        value: str
-        if isinstance(self.value, bytes):
-            value = base64.b64encode(self.value).decode("ascii")
-        else:
-            value = str(self.value)
-        return f"{type(self.value).__name__}|{value}"
-
 class IteratedGenerator(Generic[U]):
     __wrapped__: Reference[U]
 
@@ -181,3 +159,30 @@ class Iterated(Reference[U]):
     @__workflow__.setter
     def __workflow__(self, workflow: WorkflowProtocol) -> None:
         self.__wrapped__.__workflow__ = workflow
+
+
+@dataclass
+class Raw:
+    """Value object for any raw types.
+
+    This is able to hash raw types consistently and provides
+    a single type for validating type-consistency.
+
+    Attributes:
+        value: the real value, e.g. a `str`, `int`, ...
+    """
+
+    value: RawType
+
+    def __hash__(self) -> int:
+        """Provide a hash that is unique to the `value` member."""
+        return hash(repr(self))
+
+    def __repr__(self) -> str:
+        """Convert to a consistent, string representation."""
+        value: str
+        if isinstance(self.value, bytes):
+            value = base64.b64encode(self.value).decode("ascii")
+        else:
+            value = str(self.value)
+        return f"{type(self.value).__name__}|{value}"
