@@ -27,17 +27,21 @@ from types import UnionType
 from inspect import isclass
 from sympy import Expr, Basic, Tuple
 
+from dewret.core import (
+    Raw,
+    RawType,
+    FirmType,
+)
 from dewret.workflow import (
     FactoryCall,
     Reference,
-    Raw,
     Workflow,
     BaseStep,
     StepReference,
     ParameterReference,
     Unset,
 )
-from dewret.utils import RawType, flatten, DataclassProtocol, firm_to_raw, FirmType, flatten_if_set
+from dewret.utils import flatten, DataclassProtocol, firm_to_raw, flatten_if_set
 from dewret.render import base_render
 
 class CommandInputSchema(TypedDict):

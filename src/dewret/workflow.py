@@ -21,19 +21,19 @@ from __future__ import annotations
 import inspect
 from collections.abc import Mapping, MutableMapping, Callable
 import base64
-from attrs import define, has as attr_has, resolve_types, fields as attrs_fields
+from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter, OrderedDict
 from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable, get_origin, get_args
 from uuid import uuid4
-from sympy import Symbol, Expr, Basic, Tuple, Dict
+from sympy import Symbol, Expr, Basic, Tuple, Dict, nan
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-from .core import Reference, get_configuration
-from .utils import hasher, RawType, is_raw, make_traceback, is_raw_type, is_expr, Unset
+from .core import Reference, get_configuration, RawType, Raw
+from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -63,33 +63,6 @@ def all_references_from(value: Any):
         all_references |= set().union(*(all_references_from(entry) for entry in value))
 
     return all_references
-
-@define
-class Raw:
-    """Value object for any raw types.
-
-    This is able to hash raw types consistently and provides
-    a single type for validating type-consistency.
-
-    Attributes:
-        value: the real value, e.g. a `str`, `int`, ...
-    """
-
-    value: RawType
-
-    def __hash__(self) -> int:
-        """Provide a hash that is unique to the `value` member."""
-        return hash(repr(self))
-
-    def __repr__(self) -> str:
-        """Convert to a consistent, string representation."""
-        value: str
-        if isinstance(self.value, bytes):
-            value = base64.b64encode(self.value).decode("ascii")
-        else:
-            value = str(self.value)
-        return f"{type(self.value).__name__}|{value}"
-
 
 class Lazy(Protocol):
     """Requirements for a lazy-evaluatable function."""
@@ -1334,8 +1307,12 @@ def expr_to_references(expression: Any, include_parameters: bool=False) -> tuple
         return expression, refs
 
     def _to_expr(value):
-        if hasattr(value, "__type__"):
+        if value is None:
+            return nan
+        elif hasattr(value, "__type__"):
             return value
+        elif isinstance(value, Raw):
+            return value.value
 
         if isinstance(value, Mapping):
             dct = Dict({key: _to_expr(val) for key, val in value.items()})

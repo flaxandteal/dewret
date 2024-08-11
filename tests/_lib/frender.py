@@ -8,7 +8,7 @@ from typing import Unpack, TypedDict, Any
 from dataclasses import dataclass
 from contextvars import ContextVar
 
-from dewret.utils import RawType
+from dewret.core import RawType
 from dewret.workflow import Workflow, Step, NestedStep
 from dewret.render import base_render
 

@@ -25,11 +25,10 @@ import inspect
 import typing
 
 from attrs import define
-from dewret.utils import BasicType
 
+from dewret.core import Raw, BasicType
 from dewret.workflow import (
     Reference,
-    Raw,
     Workflow,
     Task,
     Lazy,

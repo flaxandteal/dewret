@@ -6,7 +6,7 @@ from typing import Protocol, TypeVar, Any, Unpack, TypedDict, Callable
 import yaml
 
 from .workflow import Workflow, NestedStep
-from .utils import RawType
+from .core import RawType
 from .workflow import Workflow
 
 RenderConfiguration = TypeVar("RenderConfiguration", bound=dict[str, Any])
