@@ -24,7 +24,6 @@ import base64
 from attrs import define, has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter, OrderedDict
-from types import GeneratorType
 from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable
 from uuid import uuid4
 from sympy import Symbol, Expr, Basic, Tuple, Dict
@@ -579,7 +578,7 @@ class Workflow:
         return task
 
     def add_nested_step(
-        self, name: str, subworkflow: Workflow, return_type: type | None, kwargs: dict[str, Any]
+        self, name: str, subworkflow: Workflow, return_type: type | None, kwargs: dict[str, Any], positional_args: dict[str, bool] | None = None
     ) -> StepReference[Any]:
         """Append a nested step.
 
@@ -591,6 +590,8 @@ class Workflow:
             kwargs: any key-value arguments to pass in the call.
         """
         step = NestedStep(self, name, subworkflow, kwargs)
+        if positional_args is not None:
+            step.positional_args = positional_args
         self.steps.append(step)
         return_type = return_type or step.return_type
         if return_type is inspect._empty:
@@ -603,6 +604,7 @@ class Workflow:
         kwargs: dict[str, Raw | Reference],
         raw_as_parameter: bool = False,
         is_factory: bool = False,
+        positional_args: dict[str, bool] | None = None
     ) -> StepReference[Any]:
         """Append a step.
 
@@ -618,6 +620,8 @@ class Workflow:
         task = self.register_task(fn)
         step_maker = FactoryCall if is_factory else Step
         step = step_maker(self, task, kwargs, raw_as_parameter=raw_as_parameter)
+        if positional_args is not None:
+            step.positional_args = positional_args
         self.steps.append(step)
         return_type = step.return_type
         if (
@@ -637,6 +641,10 @@ class Workflow:
         Starts from a result, and builds a workflow to output it.
         """
         result, refs = expr_to_references(result)
+        if not refs:
+            raise RuntimeError(
+                "Attempted to build a workflow from a return-value/result/expression with no references."
+            )
         refs = list(refs)
         workflow = refs[0].__workflow__
         # Ensure that we have exactly one workflow, even if multiple results.
@@ -799,6 +807,7 @@ class BaseStep(WorkflowComponent):
     task: Task | Workflow
     arguments: Mapping[str, Reference | Raw]
     workflow: Workflow
+    positional_args: dict[str, bool] | None = None
 
     def __init__(
         self,
@@ -943,7 +952,7 @@ class BaseStep(WorkflowComponent):
         for key, param in self.arguments.items():
             components.append((key, repr(param)))
 
-        comp_tup: tuple[str | tuple[str, str], ...] = tuple(components)
+        comp_tup: tuple[str | tuple[str, str], ...] = tuple(sorted(components, key=lambda pair: pair[0]))
 
         return f"{self.task}-{hasher(comp_tup)}"
 
@@ -972,10 +981,12 @@ class NestedStep(BaseStep):
             raw_as_parameter: whether raw-type arguments should be made (outer) workflow parameters.
         """
         self.__subworkflow__ = subworkflow
+        base_arguments = {p.name: p for p in subworkflow.find_parameters()}
+        base_arguments.update(arguments)
         super().__init__(
             workflow=workflow,
             task=subworkflow,
-            arguments=arguments,
+            arguments=base_arguments,
             raw_as_parameter=raw_as_parameter,
         )
 

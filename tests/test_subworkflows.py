@@ -125,7 +125,6 @@ def test_subworkflows_can_use_globals() -> None:
         inputs:
           CONSTANT:
             label: CONSTANT
-            default: 3
             type: int
           num:
             label: num
@@ -133,16 +132,16 @@ def test_subworkflows_can_use_globals() -> None:
         outputs:
           out:
             label: out
-            outputSource: increment-2/out
+            outputSource: increment-1/out
             type: int
         steps:
-          increment-1:
+          increment-2:
              in:
                num:
                  source: num
              out: [out]
              run: increment
-          increment-2:
+          increment-1:
              in:
                num:
                  source: add_constant-1/out
@@ -153,7 +152,7 @@ def test_subworkflows_can_use_globals() -> None:
                CONSTANT:
                  source: CONSTANT
                num:
-                 source: increment-1/out
+                 source: increment-2/out
              out: [out]
              run: add_constant
     """)
@@ -222,6 +221,9 @@ def test_subworkflows_can_use_global_factories() -> None:
           num:
             label: num
             type: int
+          GLOBAL_QUEUE:
+            label: GLOBAL_QUEUE
+            type: Queue
         outputs:
           out:
             label: out
@@ -238,6 +240,8 @@ def test_subworkflows_can_use_global_factories() -> None:
              in:
                num:
                  source: increment-1/out
+               GLOBAL_QUEUE:
+                 source: GLOBAL_QUEUE
              out: [out]
              run: get_global_queue
           pop-1:
@@ -269,6 +273,12 @@ def test_subworkflows_can_return_lists() -> None:
           num:
             label: num
             type: int
+          CONSTANT:
+            label: CONSTANT
+            type: int
+          GLOBAL_QUEUE:
+            label: GLOBAL_QUEUE
+            type: Queue
         outputs:
           out:
             label: out
@@ -288,6 +298,10 @@ def test_subworkflows_can_return_lists() -> None:
              in:
                num:
                  source: increment-1/out
+               CONSTANT:
+                 source: CONSTANT
+               GLOBAL_QUEUE:
+                 source: GLOBAL_QUEUE
              out: [out]
              run: get_global_queues
     """)
@@ -331,12 +345,14 @@ def test_subworkflows_can_return_lists() -> None:
         cwlVersion: 1.2
         inputs:
           CONSTANT:
-            default: 3
             label: CONSTANT
             type: int
           num:
             label: num
             type: int
+          GLOBAL_QUEUE:
+            label: GLOBAL_QUEUE
+            type: Queue
         outputs:
           - label: out
             outputSource: add_and_queue-1-1/out
@@ -345,17 +361,12 @@ def test_subworkflows_can_return_lists() -> None:
             outputSource: add_constant-1-1/out
             type: int
         steps:
-          Queue-1-1:
-            in: {}
-            out:
-            - out
-            run: Queue
           add_and_queue-1-1:
             in:
               num:
                 source: to_int-1-1/out
               queue:
-                source: Queue-1-1/out
+                source: GLOBAL_QUEUE
             out:
             - out
             run: add_and_queue
@@ -451,7 +462,6 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
         inputs:
           CONSTANT:
             label: CONSTANT
-            default: 3
             type: int
           num:
             label: num
@@ -459,16 +469,16 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
         outputs:
           out:
             label: out
-            outputSource: increment-2/out
+            outputSource: increment-1/out
             type: int
         steps:
-          increment-2:
+          increment-1:
              in:
                num:
                  source: add_constants-1/out
              out: [out]
              run: increment
-          increment-1:
+          increment-2:
              in:
                num:
                  source: num
@@ -479,7 +489,7 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
                CONSTANT:
                  source: CONSTANT
                num:
-                 source: increment-1/out
+                 source: increment-2/out
              out: [out]
              run: add_constants
     """)

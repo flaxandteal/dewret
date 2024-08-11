@@ -52,8 +52,8 @@ def test_can_analyze_annotations():
     assert analyser.argument_has("ARG1", AtRender) is True
 
 def test_at_construct() -> None:
-    result = to_int_bad(num=increment(num=3), should_double=True)
     with pytest.raises(TaskException) as _:
+        result = to_int_bad(num=increment(num=3), should_double=True)
         workflow = construct(result, simplify_ids=True)
 
     result = to_int(num=increment(num=3), should_double=True)

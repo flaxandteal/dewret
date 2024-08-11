@@ -37,7 +37,7 @@ from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
 from typing import Any, ParamSpec, TypeVar, cast, Generator
-from types import TracebackType
+from types import TracebackType, GeneratorType
 from attrs import has as attrs_has
 from dataclasses import dataclass, is_dataclass
 import traceback
@@ -337,34 +337,6 @@ def factory(fn: Callable[..., RetType]) -> Callable[..., RetType]:
     return task(is_factory=True)(fn)
 
 
-def nested_task() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
-    """Shortcut for marking a task as nested.
-
-    A nested task is one which calls other tasks and does not
-    do anything else important. It will _not_ actually get called
-    at runtime, but should map entirely into the graph. As such,
-    arithmetic operations on results, etc. will cause errors at
-    render-time. Combining tasks is acceptable, and intended. The
-    effect of the nested task will be considered equivalent to whatever
-    reaching whatever step reference is returned at the end.
-
-    ```python
-    >>> @task()
-    ... def increment(num: int) -> int:
-    ...     return num + 1
-
-    >>> @nested_task()
-    ... def double_increment(num: int) -> int:
-    ...     return increment(increment(num=num))
-
-    ```
-
-    Returns:
-        Task that runs at render, not execution, time.
-    """
-    return task(nested=True)
-
-
 def subworkflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Shortcut for marking a task as nested.
 
@@ -381,7 +353,7 @@ def subworkflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetTyp
     ... def increment(num: int) -> int:
     ...     return num + 1
 
-    >>> @nested_task()
+    >>> @subworkflow()
     ... def double_increment(num: int) -> int:
     ...     return increment(increment(num=num))
 
@@ -441,6 +413,14 @@ def task(
             __traceback__: TracebackType | None = None,
             **kwargs: Param.kwargs,
         ) -> RetType:
+            configuration = None
+            try:
+                allow_positional_args = get_configuration("allow_positional_args")
+            except LookupError:
+                configuration = set_configuration()
+                configuration.__enter__()
+                allow_positional_args = get_configuration("allow_positional_args")
+
             try:
                 # Ensure that all arguments are passed as keyword args and prevent positional args.
                 # passed at all.
@@ -460,7 +440,12 @@ def task(
 
                 # Ensure that the passed arguments are, at least, a Python-match for the signature.
                 sig = inspect.signature(fn)
-                sig.bind(*args, **kwargs)
+                positional_args = {key: False for key in kwargs}
+                if args and isinstance(args[0], GeneratorType):
+                    for arg, (key, _) in zip(args[0], sig.parameters.items()):
+                        kwargs[key] = arg
+                        positional_args[key] = True
+                sig.bind(**kwargs)
 
                 refs = []
                 for key, val in kwargs.items():
@@ -539,14 +524,14 @@ def task(
                         ):
                             raise TypeError(
                                 f"""
-                                You referenced a task {var} inside another task {fn.__name__}, but it is not a nested_task
+                                You referenced a task {var} inside another task {fn.__name__}, but it is not a workflow
                                 - this will not be found!
 
-                                @task
+                                @task()
                                 def {var}(...) -> ...:
                                     ...
 
-                                @nested_task <<<--- likely what you want
+                                @subworkflow() <<<--- likely what you want
                                 def {fn.__name__}(...) -> ...:
                                     ...
                                     {var}(...)
@@ -562,11 +547,13 @@ def task(
                         with in_nested_task():
                             output = analyser.with_new_globals(kwargs)(**original_kwargs)
                         lazy_fn = ensure_lazy(output)
-                        if lazy_fn is None:
-                            raise TypeError(
-                                f"Task {fn.__name__} returned output of type {type(output)}, which is not a lazy function for this backend."
-                            )
-                        step_reference = evaluate(lazy_fn, __workflow__=workflow)
+                        if lazy_fn is not None:
+                            with in_nested_task():
+                                output = evaluate(lazy_fn, __workflow__=workflow)
+                            #raise TypeError(
+                            #    f"Task {fn.__name__} returned output of type {type(output)}, which is not a lazy function for this backend."
+                            #)
+                        step_reference = output
                     else:
                         nested_workflow = Workflow(name=fn.__name__)
                         nested_globals: Param.kwargs = {
@@ -585,9 +572,9 @@ def task(
                         nested_kwargs = {key: value for key, value in nested_globals.items() if key in original_kwargs}
                         with in_nested_task():
                             output = analyser.with_new_globals(nested_globals)(**nested_kwargs)
-                        nested_workflow = _manager(output, __workflow__=nested_workflow)
+                            nested_workflow = _manager(output, __workflow__=nested_workflow)
                         step_reference = workflow.add_nested_step(
-                            fn.__name__, nested_workflow, analyser.return_type, kwargs
+                            fn.__name__, nested_workflow, analyser.return_type, original_kwargs, positional_args
                         )
                     if is_expr(step_reference):
                         return cast(RetType, step_reference)
@@ -599,8 +586,9 @@ def task(
                     workflow.add_step(
                         fn,
                         kwargs,
-                        raw_as_parameter=is_in_nested_task(),
+                        raw_as_parameter=not is_in_nested_task(),
                         is_factory=is_factory,
+                        positional_args=positional_args
                     ),
                 )
                 return step
@@ -613,9 +601,12 @@ def task(
                     __traceback__,
                     exc.args[0] if exc.args else "Could not call task {fn.__name__}",
                 ) from exc
+            finally:
+                if configuration:
+                    configuration.__exit__(None, None, None)
 
         _fn.__step_expression__ = True  # type: ignore
-        return LazyEvaluation(lazy()(_fn))
+        return LazyEvaluation(_fn)
 
     return _task
 
