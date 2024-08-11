@@ -106,7 +106,7 @@ def flatten(value: Any) -> RawType:
     return crawl_raw(value, lambda entry: entry)
 
 def is_expr(value: Any) -> bool:
-    return is_raw(value, lambda x: isinstance(x, Basic))
+    return is_raw(value, lambda x: isinstance(x, Basic) or isinstance(x, tuple) or isinstance(x, Reference))
 
 def is_raw_type(typ: type) -> bool:
     """Check if a type counts as "raw"."""
@@ -126,6 +126,9 @@ def is_raw(value: Any, check: Callable[[Any], bool] | None = None) -> bool:
     if isinstance(value, str | float | bool | bytes | int | None | Integer | Float | Rational):
         return True
 
+    if check is not None and check(value):
+        return True
+
     if isinstance(value, Mapping):
         return (
             (isinstance(value, dict) or (check is not None and check(value))) and
@@ -139,7 +142,7 @@ def is_raw(value: Any, check: Callable[[Any], bool] | None = None) -> bool:
             all(is_raw(key, check) for key in value)
         )
 
-    return check is not None and check(value)
+    return False
 
 
 def ensure_raw(value: Any, cast_tuple: bool = False) -> RawType | None:

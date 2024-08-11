@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Protocol
+from typing import Generic, TypeVar, Protocol, Iterator
 from sympy import Expr, Symbol
 
 U = TypeVar("U")
@@ -53,6 +53,13 @@ class Reference(Generic[U], Symbol):
         self._raise_unevaluatable_error()
         return False
 
+    def __iter__(self) -> Iterator["Reference"]:
+        count = -1
+        yield (
+            Iterated(to_wrap=self, iteration=(count := iteration))
+            for iteration in iter(lambda: count + 1, -1)
+        )
+
     def __int__(self) -> bool:
         self._raise_unevaluatable_error()
         return False
@@ -71,3 +78,34 @@ class Reference(Generic[U], Symbol):
     def __str__(self) -> str:
         """Global description of the reference."""
         return self.__name__
+
+class Iterated(Reference[U]):
+    __wrapped__: Reference[U]
+    __iteration__: int
+
+    def __init__(self, to_wrap: Reference[U], iteration: int, *args, **kwargs):
+        self.__wrapped__ = to_wrap
+        self.__iteration__ = iteration
+        super().__init__(*args, **kwargs)
+
+    @property
+    def __root_name__(self) -> str:
+        return f"{self.__wrapped__.__root_name__}[{self.__iteration__}]"
+
+    @property
+    def __type__(self) -> type:
+        return Iterator[self.__wrapped__.__type__]
+
+    def __hash__(self) -> int:
+        return hash(self.__root_name__)
+
+    def __field__(self) -> str:
+        return str(self.__iteration__)
+
+    @property
+    def __workflow__(self) -> WorkflowProtocol:
+        return self.__wrapped__.__workflow__
+
+    @__workflow__.setter
+    def __workflow__(self, workflow: WorkflowProtocol) -> None:
+        self.__wrapped__.__workflow__ = workflow

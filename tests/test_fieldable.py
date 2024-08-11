@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import pytest
 from typing import Unpack, TypedDict
 
-from dewret.tasks import task, construct, subworkflow
+from dewret.tasks import task, construct, subworkflow, set_configuration
 from dewret.workflow import param
 from dewret.renderers.cwl import render
 
@@ -106,3 +106,52 @@ def test_can_get_field_references_from_typed_dict():
 
     assert str(workflow.result["left"]) == "test_dict-1/left"
     assert workflow.result["left"].__type__ == int
+
+def test_can_iterate():
+    @task()
+    def test_task(alpha: int, beta: float, charlie: bool) -> int:
+        return int(alpha + beta)
+
+    @task()
+    def test_list() -> list:
+        return [1, 2.]
+
+    @subworkflow()
+    def test_iterated() -> int:
+        return test_task(*test_list())
+
+    with set_configuration(allow_positional_args=True, flatten_all_nested=True):
+        result = test_iterated()
+        workflow = construct(result, simplify_ids=True)
+
+    rendered = render(workflow, allow_complex_types=True)["__root__"]
+
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs: {}
+        outputs:
+          out:
+            label: out
+            outputSource: test_task-1/out
+            type: int
+        steps:
+          test_list-1:
+            in: {}
+            out:
+            - out
+            run: test_list
+          test_task-1:
+            in:
+              alpha:
+                source: test_list-1[0]
+              beta:
+                source: test_list-1[1]
+              charlie:
+                source: test_list-1[2]
+            out:
+            - out
+            run: test_task
+    """)
+
+    assert workflow.result._.step.positional_args == {"alpha": True, "beta": True, "charlie": True}

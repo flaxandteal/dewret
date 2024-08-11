@@ -76,8 +76,8 @@ def test_complex_parameters() -> None:
             label: numx
             type: int
             default: 23
-          rotate-1-num:
-            label: rotate-1-num
+          rotate-2-num:
+            label: rotate-2-num
             type: int
             default: 23
         outputs:
@@ -92,7 +92,7 @@ def test_complex_parameters() -> None:
                 INPUT_NUM:
                     source: INPUT_NUM
                 num:
-                    source: rotate-1-num
+                    source: rotate-2/out
             out: [out]
           double-1:
             run: double
@@ -106,7 +106,7 @@ def test_complex_parameters() -> None:
                 INPUT_NUM:
                     source: INPUT_NUM
                 num:
-                    source: rotate-1/out
+                    source: rotate-2-num
             out: [out]
           rotate-3:
             run: rotate
@@ -122,6 +122,6 @@ def test_complex_parameters() -> None:
                 left:
                     source: double-1/out
                 right:
-                    source: rotate-2/out
+                    source: rotate-1/out
             out: [out]
     """)
