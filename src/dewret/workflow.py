@@ -24,7 +24,7 @@ import base64
 from attrs import define, has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter, OrderedDict
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable, get_origin, get_args
 from uuid import uuid4
 from sympy import Symbol, Expr, Basic, Tuple, Dict
 
@@ -32,7 +32,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .core import Reference
+from .core import Reference, get_configuration
 from .utils import hasher, RawType, is_raw, make_traceback, is_raw_type, is_expr, Unset
 
 T = TypeVar("T")
@@ -778,6 +778,12 @@ class FieldableMixin:
                 field_type = parent_type.__annotations__[field]
             except KeyError:
                 raise AttributeError(f"TypedDict {parent_type} does not have field {field}")
+        if not field_type and get_configuration("allow_plain_dict_fields") and get_origin(parent_type) is dict:
+            args = get_args(parent_type)
+            if len(args) == 2 and args[0] is str:
+                field_type = args[1]
+            else:
+                raise AttributeError(f"Can only get fields for plain dicts if annotated dict[str, TYPE]")
 
         if field_type:
             if not issubclass(self.__class__, Reference):

@@ -66,34 +66,7 @@ from .workflow import (
 )
 from .backends._base import BackendModule
 from .annotations import FunctionAnalyser
-
-class ConstructConfiguration(TypedDict):
-    flatten_all_nested: NotRequired[bool]
-    allow_positional_args: NotRequired[bool]
-
-CONSTRUCT_CONFIGURATION: ContextVar[ConstructConfiguration] = ContextVar("construct-configuration")
-
-@contextmanager
-def set_configuration(**kwargs: Unpack[ConstructConfiguration]):
-    try:
-        previous = ConstructConfiguration(**CONSTRUCT_CONFIGURATION.get())
-    except LookupError:
-        previous = ConstructConfiguration(
-            flatten_all_nested=False,
-            allow_positional_args=False
-        )
-        CONSTRUCT_CONFIGURATION.set({})
-
-    try:
-        CONSTRUCT_CONFIGURATION.get().update(previous)
-        CONSTRUCT_CONFIGURATION.get().update(kwargs)
-
-        yield CONSTRUCT_CONFIGURATION
-    finally:
-        CONSTRUCT_CONFIGURATION.set(previous)
-
-def get_configuration(key: str):
-    return CONSTRUCT_CONFIGURATION.get()[key]
+from .core import get_configuration, set_configuration, CONSTRUCT_CONFIGURATION
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")

@@ -155,3 +155,15 @@ def test_can_iterate():
     """)
 
     assert workflow.result._.step.positional_args == {"alpha": True, "beta": True, "charlie": True}
+
+def test_can_use_plain_dict_fields():
+    @subworkflow()
+    def test_dict(left: int, right: float) -> dict[str, float | int]:
+        result: dict[str, float | int] = {"left": mod10(num=left), "right": pi()}
+        return result
+
+    with set_configuration(allow_plain_dict_fields=True):
+        result = test_dict(left=3, right=4.)
+        workflow = construct(result, simplify_ids=True)
+        assert str(workflow.result["left"]) == "test_dict-1/left"
+        assert workflow.result["left"].__type__ == int | float

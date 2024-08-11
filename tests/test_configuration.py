@@ -21,7 +21,6 @@ def floor(num: int, expected: AtRender[bool]) -> int:
     return increment(num=num)
 
 def test_cwl_with_parameter(configuration) -> None:
-
     with set_configuration(flatten_all_nested=True):
         result = increment(num=floor(num=3, expected=True))
         workflow = construct(result, simplify_ids=True)
