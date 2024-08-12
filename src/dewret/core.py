@@ -61,8 +61,10 @@ class Reference(Generic[U], Symbol):
     def __init__(self, *args, typ: type[U] | None = None, **kwargs):
         self._type = typ
         super().__init__()
-        self.name = self.__root_name__
 
+    @property
+    def name(self):
+        return self.__root_name__
 
     def __new__(cls, *args, **kwargs):
         instance = Expr.__new__(cls)
