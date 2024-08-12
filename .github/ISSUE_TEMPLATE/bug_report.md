@@ -45,8 +45,7 @@ Add any other context or information about the issue here.
 
 #### Checklist
 -  [] I have reviewed existing issues and confirmed that this issue has not been logged before.
--  [] I have considered the impact of this improvement on other parts of the project.
--  [] I am willing to contribute to the implementation of this improvement if the proposal is accepted.
+-  [] I have provided minimal example of expected vs actual behavior.
 
 ---
 
