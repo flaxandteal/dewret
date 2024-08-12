@@ -2,7 +2,7 @@
 
 ### Description
 
-Please describe the new feature you've implemented.
+Please describe and motivate the new feature you've implemented.
 
 ### Changes Made
 
@@ -16,5 +16,9 @@ Add any other information, screenshots, or context that might help in understand
 ### Checklist
 
 - [ ] I have included a detailed description of the feature.
-- [ ] I have provided all necessary information for the implementation.
+- [ ] I have provided relevant documentation for my feature.
 - [ ] I have added the necessary tests.
+
+### Who can review?
+
+List any maintainers or contributors who are best suited to review this pull request.
