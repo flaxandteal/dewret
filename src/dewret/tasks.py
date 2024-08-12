@@ -426,9 +426,13 @@ def task(
                         positional_args[key] = True
                 sig.bind(**kwargs)
 
+                def _to_param_ref(value):
+                    if isinstance(value, Parameter):
+                        return ParameterReference(workflow=__workflow__, parameter=value)
+
                 refs = []
                 for key, val in kwargs.items():
-                    _, kw_refs = expr_to_references(val, include_parameters=True)
+                    _, kw_refs = expr_to_references(val, remap=_to_param_ref)
                     refs += kw_refs
                 workflows = [
                     reference.__workflow__

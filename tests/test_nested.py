@@ -38,7 +38,7 @@ def test_can_supply_nested_raw():
           max_list-1:
             in:
               lst:
-                expression: $(2*reverse_list-94ebd058f53d6a235643d33f3ab4c313)
+                expression: $(2*reverse_list-1)
             out:
             - out
             run: max_list

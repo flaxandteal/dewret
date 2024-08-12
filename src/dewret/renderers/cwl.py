@@ -22,10 +22,10 @@ from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstanc
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
 from contextvars import ContextVar
-from typing import TypedDict, NotRequired, get_origin, get_args, Union, cast, Any, Iterable, Unpack
+from typing import TypedDict, NotRequired, get_origin, get_args, Union, cast, Any, Unpack, Iterable
 from types import UnionType
 from inspect import isclass
-from sympy import Expr, Basic, Tuple
+from sympy import Expr, Basic, Tuple, sympify, Dict, jscode
 
 from dewret.core import (
     Raw,
@@ -68,6 +68,15 @@ InputSchemaType = Union[
     str, CommandInputSchema, list[str], list["InputSchemaType"], dict[str, "str | InputSchemaType"]
 ]
 
+def render_expression(ref: Any) -> str:
+    def _render(ref):
+        if not isinstance(ref, Basic):
+            if isinstance(ref, Mapping):
+                ref = Dict({key: _render(val) for key, val in ref.items()})
+            elif not isinstance(ref, str | bytes) and isinstance(ref, Iterable):
+                ref = Tuple(*(_render(val) for val in ref))
+        return ref
+    return f"$({jscode(_render(ref))})"
 
 class CWLRendererConfiguration(TypedDict):
     """Configuration for the renderer.
@@ -193,11 +202,11 @@ class StepDefinition:
                 key: (
                     ref.render()
                     if isinstance(ref, ReferenceDefinition) else
-                    {"expression": f"$({ref})"}
+                    {"expression": render_expression(ref)}
                     if isinstance(ref, Basic) else
                     {"default": ref.value}
                     if hasattr(ref, "value")
-                    else ref
+                    else {"expression": render_expression(ref)}
                 )
                 for key, ref in self.in_.items()
             },

@@ -40,30 +40,6 @@ U = TypeVar("U")
 RetType = TypeVar("RetType")
 
 
-def all_references_from(value: Any):
-    all_references: set = set()
-
-    # If Raw, we examine the internal value.
-    # In theory, this should not contain a reference,
-    # but this makes all_references_from useful for error-checking.
-    if isinstance(value, Raw):
-        value = value.value
-
-    if isinstance(value, Reference):
-        all_references.add(value)
-    elif isinstance(value, Basic):
-        symbols = value.free_symbols
-        if not all(isinstance(sym, Reference) for sym in symbols):
-            raise RuntimeError("Can only use symbols that are references to e.g. step or parameter.")
-        all_references |= symbols
-    elif isinstance(value, Mapping):
-        all_references |= all_references_from(value.keys())
-        all_references |= all_references_from(value.values())
-    elif isinstance(value, Iterable) and not isinstance(value, str | bytes):
-        all_references |= set().union(*(all_references_from(entry) for entry in value))
-
-    return all_references
-
 class Lazy(Protocol):
     """Requirements for a lazy-evaluatable function."""
 
@@ -197,8 +173,6 @@ class Parameter(Generic[T], Symbol):
         return raw_type
 
     def __eq__(self, other):
-        if isinstance(other, ParameterReference) and other._.parameter == self and not other.__field__:
-            return True
         return hash(self) == hash(other)
 
     def __new__(cls, *args, **kwargs):
@@ -407,7 +381,7 @@ class Workflow:
         Returns:
             Set of all references to parameters across the steps.
         """
-        references = all_references_from(
+        _, references = expr_to_references(
             step.arguments for step in self.steps if (include_factory_calls or not isinstance(step, FactoryCall))
         )
         return {ref for ref in references if isinstance(ref, ParameterReference)}
@@ -439,6 +413,9 @@ class Workflow:
             left: workflow to use as base
             right: workflow to combine on top
         """
+        if left == right:
+            return left
+
         new = cls()
 
         new._name = left._name or right._name
@@ -448,8 +425,6 @@ class Workflow:
 
         for step in list(left_steps.values()) + list(right_steps.values()):
             step.set_workflow(new)
-            for arg in step.arguments.values():
-                unify_workflows(arg, new, set_only=True)
 
         for step_id in left_steps.keys() & right_steps.keys():
             if left_steps[step_id] != right_steps[step_id]:
@@ -830,15 +805,10 @@ class BaseStep(WorkflowComponent):
                     else:
                         value = Raw(value)
 
-                expr, refs = expr_to_references(value, include_parameters=True)
-                if expr is not None:
-                    for ref in set(refs):
-                        if isinstance(ref, Parameter):
-                            new_ref = ParameterReference(workflow=workflow, parameter=ref)
-                            expr = expr.subs(ref, new_ref)
-                            refs.remove(ref)
-                            refs.append(new_ref)
-                    value = expr
+                def _to_param_ref(value):
+                    if isinstance(value, Parameter):
+                        return ParameterReference(workflow=workflow, parameter=value)
+                value, refs = expr_to_references(value, remap=_to_param_ref)
 
                 for ref in refs:
                     if isinstance(ref, ParameterReference):
@@ -1133,7 +1103,6 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
         """
         # We are equal to a parameter if we are a direct, fieldless, reference to it.
         return (
-            (isinstance(other, Parameter) and self._.parameter == other and not self.__field__) or
             (isinstance(other, ParameterReference) and self._.parameter == other._.parameter and self.__field__ == other.__field__)
         )
 
@@ -1290,42 +1259,58 @@ def is_task(task: Lazy) -> bool:
     """
     return isinstance(task, LazyEvaluation)
 
-def expr_to_references(expression: Any, include_parameters: bool=False) -> tuple[Basic | None, set[Reference | Parameter]]:
-    if isinstance(expression, Raw) or is_raw(expression):
-        return expression, set()
-
-    if isinstance(expression, Reference):
-        return expression, {expression}
-
-    if is_dataclass(expression) or attr_has(expression):
-        refs = set()
-        fields = dataclass_fields(expression) if is_dataclass(expression) else {field.name for field in attrs_fields(expression)}
-        for field in fields:
-            if hasattr(expression, field.name) and isinstance((val := getattr(expression, field.name)), Reference):
-                _, field_refs = expr_to_references(val, include_parameters=include_parameters)
-                refs |= field_refs
-        return expression, refs
-
+def expr_to_references(expression: Any, remap: Callable[[Any], Any] | None = None) -> tuple[Basic | None, set[Reference | Parameter]]:
+    to_check = []
     def _to_expr(value):
-        if value is None:
-            return nan
-        elif hasattr(value, "__type__"):
+        if remap and (res := remap(value)) is not None:
+            return _to_expr(res)
+
+        if isinstance(value, Reference):
+            to_check.append(value)
             return value
-        elif isinstance(value, Raw):
-            return value.value
+
+        if value is None:
+            return None
+
+        if isinstance(value, Symbol):
+            return value
+        elif isinstance(value, Basic):
+            for sym in value.free_symbols:
+                new_sym = _to_expr(sym)
+                if new_sym != sym:
+                    value = value.subs(sym, new_sym)
+            return value
+
+        if is_dataclass(value) or attr_has(value):
+            if is_dataclass(value):
+                fields = dataclass_fields(value)
+            else:
+                fields = {field for field in attrs_fields(value.__class__)}
+            for field in fields:
+                if hasattr(value, field.name) and isinstance((val := getattr(value, field.name)), Reference):
+                    setattr(value, field.name, _to_expr(val))
+            return value
+
+        # We need to look inside a Raw, but we do not want to lose it if
+        # we do not need to.
+        retval = value
+        if isinstance(value, Raw):
+            value = value.value
 
         if isinstance(value, Mapping):
-            dct = Dict({key: _to_expr(val) for key, val in value.items()})
-            return dct
+            dct = {key: _to_expr(val) for key, val in value.items()}
+            if dct == value:
+                return retval
+            return value.__class__(dct)
         elif not isinstance(value, str | bytes) and isinstance(value, Iterable):
-            return Tuple(*(_to_expr(entry) for entry in value))
-        return value
+            lst = (tuple if isinstance(value, tuple) else list)(_to_expr(v) for v in value)
+            if lst == value:
+                return retval
+            return lst
+        return retval
 
-    if not isinstance(expression, Basic):
-        expression = _to_expr(expression)
+    expression = _to_expr(expression)
 
-    symbols = list(expression.free_symbols)
-    to_check = [sym for sym in symbols if isinstance(sym, Reference) or (include_parameters and isinstance(sym, Parameter))]
     #if {sym for sym in symbols if not is_raw(sym)} != set(to_check):
     #    print(symbols, to_check, [type(r) for r in symbols])
     #    raise RuntimeError("The only symbols allowed are references (to e.g. step or parameter)")

@@ -305,7 +305,7 @@ def test_cwl_with_subworkflow() -> None:
         outputs:
           out:
             label: out
-            outputSource: sum-1-1/out
+            outputSource: sum-1-2/out
             type:
             - int
             - float
@@ -317,7 +317,7 @@ def test_cwl_with_subworkflow() -> None:
             out:
             - out
             run: double
-          sum-1-2:
+          sum-1-1:
             in:
               left:
                 source: double-1-1/out
@@ -326,10 +326,10 @@ def test_cwl_with_subworkflow() -> None:
             out:
             - out
             run: sum
-          sum-1-1:
+          sum-1-2:
             in:
               left:
-                source: sum-1-2/out
+                source: sum-1-1/out
               right:
                 default: 1
             out:
@@ -508,7 +508,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
         outputs:
           out:
             label: out
-            outputSource: sum-1-1/out
+            outputSource: sum-1-2/out
             type:
             - int
             - float
@@ -520,7 +520,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             out:
             - out
             run: double
-          sum-1-2:
+          sum-1-1:
             in:
               left:
                 source: double-1-1/out
@@ -529,10 +529,10 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             out:
             - out
             run: sum
-          sum-1-1:
+          sum-1-2:
             in:
               left:
-                source: sum-1-2/out
+                source: sum-1-1/out
               right:
                 default: 1
             out:
