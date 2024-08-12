@@ -64,7 +64,7 @@ class Reference(Generic[U], Symbol):
 
     @property
     def name(self):
-        return self.__root_name__
+        return self.__name__
 
     def __new__(cls, *args, **kwargs):
         instance = Expr.__new__(cls)
