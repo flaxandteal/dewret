@@ -50,12 +50,16 @@ from .tasks import Backend, construct
     help="Backend to use for workflow evaluation.",
 )
 @click.option(
+    "--construct-args",
+    default="simplify_ids:true"
+)
+@click.option(
     "--renderer",
     default="cwl"
 )
 @click.option(
     "--renderer-args",
-    default="simplify_ids:true"
+    default=""
 )
 @click.option(
     "--output",
@@ -65,7 +69,7 @@ from .tasks import Backend, construct
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
 def render(
-    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend, renderer: str, renderer_args: str, output: str
+    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend, construct_args: str, renderer: str, renderer_args: str, output: str
 ) -> None:
     """Render a workflow.
 
@@ -90,6 +94,14 @@ def render(
         render_module = Path(renderer[1:])
     else:
         raise RuntimeError("Renderer argument should be a known dewret renderer, or '@FILENAME' where FILENAME is a renderer")
+
+    if construct_args.startswith("@"):
+        with Path(construct_args[1:]).open() as construct_args_f:
+            construct_kwargs = yaml.safe_load(construct_args_f)
+    elif not construct_args:
+        construct_kwargs = {}
+    else:
+        construct_kwargs = dict(pair.split(":") for pair in construct_args.split(","))
 
     renderer_kwargs: dict[str, Any]
     if renderer_args.startswith("@"):
@@ -121,7 +133,7 @@ def render(
     task_fn = getattr(workflow, task)
 
     try:
-        rendered = render(construct(task_fn(**kwargs), **renderer_kwargs))
+        rendered = render(construct(task_fn(**kwargs), **construct_kwargs), **renderer_kwargs)
     except Exception as exc:
         import traceback
 
