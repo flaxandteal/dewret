@@ -66,7 +66,7 @@ from .workflow import (
 )
 from .backends._base import BackendModule
 from .annotations import FunctionAnalyser
-from .core import get_configuration, set_configuration, CONSTRUCT_CONFIGURATION, IteratedGenerator
+from .core import get_configuration, set_configuration, CONSTRUCT_CONFIGURATION, IteratedGenerator, ConstructConfiguration
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
@@ -195,7 +195,7 @@ class TaskManager:
         task: Any,
         simplify_ids: bool = False,
         __workflow__: Workflow | None = None,
-        **kwargs: Any,
+        **kwargs: ConstructConfiguration,
     ) -> Workflow:
         """Execute the lazy evalution.
 
@@ -209,7 +209,7 @@ class TaskManager:
         """
         workflow = __workflow__ or Workflow()
 
-        with set_configuration():
+        with set_configuration(**kwargs):
             context = copy_context().items()
             def _initializer():
                 for var, value in context:
