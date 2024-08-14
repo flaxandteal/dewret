@@ -432,8 +432,9 @@ def task(
 
                 refs = []
                 for key, val in kwargs.items():
-                    _, kw_refs = expr_to_references(val, remap=_to_param_ref)
+                    val, kw_refs = expr_to_references(val, remap=_to_param_ref)
                     refs += kw_refs
+                    kwargs[key] = val
                 workflows = [
                     reference.__workflow__
                     for reference in refs
