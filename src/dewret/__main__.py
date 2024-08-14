@@ -30,6 +30,7 @@ import sys
 import click
 import json
 
+from .core import set_configuration
 from .render import get_render_method, RawRenderModule, StructuredRenderModule
 from .tasks import Backend, construct
 
@@ -133,7 +134,8 @@ def render(
     task_fn = getattr(workflow, task)
 
     try:
-        rendered = render(construct(task_fn(**kwargs), **construct_kwargs), **renderer_kwargs)
+        with set_configuration(**construct_kwargs):
+            rendered = render(construct(task_fn(**kwargs), **construct_kwargs), **renderer_kwargs)
     except Exception as exc:
         import traceback
 
