@@ -711,6 +711,9 @@ class FieldableMixin:
 
         # Get new type, for the specific field.
         parent_type = self.__type__
+        # Strip out any annotations.
+        while get_origin(parent_type) is Annotated:
+            parent_type = get_args(parent_type)[0]
         field_type = fallback_type
 
         if is_dataclass(parent_type):
