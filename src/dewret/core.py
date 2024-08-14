@@ -26,6 +26,7 @@ class ConstructConfiguration(TypedDict):
     flatten_all_nested: NotRequired[bool]
     allow_positional_args: NotRequired[bool]
     allow_plain_dict_fields: NotRequired[bool]
+    field_separator: NotRequired[str]
 
 CONSTRUCT_CONFIGURATION: ContextVar[ConstructConfiguration] = ContextVar("construct-configuration")
 
@@ -38,6 +39,7 @@ def set_configuration(**kwargs: Unpack[ConstructConfiguration]):
             flatten_all_nested=False,
             allow_positional_args=False,
             allow_plain_dict_fields=False,
+            field_separator="/"
         )
         CONSTRUCT_CONFIGURATION.set({})
 

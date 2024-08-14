@@ -686,8 +686,12 @@ class FieldableProtocol(Protocol):
 # Subclass Reference so that we know Reference methods/attrs are available.
 class FieldableMixin:
     def __init__(self: FieldableProtocol, *args, field: str | None = None, **kwargs):
-        self.__field__: tuple[str, ...] = tuple(field.split("/")) if field else ()
+        self.__field__: tuple[str, ...] = tuple(field.split(self.__field_sep__)) if field else ()
         super().__init__(*args, **kwargs)
+
+    @property
+    def __field_sep__(self) -> str:
+        return get_configuration("field_separator")
 
     @property
     def __name__(self: FieldableProtocol) -> str:
@@ -696,7 +700,7 @@ class FieldableMixin:
         May be remapped by the workflow to something nicer
         than the ID.
         """
-        return "/".join([super().__name__] + list(self.__field__))
+        return self.__field_sep__.join([super().__name__] + list(self.__field__))
 
     def find_field(self: FieldableProtocol, field, fallback_type: type | None = None, **init_kwargs: Any) -> Reference:
         """Field within the reference, if possible.
@@ -738,7 +742,7 @@ class FieldableMixin:
                 raise TypeError("Only references can have a fieldable mixin")
 
             if self.__field__:
-                field = "/".join(self.__field__) + "/" + field
+                field = self.__field_sep__.join(self.__field__) + self.__field_sep__ + field
 
             return self.__class__(typ=field_type, field=field, **init_kwargs)
 
@@ -1081,7 +1085,7 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
             typ = self.__type__.__name__
         except AttributeError:
             typ = str(self.__type__)
-        name = "/".join([self._.unique_name] + list(self.__field__))
+        name = self.__field_sep__.join([self._.unique_name] + list(self.__field__))
         return f"{typ}|:param:{name}"
 
     def __hash__(self) -> int:
@@ -1161,7 +1165,7 @@ class StepReference(FieldableMixin, Reference[U]):
 
     def __repr__(self) -> str:
         """Hashable reference to the step (and field)."""
-        return "/".join([self._.step.id] + list(self.__field__))
+        return self.__field_sep__.join([self._.step.id] + list(self.__field__))
 
     def __hash__(self) -> int:
         return hash((repr(self), id(self.__workflow__)))
