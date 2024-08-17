@@ -1,4 +1,7 @@
 import inspect
+import ast
+import sys
+import importlib
 from functools import lru_cache
 from types import FunctionType
 from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Callable, get_origin, get_args, Mapping
@@ -20,17 +23,6 @@ class FunctionAnalyser:
         )
 
     @property
-    def all_annotations(self):
-        try:
-            self._annotations = self.fn.__globals__["__annotations__"]
-        except KeyError:
-            self._annotations = {}
-
-        self._annotations.update(self.fn.__annotations__)
-
-        return self._annotations
-
-    @property
     def return_type(self):
         return inspect.signature(inspect.unwrap(self.fn)).return_annotation
 
@@ -45,15 +37,46 @@ class FunctionAnalyser:
             return True
         return False
 
-    def argument_has(self, arg: str, annotation: type) -> bool:
-        if arg in self.all_annotations:
-            typ = self.all_annotations[arg]
-            if self._typ_has(typ, annotation):
-                return True
-        return False
+    def get_all_module_names(self):
+        return sys.modules[self.fn.__module__].__annotations__
 
-    def is_at_construct_arg(self, arg: str) -> bool:
-        return self.argument_has(arg, AtRender)
+    def get_all_imported_names(self):
+        return self._get_all_imported_names(sys.modules[self.fn.__module__])
+
+    @staticmethod
+    @lru_cache
+    def _get_all_imported_names(mod):
+        ast_tree = ast.parse(inspect.getsource(mod))
+        imported_names = {}
+        for node in ast.walk(ast_tree):
+            if isinstance(node, ast.ImportFrom):
+                for name in node.names:
+                    imported_names[name.asname or name.name] = (
+                        importlib.import_module("".join(["."] * node.level) + node.module, package=mod.__package__),
+                        name.name
+                    )
+        return imported_names
+
+    def get_argument_annotation(self, arg: str, exhaustive: bool=False) -> type | None:
+        all_annotations: dict[str, type] = {}
+        typ: type | None = None
+        if (typ := self.fn.__annotations__.get(arg)):
+            ...
+        elif exhaustive:
+            if "__annotations__" in self.fn.__globals__:
+                if (typ := self.fn.__globals__["__annotations__"].get(arg)):
+                    ...
+                elif (orig_pair := self.get_all_imported_names().get(arg)):
+                    orig_module, orig_name = orig_pair
+                    typ = orig_module.__annotations__.get(orig_name)
+        return typ
+
+    def argument_has(self, arg: str, annotation: type, exhaustive: bool=False) -> bool:
+        typ = self.get_argument_annotation(arg, exhaustive)
+        return bool(typ and self._typ_has(typ, annotation))
+
+    def is_at_construct_arg(self, arg: str, exhaustive: bool=False) -> bool:
+        return self.argument_has(arg, AtRender, exhaustive)
 
     @property
     def globals(self) -> Mapping[str, Any]:

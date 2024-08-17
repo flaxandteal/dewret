@@ -9,11 +9,11 @@ from dewret.workflow import param
 
 from ._lib.extra import increment, sum, pi
 
-CONSTANT = 3
+CONSTANT: int = 3
 
 QueueFactory: Callable[..., Queue[int]] = factory(Queue)
 
-GLOBAL_QUEUE = QueueFactory()
+GLOBAL_QUEUE: Queue = QueueFactory()
 
 
 @task()

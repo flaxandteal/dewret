@@ -67,6 +67,7 @@ from .workflow import (
 from .backends._base import BackendModule
 from .annotations import FunctionAnalyser
 from .core import get_configuration, set_configuration, CONSTRUCT_CONFIGURATION, IteratedGenerator, ConstructConfiguration
+import ast
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
@@ -468,7 +469,7 @@ def task(
                                         ) else None
                                     ),
                                     autoname=True,
-                                    typ=analyser.all_annotations.get(var, UNSET)
+                                    typ=analyser.get_argument_annotation(var) or UNSET
                                 ),
                             )
                 original_kwargs = dict(kwargs)
@@ -481,27 +482,8 @@ def task(
                     #       raise TypeError(
                     #           "Captured parameter {var} (global variable in task) shadows an argument"
                     #        )
-                    if (
-                        analyser.is_at_construct_arg(var) or
-                        isinstance(value, Reference) or
-                        value is evaluate or value is construct  # Allow manual building.
-                    ):
-                        kwargs[var] = value
-                    elif isinstance(value, Parameter):
+                    if isinstance(value, Parameter):
                         kwargs[var] = ParameterReference(workflow=workflow, parameter=value)
-                    elif is_raw(value) or (
-                        (attrs_has(value) or is_dataclass(value)) and
-                        not inspect.isclass(value)
-                    ):
-                        kwargs[var] = ParameterReference(
-                            workflow=workflow,
-                            parameter=param(
-                                var,
-                                value,
-                                tethered=False,
-                                typ=analyser.all_annotations.get(var, UNSET)
-                            )
-                        )
                     elif is_task(value) or ensure_lazy(value) is not None:
                         if not nested and _workaround_check_value_is_task(
                             fn, var, value
@@ -522,6 +504,29 @@ def task(
                                     ...
                                 """
                             )
+                    # If nested, we will execute the insides, and it is reasonable and important
+                    # to have a full set of annotations for any encountered variables.
+                    elif nested and not analyser.get_argument_annotation(var, exhaustive=True) and not inspect.isclass(value) or inspect.isfunction(value):
+                        raise RuntimeError(f"Could not find a type annotation for {var} for {fn.__name__}")
+                    elif (
+                        analyser.is_at_construct_arg(var, exhaustive=True) or
+                        isinstance(value, Reference) or
+                        value is evaluate or value is construct  # Allow manual building.
+                    ):
+                        kwargs[var] = value
+                    elif is_raw(value) or (
+                        (attrs_has(value) or is_dataclass(value)) and
+                        not inspect.isclass(value)
+                    ):
+                        kwargs[var] = ParameterReference(
+                            workflow=workflow,
+                            parameter=param(
+                                var,
+                                value,
+                                tethered=False,
+                                typ=analyser.get_argument_annotation(var, exhaustive=True) or UNSET
+                            )
+                        )
                     elif nested:
                         raise NotImplementedError(
                             f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}"
@@ -590,6 +595,7 @@ def task(
                     configuration.__exit__(None, None, None)
 
         _fn.__step_expression__ = True  # type: ignore
+        _fn.__original__ = fn
         return LazyEvaluation(_fn)
 
     return _task

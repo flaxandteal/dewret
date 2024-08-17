@@ -14,7 +14,7 @@ def add_task(left: int, right: int) -> int:
     return left + right
 
 
-ADD_TASK_LINE_NO = 11
+ADD_TASK_LINE_NO: int = 11
 
 
 @subworkflow()
