@@ -12,7 +12,7 @@ from dewret.core import RawType
 from dewret.workflow import Workflow, Step, NestedStep
 from dewret.render import base_render
 
-from extra import JUMP
+from .extra import JUMP
 
 class FrenderRendererConfiguration(TypedDict):
     allow_complex_types: bool

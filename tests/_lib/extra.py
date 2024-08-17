@@ -1,7 +1,20 @@
 from dewret.tasks import task, subworkflow
+from dewret.annotations import AtRender
+
+from .other import nothing
 
 JUMP: float = 1.0
+test: float = nothing
 
+from inspect import get_annotations
+
+@subworkflow()
+def try_nothing() -> int:
+    """Check that we can see AtRender in another module."""
+
+    if nothing:
+        return increment(num=1)
+    return increment(num=0)
 
 @task()
 def increase(num: int | float) -> float:

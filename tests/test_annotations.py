@@ -5,7 +5,7 @@ from dewret.tasks import task, construct, subworkflow, TaskException
 from dewret.renderers.cwl import render
 from dewret.annotations import AtRender, FunctionAnalyser
 
-from ._lib.extra import increment, sum
+from ._lib.extra import increment, sum, try_nothing
 
 ARG1: AtRender[bool] = True
 ARG2: bool = False
@@ -36,22 +36,24 @@ def test_can_analyze_annotations():
     my_obj = MyClass()
 
     analyser = FunctionAnalyser(my_obj.method)
-    assert analyser.argument_has("arg1", AtRender) is False
-    assert analyser.argument_has("arg3", AtRender) is False
-    assert analyser.argument_has("ARG2", AtRender) is False
-    assert analyser.argument_has("arg2", AtRender) is True
-    assert analyser.argument_has("arg4", AtRender) is False # Not a global/argument
-    assert analyser.argument_has("ARG1", AtRender) is True
+    assert analyser.argument_has("arg1", AtRender, exhaustive=True) is False
+    assert analyser.argument_has("arg3", AtRender, exhaustive=True) is False
+    assert analyser.argument_has("ARG2", AtRender, exhaustive=True) is False
+    assert analyser.argument_has("arg2", AtRender, exhaustive=True) is True
+    assert analyser.argument_has("arg4", AtRender, exhaustive=True) is False # Not a global/argument
+    assert analyser.argument_has("ARG1", AtRender, exhaustive=True) is True
+    assert analyser.argument_has("ARG1", AtRender) is False
 
     analyser = FunctionAnalyser(fn)
-    assert analyser.argument_has("arg5", AtRender) is False
-    assert analyser.argument_has("arg7", AtRender) is False
-    assert analyser.argument_has("ARG2", AtRender) is False
-    assert analyser.argument_has("arg2", AtRender) is True
-    assert analyser.argument_has("arg8", AtRender) is False # Not a global/argument
-    assert analyser.argument_has("ARG1", AtRender) is True
+    assert analyser.argument_has("arg5", AtRender, exhaustive=True) is False
+    assert analyser.argument_has("arg7", AtRender, exhaustive=True) is False
+    assert analyser.argument_has("ARG2", AtRender, exhaustive=True) is False
+    assert analyser.argument_has("arg6", AtRender, exhaustive=True) is True
+    assert analyser.argument_has("arg8", AtRender, exhaustive=True) is False # Not a global/argument
+    assert analyser.argument_has("ARG1", AtRender, exhaustive=True) is True
+    assert analyser.argument_has("ARG1", AtRender) is False
 
-def test_at_construct() -> None:
+def test_at_render() -> None:
     with pytest.raises(TaskException) as _:
         result = to_int_bad(num=increment(num=3), should_double=True)
         workflow = construct(result, simplify_ids=True)
@@ -131,3 +133,11 @@ def test_at_construct() -> None:
             - out
             run: to_int
     """)
+
+
+def test_at_render_between_modules() -> None:
+    nothing = False
+    result = try_nothing()
+    workflow = construct(result, simplify_ids=True)
+    subworkflows = render(workflow, allow_complex_types=True)
+    rendered = subworkflows["__root__"]
