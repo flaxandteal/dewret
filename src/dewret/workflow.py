@@ -156,9 +156,8 @@ class Parameter(Generic[T], Symbol):
         if tethered and isinstance(tethered, BaseStep):
             self.register_caller(tethered)
 
-    @property
-    def is_loopable(self):
-        base = get_origin(strip_annotations(self.__type__)[0])
+    def is_loopable(self, typ: type):
+        base = get_origin(strip_annotations(typ)[0])
         return inspect.isclass(base) and issubclass(base, Iterable) and not issubclass(base, str | bytes)
 
     @property
@@ -193,10 +192,13 @@ class Parameter(Generic[T], Symbol):
         #     )
         return hash(self.__name__)
 
-    def make_reference(self, workflow: Workflow) -> "ParameterReference":
-        if self.is_loopable:
-            return IterableParameterReference(workflow=workflow, parameter=self)
-        return ParameterReference(workflow=workflow, parameter=self)
+    def make_reference(self, **kwargs) -> "ParameterReference":
+        kwargs["parameter"] = self
+        kwargs.setdefault("typ", self.__type__)
+        typ = kwargs["typ"]
+        if self.is_loopable(typ):
+            return IterableParameterReference(**kwargs)
+        return ParameterReference(**kwargs)
 
     @property
     def default(self) -> T | UnsetType[T]:
@@ -554,7 +556,7 @@ class Workflow:
         return_type = return_type or step.return_type
         if return_type is inspect._empty:
             raise TypeError("All tasks should have a type annotation.")
-        return step.make_reference(return_type=return_type)
+        return step.make_reference(typ=return_type)
 
     def add_step(
         self,
@@ -588,7 +590,7 @@ class Workflow:
             and not inspect.isclass(fn)
         ):
             raise TypeError("All tasks should have a type annotation.")
-        return step.make_reference(return_type)
+        return step.make_reference(typ=return_type)
 
     @staticmethod
     def from_result(
@@ -681,6 +683,7 @@ class WorkflowLinkedComponent(Protocol):
 
 class FieldableProtocol(Protocol):
     __field__: tuple[str, ...]
+    __field_sep__: str
 
     def __init__(self, *args, field: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -692,6 +695,9 @@ class FieldableProtocol(Protocol):
     @property
     def name(self):
         return "name"
+
+    def __make_reference__(self, *args, **kwargs) -> "FieldableProtocol":
+        ...
 
 # Subclass Reference so that we know Reference methods/attrs are available.
 class FieldableMixin:
@@ -754,7 +760,7 @@ class FieldableMixin:
             if self.__field__:
                 field = self.__field_sep__.join(self.__field__) + self.__field_sep__ + field
 
-            return self.__class__(typ=field_type, field=field, **init_kwargs)
+            return self.__make_reference__(typ=field_type, field=field, **init_kwargs)
 
         raise AttributeError(
             f"Could not determine the type for field {field} in type {parent_type}"
@@ -846,11 +852,14 @@ class BaseStep(WorkflowComponent):
             and self.arguments == other.arguments
         )
 
-    def make_reference(self, return_type: type) -> "StepReference":
-        base = get_origin(strip_annotations(return_type)[0])
+    def make_reference(self, **kwargs) -> "StepReference":
+        kwargs["step"] = self
+        kwargs.setdefault("typ", self.return_type)
+        typ = kwargs["typ"]
+        base = get_origin(strip_annotations(typ)[0])
         if inspect.isclass(base) and issubclass(base, Iterable) and not issubclass(base, str | bytes):
-            return IterableStepReference(step=self, typ=return_type)
-        return StepReference(step=self, typ=return_type)
+            return IterableStepReference(**kwargs)
+        return StepReference(**kwargs)
 
     def set_workflow(self, workflow: Workflow, with_arguments: bool = True) -> None:
         """Move the step reference to another workflow.
@@ -1086,7 +1095,7 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
                 parameter=self._.parameter
             )
         except AttributeError as exc:
-            raise KeyError(attr) from exc
+            raise KeyError(f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}") from exc
 
     def __getattr__(self, attr: str) -> "ParameterReference":
         try:
@@ -1124,6 +1133,9 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
         return (
             (isinstance(other, ParameterReference) and self._.parameter == other._.parameter and self.__field__ == other.__field__)
         )
+
+    def __make_reference__(self, **kwargs) -> "StepReference":
+        return self._.parameter.make_reference(**kwargs)
 
 class IterableParameterReference(IterableMixin, ParameterReference[U]):
     def __inner_iter__(self) -> Generator[Any, None, None]:
@@ -1215,7 +1227,7 @@ class StepReference(FieldableMixin, Reference[U]):
                 workflow=self.__workflow__, step=self._.step, field=attr
             )
         except AttributeError as exc:
-            raise KeyError(attr) from exc
+            raise KeyError(f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}") from exc
 
     def __getattr__(self, attr: str) -> "StepReference":
         try:
@@ -1256,6 +1268,9 @@ class StepReference(FieldableMixin, Reference[U]):
             workflow: workflow to update the step
         """
         self._.step.set_workflow(workflow)
+
+    def __make_reference__(self, **kwargs) -> "StepReference":
+        return self._.step.make_reference(**kwargs)
 
 class IterableStepReference(IterableMixin, StepReference[U]):
     def __getitem__(self, attr: str | int) -> "StepReference"[Any]:
