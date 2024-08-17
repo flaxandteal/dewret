@@ -1095,7 +1095,11 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
                 parameter=self._.parameter
             )
         except AttributeError as exc:
-            raise KeyError(f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}") from exc
+            raise KeyError(
+                f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}" +
+                ". This could be because you are trying to iterate/index a reference whose type is not definitely iterable - double check your typehints."
+                if isinstance(attr, int) else ""
+            ) from exc
 
     def __getattr__(self, attr: str) -> "ParameterReference":
         try:
@@ -1227,7 +1231,11 @@ class StepReference(FieldableMixin, Reference[U]):
                 workflow=self.__workflow__, step=self._.step, field=attr
             )
         except AttributeError as exc:
-            raise KeyError(f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}") from exc
+            raise KeyError(
+                f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}" +
+                ". This could be because you are trying to iterate/index a reference whose type is not definitely iterable - double check your typehints."
+                if isinstance(attr, int) else ""
+            ) from exc
 
     def __getattr__(self, attr: str) -> "StepReference":
         try:
