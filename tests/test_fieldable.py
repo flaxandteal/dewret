@@ -113,7 +113,7 @@ def test_can_iterate():
         return int(alpha + beta)
 
     @task()
-    def test_list() -> list:
+    def test_list() -> list[int | float]:
         return [1, 2.]
 
     @subworkflow()

@@ -125,6 +125,7 @@ def test_subworkflows_can_use_globals() -> None:
         inputs:
           CONSTANT:
             label: CONSTANT
+            default: 3
             type: int
           num:
             label: num
@@ -275,6 +276,7 @@ def test_subworkflows_can_return_lists() -> None:
             type: int
           CONSTANT:
             label: CONSTANT
+            default: 3
             type: int
           GLOBAL_QUEUE:
             label: GLOBAL_QUEUE
@@ -314,6 +316,7 @@ def test_subworkflows_can_return_lists() -> None:
             label: num
             type: int
           CONSTANT:
+            default: 3
             label: CONSTANT
             type: int
         outputs:
@@ -345,6 +348,7 @@ def test_subworkflows_can_return_lists() -> None:
         cwlVersion: 1.2
         inputs:
           CONSTANT:
+            default: 3
             label: CONSTANT
             type: int
           num:
@@ -461,6 +465,7 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
         cwlVersion: 1.2
         inputs:
           CONSTANT:
+            default: 3
             label: CONSTANT
             type: int
           num:
@@ -502,6 +507,7 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
             label: num
             type: int
           CONSTANT:
+            default: 3
             label: CONSTANT
             type: int
         outputs:
