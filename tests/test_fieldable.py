@@ -156,6 +156,22 @@ def test_can_iterate():
 
     assert workflow.result._.step.positional_args == {"alpha": True, "beta": True, "charlie": True}
 
+    @dataclass
+    class MyListWrapper:
+        my_list: list[int]
+
+    @task()
+    def test_list_2() -> MyListWrapper:
+        return MyListWrapper(my_list=[1, 2])
+
+    @subworkflow()
+    def test_iterated_2(my_wrapper: MyListWrapper) -> int:
+        return test_task(*my_wrapper.my_list)
+
+    with set_configuration(allow_positional_args=True, flatten_all_nested=True):
+        result = test_iterated_2(my_wrapper=test_list_2())
+        workflow = construct(result, simplify_ids=True)
+
 def test_can_use_plain_dict_fields():
     @subworkflow()
     def test_dict(left: int, right: float) -> dict[str, float | int]:
