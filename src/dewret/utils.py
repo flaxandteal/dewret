@@ -119,6 +119,9 @@ def is_raw_type(typ: type) -> bool:
     return issubclass(typ, str | float | bool | bytes | int | None | list | dict)
 
 
+def is_firm(value: Any, check: Callable[[Any], bool] | None = None) -> bool:
+    return is_raw(value, lambda x: isinstance(x, tuple))
+
 def is_raw(value: Any, check: Callable[[Any], bool] | None = None) -> bool:
     """Check if a variable counts as "raw".
 
