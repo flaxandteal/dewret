@@ -54,9 +54,9 @@ def pi_exported_from_math() -> float:
 
 
 @task()
-def test_recursive() -> float:
+def try_recursive() -> float:
     """Get pi from math package by name."""
-    return test_recursive()
+    return try_recursive()
 
 
 @task()
@@ -193,7 +193,7 @@ def test_nesting_does_not_identify_imports_as_nesting() -> None:
         pi_hidden_by_math,
         pi_hidden_by_math_2,
     ]
-    bad = [test_recursive, pi_with_visible_module_task]
+    bad = [try_recursive, pi_with_visible_module_task]
     for tsk in bad:
         with pytest.raises(TaskException) as exc:
             tsk()
@@ -216,7 +216,7 @@ def test_normal_objects_cannot_be_used_in_subworkflows() -> None:
         unacceptable_object_usage()
     assert (
         str(exc.value)
-        == "Nested tasks must now only refer to global parameters, raw or tasks, not objects: MyStrangeClass"
+        == "Attempted to build a workflow from a return-value/result/expression with no references."
     )
 
 
@@ -237,3 +237,39 @@ def test_subworkflows_must_return_a_task() -> None:
 
     result = unacceptable_nested_return(int_not_global=False)
     construct(result)
+
+bad_num = 3
+good_num: int = 4
+
+def test_must_annotate_global() -> None:
+    worse_num = 3
+
+    @subworkflow()
+    def check_annotation() -> int | float:
+        return increment(num=bad_num)
+
+    with pytest.raises(TaskException) as exc:
+        result = check_annotation()
+
+    assert (
+        str(exc.value)
+        == "Could not find a type annotation for bad_num for check_annotation"
+    )
+
+    @subworkflow()
+    def check_annotation_2() -> int | float:
+        return increment(num=worse_num)
+
+    with pytest.raises(TaskException) as exc:
+        result = check_annotation_2()
+
+    assert (
+        str(exc.value)
+        == "Cannot use free variables - please put worse_num at the global scope"
+    )
+
+    @subworkflow()
+    def check_annotation_3() -> int | float:
+        return increment(num=good_num)
+
+    check_annotation_3()

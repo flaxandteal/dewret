@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union
+from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union, Any
 from dataclasses import dataclass
 import base64
 from contextlib import contextmanager
@@ -99,9 +99,6 @@ class Reference(Generic[U], Symbol):
         self._raise_unevaluatable_error()
         return False
 
-    def __iter__(self) -> Iterator["Reference"]:
-        yield IteratedGenerator(self)
-
     def __int__(self) -> bool:
         self._raise_unevaluatable_error()
         return False
@@ -121,6 +118,21 @@ class Reference(Generic[U], Symbol):
         """Global description of the reference."""
         return self.__name__
 
+class IterableMixin(Reference[U]):
+    def __iter__(self):
+        count = -1
+        for _ in self.__inner_iter__():
+            yield Iterated(to_wrap=self, iteration=(count := count + 1))
+
+    def __inner_iter__(self) -> Generator[Any, None, None]:
+        while True:
+            yield None
+
+    def __getitem__(self, attr: str | int) -> Reference[U]:
+        if isinstance(attr, int):
+            return Iterated(to_wrap=self, iteration=attr)
+        return super().__getitem__(attr)
+
 class IteratedGenerator(Generic[U]):
     __wrapped__: Reference[U]
 
@@ -129,7 +141,7 @@ class IteratedGenerator(Generic[U]):
 
     def __iter__(self):
         count = -1
-        while True:
+        for _ in self.__wrapped__.__inner_iter__():
             yield Iterated(to_wrap=self.__wrapped__, iteration=(count := count + 1))
 
 
@@ -143,6 +155,10 @@ class Iterated(Reference[U]):
         super().__init__(*args, **kwargs)
 
     @property
+    def _(self):
+        return self.__wrapped__._
+
+    @property
     def __root_name__(self) -> str:
         return f"{self.__wrapped__.__root_name__}[{self.__iteration__}]"
 
@@ -153,8 +169,9 @@ class Iterated(Reference[U]):
     def __hash__(self) -> int:
         return hash(self.__root_name__)
 
-    def __field__(self) -> str:
-        return str(self.__iteration__)
+    @property
+    def __field__(self) -> tuple[str]:
+        return tuple(list(self.__wrapped__.__field__) + [str(self.__iteration__)])
 
     @property
     def __workflow__(self) -> WorkflowProtocol:

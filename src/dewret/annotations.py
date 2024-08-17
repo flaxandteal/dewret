@@ -4,10 +4,12 @@ import sys
 import importlib
 from functools import lru_cache
 from types import FunctionType
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Callable, get_origin, get_args, Mapping
+from dataclasses import dataclass
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Callable, get_origin, get_args, Mapping, TypeAliasType
 
 T = TypeVar("T")
 AtRender = Annotated[T, "AtRender"]
+Fixed = Annotated[T, "Fixed"]
 
 class FunctionAnalyser:
     _fn: Callable[..., Any]
@@ -57,6 +59,12 @@ class FunctionAnalyser:
                     )
         return imported_names
 
+    @property
+    def free_vars(self):
+        if self.fn.__code__ and self.fn.__closure__:
+            return dict(zip(self.fn.__code__.co_freevars, (c.cell_contents for c in self.fn.__closure__)))
+        return {}
+
     def get_argument_annotation(self, arg: str, exhaustive: bool=False) -> type | None:
         all_annotations: dict[str, type] = {}
         typ: type | None = None
@@ -69,6 +77,9 @@ class FunctionAnalyser:
                 elif (orig_pair := self.get_all_imported_names().get(arg)):
                     orig_module, orig_name = orig_pair
                     typ = orig_module.__annotations__.get(orig_name)
+                elif (value := self.free_vars.get(arg)):
+                    if not inspect.isclass(value) or inspect.isfunction(value):
+                        raise RuntimeError(f"Cannot use free variables - please put {arg} at the global scope")
         return typ
 
     def argument_has(self, arg: str, annotation: type, exhaustive: bool=False) -> bool:
@@ -81,7 +92,9 @@ class FunctionAnalyser:
     @property
     def globals(self) -> Mapping[str, Any]:
         try:
-            fn_globals = inspect.getclosurevars(self.fn).globals
+            fn_tuple = inspect.getclosurevars(self.fn)
+            fn_globals = dict(fn_tuple.globals)
+            fn_globals.update(fn_tuple.nonlocals)
         # This covers the case of wrapping, rather than decorating.
         except TypeError:
             fn_globals = {}

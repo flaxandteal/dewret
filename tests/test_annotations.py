@@ -1,9 +1,11 @@
 import pytest
 import yaml
+from typing import Literal
 
 from dewret.tasks import task, construct, subworkflow, TaskException
 from dewret.renderers.cwl import render
-from dewret.annotations import AtRender, FunctionAnalyser
+from dewret.annotations import AtRender, FunctionAnalyser, Fixed
+from dewret.core import set_configuration
 
 from ._lib.extra import increment, sum, try_nothing
 
@@ -141,3 +143,31 @@ def test_at_render_between_modules() -> None:
     workflow = construct(result, simplify_ids=True)
     subworkflows = render(workflow, allow_complex_types=True)
     rendered = subworkflows["__root__"]
+
+list_2: Fixed[list[int]] = [0, 1, 2, 3]
+
+def test_can_loop_over_fixed_length() -> None:
+    @subworkflow()
+    def loop_over_lists(list_1: list[int]) -> list[int]:
+        result = []
+        for a, b in zip(list_1, list_2):
+            result.append(a + b)
+        return result
+
+    with set_configuration(flatten_all_nested=True):
+        result = loop_over_lists(list_1=[5, 6, 7, 8])
+        workflow = construct(result, simplify_ids=True)
+    subworkflows = render(workflow, allow_complex_types=True)
+    rendered = subworkflows["__root__"]
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs: {}
+        outputs:
+          expression: '[list_1[0] + list_2[0], list_1[1] + list_2[1], list_1[2] + list_2[2],
+            list_1[3] + list_2[3]]'
+          source:
+          - list_1
+          - list_2
+        steps: {}
+    """)

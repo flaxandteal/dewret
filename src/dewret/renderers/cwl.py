@@ -40,6 +40,7 @@ from dewret.workflow import (
     StepReference,
     ParameterReference,
     Unset,
+    expr_to_references
 )
 from dewret.utils import flatten, DataclassProtocol, firm_to_raw, flatten_if_set
 from dewret.render import base_render
@@ -494,19 +495,28 @@ class OutputsDefinition:
         Returns:
             CWL-like structure representing all workflow outputs.
         """
-        return cls(
-            outputs=[
-                    to_output_schema(
-                        with_field(result), result.__type__, output_source=to_name(result)
-                    ) for result in results
-                ]
-                if isinstance(results, list | tuple | Tuple) else {
-                key: to_output_schema(
-                    with_field(result), result.__type__, output_source=to_name(result)
+        def _build_results(result):
+            if isinstance(result, Reference):
+                return to_output_schema(
+                    with_field(result), with_type(result), output_source=to_name(result)
                 )
-                for key, result in results.items()
-            }
-        )
+            results = result
+            return (
+                [
+                    _build_results(result) for result in results
+                ] if isinstance(results, list | tuple | Tuple) else {
+                    key: _build_results(result) for key, result in results.items()
+                }
+            )
+        try:
+            return cls(outputs=_build_results(results))
+        except AttributeError:
+            expr, references = expr_to_references(results)
+            references = sorted({str(ref._.parameter) for ref in references})
+            return cls(outputs={
+                "expression": str(expr),
+                "source": references
+            })
 
     def render(self) -> dict[str, RawType] | list[RawType]:
         """Render to a dict-like structure.

@@ -45,14 +45,13 @@ from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar, copy_context
 from contextlib import contextmanager
 
-from .utils import is_raw, make_traceback, is_expr
+from .utils import is_raw, make_traceback, is_expr, is_raw_type
 from .workflow import (
     expr_to_references,
     unify_workflows,
     UNSET,
     Reference,
     StepReference,
-    ParameterReference,
     Workflow,
     Lazy,
     LazyEvaluation,
@@ -429,7 +428,7 @@ def task(
 
                 def _to_param_ref(value):
                     if isinstance(value, Parameter):
-                        return ParameterReference(workflow=__workflow__, parameter=value)
+                        return value.make_reference(workflow=__workflow__)
 
                 refs = []
                 for key, val in kwargs.items():
@@ -458,20 +457,17 @@ def task(
                         elif is_raw(value):
                             # We leave this reference dangling for a consumer to pick up ("tethered"), unless
                             # we are in a nested task, that does not have any existence of its own.
-                            kwargs[var] = ParameterReference(
-                                workflow=workflow,
-                                parameter=param(
-                                    var,
-                                    value,
-                                    tethered=(
-                                        False if nested and (
-                                            flatten_nested or get_configuration("flatten_all_nested")
-                                        ) else None
-                                    ),
-                                    autoname=True,
-                                    typ=analyser.get_argument_annotation(var) or UNSET
+                            kwargs[var] = param(
+                                var,
+                                value,
+                                tethered=(
+                                    False if nested and (
+                                        flatten_nested or get_configuration("flatten_all_nested")
+                                    ) else None
                                 ),
-                            )
+                                autoname=True,
+                                typ=analyser.get_argument_annotation(var) or UNSET
+                            ).make_reference(workflow=workflow)
                 original_kwargs = dict(kwargs)
                 fn_globals = analyser.globals
 
@@ -483,7 +479,7 @@ def task(
                     #           "Captured parameter {var} (global variable in task) shadows an argument"
                     #        )
                     if isinstance(value, Parameter):
-                        kwargs[var] = ParameterReference(workflow=workflow, parameter=value)
+                        kwargs[var] = value.make_reference(workflow=workflow)
                     elif is_task(value) or ensure_lazy(value) is not None:
                         if not nested and _workaround_check_value_is_task(
                             fn, var, value
@@ -514,19 +510,22 @@ def task(
                         value is evaluate or value is construct  # Allow manual building.
                     ):
                         kwargs[var] = value
+                    elif (
+                        inspect.isclass(value) or
+                        inspect.isfunction(value)
+                    ):
+                        # We assume these are loaded at runtime.
+                        ...
                     elif is_raw(value) or (
                         (attrs_has(value) or is_dataclass(value)) and
                         not inspect.isclass(value)
                     ):
-                        kwargs[var] = ParameterReference(
-                            workflow=workflow,
-                            parameter=param(
-                                var,
-                                value,
-                                tethered=False,
-                                typ=analyser.get_argument_annotation(var, exhaustive=True) or UNSET
-                            )
-                        )
+                        kwargs[var] = param(
+                            var,
+                            default=value,
+                            tethered=False,
+                            typ=analyser.get_argument_annotation(var, exhaustive=True) or UNSET
+                        ).make_reference(workflow=workflow)
                     elif nested:
                         raise NotImplementedError(
                             f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}"
@@ -546,16 +545,14 @@ def task(
                     else:
                         nested_workflow = Workflow(name=fn.__name__)
                         nested_globals: Param.kwargs = {
-                            var: ParameterReference(
-                                workflow=nested_workflow,
-                                parameter=param(
-                                    var,
-                                    typ=(
-                                        value.__type__
-                                    ),
-                                    tethered=nested_workflow
+                            var: param(
+                                var,
+                                default=value.__default__ if hasattr(value, "__default__") else UNSET,
+                                typ=(
+                                    value.__type__
                                 ),
-                            ) if isinstance(value, Reference) else value
+                                tethered=nested_workflow
+                            ).make_reference(workflow=nested_workflow) if isinstance(value, Reference) else value
                             for var, value in kwargs.items()
                         }
                         nested_kwargs = {key: value for key, value in nested_globals.items() if key in original_kwargs}
