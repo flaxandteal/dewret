@@ -45,7 +45,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar, copy_context
 from contextlib import contextmanager
 
-from .utils import is_raw, make_traceback, is_expr, is_raw_type
+from .utils import is_firm, make_traceback, is_expr, is_raw_type
 from .workflow import (
     expr_to_references,
     unify_workflows,
@@ -454,7 +454,7 @@ def task(
                     for var, value in kwargs.items():
                         if analyser.is_at_construct_arg(var):
                             kwargs[var] = value
-                        elif is_raw(value):
+                        elif is_firm(value):
                             # We leave this reference dangling for a consumer to pick up ("tethered"), unless
                             # we are in a nested task, that does not have any existence of its own.
                             kwargs[var] = param(
@@ -516,7 +516,7 @@ def task(
                     ):
                         # We assume these are loaded at runtime.
                         ...
-                    elif is_raw(value) or (
+                    elif is_firm(value) or (
                         (attrs_has(value) or is_dataclass(value)) and
                         not inspect.isclass(value)
                     ):
