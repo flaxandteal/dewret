@@ -205,7 +205,7 @@ class StepDefinition:
                     if isinstance(ref, ReferenceDefinition) else
                     {"expression": render_expression(ref)}
                     if isinstance(ref, Basic) else
-                    {"default": ref.value}
+                    {"default": firm_to_raw(ref.value)}
                     if hasattr(ref, "value")
                     else {"expression": render_expression(ref)}
                 )
@@ -393,7 +393,7 @@ def _raw_to_command_input_schema_internal(
             )
         structure["items"] = to_cwl_type(label, typeset.pop())["type"]
     elif not isinstance(value, Unset):
-        structure["default"] = value
+        structure["default"] = firm_to_raw(value)
     return structure
 
 
@@ -433,13 +433,15 @@ class InputsDefinition:
         Returns:
             CWL-like structure representing all workflow outputs.
         """
+        parameters_dedup = {p._.parameter for p in parameters if isinstance(p, ParameterReference)}
+        parameters = list(parameters_dedup) + [p for p in parameters if not isinstance(p, ParameterReference)]
         return cls(
             inputs={
-                input.__name__: cls.CommandInputParameter(
+                input.name: cls.CommandInputParameter(
                     label=input.__name__,
                     default=(default := flatten_if_set(input.__default__)),
                     type=raw_to_command_input_schema(
-                        label=input.__name__, value=default
+                        label=input.name, value=default
                     ),
                 )
                 for input in parameters
@@ -462,7 +464,7 @@ class InputsDefinition:
                 "label": input.label,
             }
             if not isinstance(input.default, Unset):
-                item["default"] = input.default
+                item["default"] = firm_to_raw(input.default)
             result[key] = item
         return result
 
@@ -512,7 +514,12 @@ class OutputsDefinition:
             return cls(outputs=_build_results(results))
         except AttributeError:
             expr, references = expr_to_references(results)
-            references = sorted({str(ref._.parameter) for ref in references})
+            references = sorted(
+                {
+                    str(ref._.parameter) if isinstance(ref, ParameterReference) else str(ref._.step)
+                    for ref in references
+                }
+            )
             return cls(outputs={
                 "expression": str(expr),
                 "source": references

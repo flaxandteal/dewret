@@ -457,15 +457,16 @@ def task(
                         elif is_firm(value):
                             # We leave this reference dangling for a consumer to pick up ("tethered"), unless
                             # we are in a nested task, that does not have any existence of its own.
+                            tethered = (
+                                False if nested and (
+                                    flatten_nested or get_configuration("flatten_all_nested")
+                                ) else None
+                            )
                             kwargs[var] = param(
                                 var,
                                 value,
-                                tethered=(
-                                    False if nested and (
-                                        flatten_nested or get_configuration("flatten_all_nested")
-                                    ) else None
-                                ),
-                                autoname=True,
+                                tethered=tethered,
+                                autoname=tethered is not False,
                                 typ=analyser.get_argument_annotation(var) or UNSET
                             ).make_reference(workflow=workflow)
                 original_kwargs = dict(kwargs)

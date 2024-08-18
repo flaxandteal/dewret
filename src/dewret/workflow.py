@@ -32,8 +32,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .core import RawType, IterableMixin, Reference, get_configuration, Raw, IteratedGenerator
-from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset, strip_annotations
+from .core import RawType, IterableMixin, Reference, get_configuration, Raw, IteratedGenerator, strip_annotations
+from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -119,6 +119,7 @@ class Parameter(Generic[T], Symbol):
     """
 
     __name__: str
+    __name_suffix__: str = ""
     __default__: T | UnsetType[T]
     __tethered__: Literal[False] | None | BaseStep | Workflow
     __fixed_type__: type[T] | Unset
@@ -143,8 +144,8 @@ class Parameter(Generic[T], Symbol):
         self.__original_name__ = name
 
         # TODO: is using this in a step hash a risk of ambiguity? (full name is circular)
-        #if autoname:
-        #    name = f"{name}-{uuid4()}"
+        if autoname:
+            self.__name_suffix__ = f"-{uuid4()}"
         self.autoname = autoname
 
         self.__name__ = name
@@ -215,7 +216,7 @@ class Parameter(Generic[T], Symbol):
         """
         tethered = self.__tethered__
         if tethered is False or tethered is None or self.autoname is False:
-            return self.__name__
+            return self.__name__ + self.__name_suffix__
         else:
             return f"{tethered.name}-{self.__original_name__}"
 
@@ -1166,7 +1167,9 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
 class IterableParameterReference(IterableMixin, ParameterReference[U]):
     def __inner_iter__(self) -> Generator[Any, None, None]:
         inner, metadata = strip_annotations(self.__type__)
-        if metadata and metadata[0] == "Fixed" and isinstance(self.__default__, Sized):
+        if self.__fixed_len__ is not None:
+            yield from range(self.__fixed_len__)
+        elif metadata and metadata[0] == "Fixed" and isinstance(self.__default__, Sized):
             yield from range(len(self.__default__))
         else:
             while True:
