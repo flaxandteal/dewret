@@ -24,7 +24,7 @@ import base64
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter, OrderedDict
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable, get_origin, get_args, Generator, Sized
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable, get_origin, get_args, Generator, Sized, Sequence
 from uuid import uuid4
 from sympy import Symbol, Expr, Basic, Tuple, Dict, nan
 
@@ -701,8 +701,8 @@ class FieldableProtocol(Protocol):
 
 # Subclass Reference so that we know Reference methods/attrs are available.
 class FieldableMixin:
-    def __init__(self: FieldableProtocol, *args, field: str | None = None, **kwargs):
-        self.__field__: tuple[str, ...] = tuple(field.split(self.__field_sep__)) if field else ()
+    def __init__(self: FieldableProtocol, *args, field: str | int | tuple | None = None, **kwargs):
+        self.__field__: tuple[str, ...] = (field if isinstance(field, tuple) else (field,)) if field is not None else ()
         super().__init__(*args, **kwargs)
 
     @property
@@ -716,7 +716,17 @@ class FieldableMixin:
         May be remapped by the workflow to something nicer
         than the ID.
         """
-        return self.__field_sep__.join([super().__name__] + list(self.__field__))
+        return super().__name__ + self.__field_suffix__
+
+    @property
+    def __field_suffix__(self) -> str:
+        result = ""
+        for cmpt in self.__field__:
+            if isinstance(cmpt, int):
+                result += f"[{cmpt}]"
+            else:
+                result += f"{self.__field_sep__}{cmpt}"
+        return result
 
     def find_field(self: FieldableProtocol, field, fallback_type: type | None = None, **init_kwargs: Any) -> Reference:
         """Field within the reference, if possible.
@@ -729,36 +739,46 @@ class FieldableMixin:
         parent_type, _ = strip_annotations(self.__type__)
         field_type = fallback_type
 
-        if is_dataclass(parent_type):
-            try:
-                field_type = next(iter(filter(lambda fld: fld.name == field, dataclass_fields(parent_type)))).type
-            except StopIteration:
-                raise AttributeError(f"Dataclass {parent_type} does not have field {field}")
-        elif attr_has(parent_type):
-            resolve_types(parent_type)
-            try:
-                field_type = getattr(attrs_fields(parent_type), field).type
-            except AttributeError:
-                raise AttributeError(f"attrs-class {parent_type} does not have field {field}")
-        # TypedDict
-        elif inspect.isclass(parent_type) and issubclass(parent_type, dict) and hasattr(parent_type, "__annotations__"):
-            try:
-                field_type = parent_type.__annotations__[field]
-            except KeyError:
-                raise AttributeError(f"TypedDict {parent_type} does not have field {field}")
-        if not field_type and get_configuration("allow_plain_dict_fields") and strip_annotations(get_origin(parent_type))[0] is dict:
-            args = get_args(parent_type)
-            if len(args) == 2 and args[0] is str:
-                field_type = args[1]
-            else:
-                raise AttributeError(f"Can only get fields for plain dicts if annotated dict[str, TYPE]")
+        if isinstance(field, int):
+            base = get_origin(parent_type)
+            if not inspect.isclass(base) or not issubclass(base, Sequence):
+                raise AttributeError(f"Tried to index int {field} into a non-sequence type {parent_type} (base: {base})")
+            if not (field_type := get_args(parent_type)[0]):
+                raise AttributeError(
+                    f"Tried to index int {field} into type {parent_type} but can only do so if the first type argument "
+                    f"is the element type (args: {get_args(parent_type)}"
+                )
+        else:
+            if is_dataclass(parent_type):
+                try:
+                    field_type = next(iter(filter(lambda fld: fld.name == field, dataclass_fields(parent_type)))).type
+                except StopIteration:
+                    raise AttributeError(f"Dataclass {parent_type} does not have field {field}")
+            elif attr_has(parent_type):
+                resolve_types(parent_type)
+                try:
+                    field_type = getattr(attrs_fields(parent_type), field).type
+                except AttributeError:
+                    raise AttributeError(f"attrs-class {parent_type} does not have field {field}")
+            # TypedDict
+            elif inspect.isclass(parent_type) and issubclass(parent_type, dict) and hasattr(parent_type, "__annotations__"):
+                try:
+                    field_type = parent_type.__annotations__[field]
+                except KeyError:
+                    raise AttributeError(f"TypedDict {parent_type} does not have field {field}")
+            if not field_type and get_configuration("allow_plain_dict_fields") and strip_annotations(get_origin(parent_type))[0] is dict:
+                args = get_args(parent_type)
+                if len(args) == 2 and args[0] is str:
+                    field_type = args[1]
+                else:
+                    raise AttributeError(f"Can only get fields for plain dicts if annotated dict[str, TYPE]")
 
         if field_type:
             if not issubclass(self.__class__, Reference):
                 raise TypeError("Only references can have a fieldable mixin")
 
             if self.__field__:
-                field = self.__field_sep__.join(self.__field__) + self.__field_sep__ + field
+                field = tuple(list(self.__field__) + [field])
 
             return self.__make_reference__(typ=field_type, field=field, **init_kwargs)
 
@@ -1097,8 +1117,10 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
         except AttributeError as exc:
             raise KeyError(
                 f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}" +
-                ". This could be because you are trying to iterate/index a reference whose type is not definitely iterable - double check your typehints."
-                if isinstance(attr, int) else ""
+                (
+                    ". This could be because you are trying to iterate/index a reference whose type is not definitely iterable - double check your typehints."
+                    if isinstance(attr, int) else ""
+                )
             ) from exc
 
     def __getattr__(self, attr: str) -> "ParameterReference":
@@ -1233,8 +1255,10 @@ class StepReference(FieldableMixin, Reference[U]):
         except AttributeError as exc:
             raise KeyError(
                 f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}" +
-                ". This could be because you are trying to iterate/index a reference whose type is not definitely iterable - double check your typehints."
-                if isinstance(attr, int) else ""
+                (
+                    ". This could be because you are trying to iterate/index a reference whose type is not definitely iterable - double check your typehints."
+                    if isinstance(attr, int) else ""
+                )
             ) from exc
 
     def __getattr__(self, attr: str) -> "StepReference":
@@ -1281,11 +1305,6 @@ class StepReference(FieldableMixin, Reference[U]):
         return self._.step.make_reference(**kwargs)
 
 class IterableStepReference(IterableMixin, StepReference[U]):
-    def __getitem__(self, attr: str | int) -> "StepReference"[Any]:
-        if isinstance(attr, int):
-            return Iterated(to_wrap=self, iteration=attr)
-        return super().__getitem__(attr)
-
     def __iter__(self):
         yield IteratedGenerator(self)
 
