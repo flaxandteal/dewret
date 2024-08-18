@@ -120,17 +120,14 @@ class Reference(Generic[U], Symbol):
 
 class IterableMixin(Reference[U]):
     def __iter__(self):
-        count = -1
-        for _ in self.__inner_iter__():
-            yield Iterated(to_wrap=self, iteration=(count := count + 1))
+        for count, _ in enumerate(self.__inner_iter__()):
+            yield super().__getitem__(count)
 
     def __inner_iter__(self) -> Generator[Any, None, None]:
         while True:
             yield None
 
     def __getitem__(self, attr: str | int) -> Reference[U]:
-        if isinstance(attr, int):
-            return Iterated(to_wrap=self, iteration=attr)
         return super().__getitem__(attr)
 
 class IteratedGenerator(Generic[U]):
