@@ -1092,7 +1092,16 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
     @property
     def __default__(self) -> T | Unset:
         """Default value of the parameter."""
-        return self._.parameter.default
+        default = self._.parameter.default
+        if isinstance(default, Unset):
+            return default
+
+        for field in self.__field__:
+            if isinstance(default, dict) or isinstance(field, int):
+                default = default[field]
+            else:
+                default = getattr(default, field)
+        return default
 
     @property
     def __root_name__(self) -> str:
@@ -1165,11 +1174,18 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
         return self._.parameter.make_reference(**kwargs)
 
 class IterableParameterReference(IterableMixin, ParameterReference[U]):
+    def __iter__(self):
+        inner, metadata = strip_annotations(self.__type__)
+        if metadata and "AtRender" in metadata and isinstance(self.__default__, Iterable):
+            yield from self.__default__
+        else:
+            yield from super().__iter__()
+
     def __inner_iter__(self) -> Generator[Any, None, None]:
         inner, metadata = strip_annotations(self.__type__)
         if self.__fixed_len__ is not None:
             yield from range(self.__fixed_len__)
-        elif metadata and metadata[0] == "Fixed" and isinstance(self.__default__, Sized):
+        elif metadata and "Fixed" in metadata and isinstance(self.__default__, Sized):
             yield from range(len(self.__default__))
         else:
             while True:
