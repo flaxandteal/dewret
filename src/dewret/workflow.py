@@ -1136,7 +1136,7 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
             typ = self.__type__.__name__
         except AttributeError:
             typ = str(self.__type__)
-        name = self.__field_sep__.join([self._.unique_name] + list(self.__field__))
+        name = self._.unique_name + self.__field_suffix__
         return f"{typ}|:param:{name}"
 
     def __hash__(self) -> int:
@@ -1230,7 +1230,7 @@ class StepReference(FieldableMixin, Reference[U]):
 
     def __repr__(self) -> str:
         """Hashable reference to the step (and field)."""
-        return self.__field_sep__.join([self._.step.id] + list(self.__field__))
+        return self._.step.id + self.__field_suffix__
 
     def __hash__(self) -> int:
         return hash((repr(self), id(self.__workflow__)))
