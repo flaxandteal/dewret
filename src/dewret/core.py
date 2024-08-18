@@ -1,6 +1,6 @@
-from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union, Any
 from dataclasses import dataclass
 import base64
+from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union, Any, get_args, get_origin, Annotated
 from contextlib import contextmanager
 from contextvars import ContextVar
 from sympy import Expr, Symbol
@@ -11,9 +11,13 @@ FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmTyp
 
 U = TypeVar("U")
 
-BasicType = str | float | bool | bytes | int | None
-RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
-FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
+def strip_annotations(parent_type: type) -> tuple[type, tuple]:
+    # Strip out any annotations. This should be auto-flattened, so in theory only one iteration could occur.
+    metadata = []
+    while get_origin(parent_type) is Annotated:
+        parent_type, *parent_metadata = get_args(parent_type)
+        metadata += list(parent_metadata)
+    return parent_type, tuple(metadata)
 
 class WorkflowProtocol(Protocol):
     ...
@@ -119,13 +123,29 @@ class Reference(Generic[U], Symbol):
         return self.__name__
 
 class IterableMixin(Reference[U]):
+    __fixed_len__: int | None = None
+
+    def __init__(self, typ: type[U] | None=None, **kwargs):
+        base = strip_annotations(typ)[0]
+        super().__init__(typ=typ, **kwargs)
+        if get_origin(base) == tuple and (args := get_args(base)):
+            # In the special case of an explicitly-typed tuple, we can state a length.
+            self.__fixed_len__ = len(args)
+
+    def __len__(self):
+        return self.__fixed_len__
+
     def __iter__(self):
         for count, _ in enumerate(self.__inner_iter__()):
             yield super().__getitem__(count)
 
     def __inner_iter__(self) -> Generator[Any, None, None]:
-        while True:
-            yield None
+        if self.__fixed_len__ is not None:
+            for i in range(self.__fixed_len__):
+                yield i
+        else:
+            while True:
+                yield None
 
     def __getitem__(self, attr: str | int) -> Reference[U]:
         return super().__getitem__(attr)

@@ -7,6 +7,7 @@ from typing import Unpack, TypedDict
 from dewret.tasks import task, construct, subworkflow, set_configuration
 from dewret.workflow import param
 from dewret.renderers.cwl import render
+from dewret.annotations import Fixed
 
 from ._lib.extra import double, mod10, sum, pi
 
@@ -171,6 +172,67 @@ def test_can_iterate():
     with set_configuration(allow_positional_args=True, flatten_all_nested=True):
         result = test_iterated_2(my_wrapper=test_list_2())
         workflow = construct(result, simplify_ids=True)
+
+    @task()
+    def test_list_3() -> Fixed[list[tuple[int, int]]]:
+        return [(0, 1), (2, 3)]
+
+    @subworkflow()
+    def test_iterated_3(param: Fixed[list[tuple[int, int]]]) -> int:
+        retval = mod10(*test_list_3()[0])
+        for pair in param:
+            a, b = pair
+            retval += a + b
+        return mod10(retval)
+
+    with set_configuration(allow_positional_args=True, flatten_all_nested=True):
+        result = test_iterated_3(param=[(0, 1), (2, 3)])
+        workflow = construct(result, simplify_ids=True)
+
+    rendered = render(workflow, allow_complex_types=True)["__root__"]
+
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          param:
+            default:
+            - - 0
+              - 1
+            - - 2
+              - 3
+            label: param
+            type:
+              type:
+                items: array
+                label: param
+                type: array
+        outputs:
+          out:
+            label: out
+            outputSource: mod10-1/out
+            type: int
+        steps:
+          mod10-1:
+            in:
+              num:
+                expression: $(param[0][0] + param[0][1] + param[1][0] + param[1][1] + mod10-2)
+            out:
+            - out
+            run: mod10
+          mod10-2:
+            in:
+              num:
+                source: test_list_3-1[0]
+            out:
+            - out
+            run: mod10
+          test_list_3-1:
+            in: {}
+            out:
+            - out
+            run: test_list_3
+    """)
 
 def test_can_use_plain_dict_fields():
     @subworkflow()

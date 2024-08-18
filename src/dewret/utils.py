@@ -104,14 +104,6 @@ def flatten(value: Any) -> RawType:
 def is_expr(value: Any) -> bool:
     return is_raw(value, lambda x: isinstance(x, Basic) or isinstance(x, tuple) or isinstance(x, Reference) or isinstance(x, Raw))
 
-def strip_annotations(parent_type: type) -> tuple[type, tuple]:
-    # Strip out any annotations. This should be auto-flattened, so in theory only one iteration could occur.
-    metadata = []
-    while get_origin(parent_type) is Annotated:
-        parent_type, *parent_metadata = get_args(parent_type)
-        metadata += list(parent_metadata)
-    return parent_type, tuple(metadata)
-
 def is_raw_type(typ: type) -> bool:
     """Check if a type counts as "raw"."""
     if isinstance(typ, UnionType):
