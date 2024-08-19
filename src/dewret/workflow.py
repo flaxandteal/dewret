@@ -39,6 +39,8 @@ T = TypeVar("T")
 U = TypeVar("U")
 RetType = TypeVar("RetType")
 
+CHECK_IDS = False
+
 
 class Lazy(Protocol):
     """Requirements for a lazy-evaluatable function."""
@@ -345,11 +347,18 @@ class Workflow:
         return self.name
 
     def __repr__(self) -> str:
-        return self.name
+        if self._name:
+            return self.name
+        comp_tup = tuple(sorted(s.id for s in self.steps))
+
+        return f"workflow-{hasher(comp_tup)}"
 
     def __hash__(self) -> int:
         """Hashes for finding."""
-        return hash(repr(self))
+        return hash((
+            self._name,
+            tuple(self.steps),
+        ))
 
     def __eq__(self, other: object) -> bool:
         """Is this the same workflow?
@@ -416,7 +425,7 @@ class Workflow:
         return OrderedDict(sorted(((step.id, step) for step in self.steps), key=lambda x: x[0]))
 
     @classmethod
-    def assimilate(cls, left: Workflow, right: Workflow) -> "Workflow":
+    def assimilate(cls, *workflows) -> "Workflow":
         """Combine two Workflows into one Workflow.
 
         Takes two workflows and unifies them by combining steps
@@ -429,56 +438,56 @@ class Workflow:
             left: workflow to use as base
             right: workflow to combine on top
         """
-        if left == right:
-            return left
+        workflows = set(workflows)
+        base = next(iter(workflows))
 
-        new = cls()
+        if len(workflows) == 1:
+            return base
 
-        new._name = left._name or right._name
+        names = {w._name for w in workflows if w._name}
+        base._name = base._name or (names and next(iter(names))) or None
 
-        left_steps = left._indexed_steps
-        right_steps = right._indexed_steps
+        #left_steps = left._indexed_steps
+        #right_steps = right._indexed_steps
+        all_steps = sum((list(w._indexed_steps.items()) for w in workflows), [])
 
-        for step in list(left_steps.values()) + list(right_steps.values()):
-            step.set_workflow(new)
+        for _, step in all_steps:
+        #for step in list(left_steps.values()) + list(right_steps.values()):
+            step.set_workflow(base)
 
-        for step_id in left_steps.keys() & right_steps.keys():
-            if left_steps[step_id] != right_steps[step_id]:
+        indexed_steps = {}
+        for step_id, step in all_steps:
+            indexed_steps.setdefault(step_id, step)
+            if step != indexed_steps[step_id]:
                 raise RuntimeError(
                     f"Two steps have same ID but do not match: {step_id}"
                 )
 
-        for task_id in left.tasks.keys() & right.tasks.keys():
-            if left.tasks[task_id] != right.tasks[task_id]:
-                raise RuntimeError("Two tasks have same name but do not match")
+        all_tasks = sum((list(w.tasks.items()) for w in workflows), [])
+        indexed_tasks = {}
+        for task_id, task in all_tasks:
+            indexed_tasks.setdefault(task_id, task)
+            if task != indexed_tasks[task_id]:
+                raise RuntimeError(f"Two tasks have same name {task_id} but do not match")
 
-        indexed_steps = dict(left_steps)
-        indexed_steps.update(right_steps)
-        new.steps += list(indexed_steps.values())
-        new.tasks.update(left.tasks)
-        new.tasks.update(right.tasks)
+        base.steps = list(indexed_steps.values())
+        base.tasks = indexed_tasks
 
-        for step in new.steps:
-            step.set_workflow(new, with_arguments=True)
+        for step in base.steps:
+            step.set_workflow(base, with_arguments=True)
 
-        if left.result == right.result:
-            result = left.result
-        elif not left.result:
-            result = right.result
-        elif not right.result:
-            result = left.result
+        results = set((w.result for w in workflows if w.result))
+        if len(results) == 1:
+            result = next(iter(results))
         else:
-            if not isinstance(left.result, tuple | list):
-                left.result = [left.result]
-            if not isinstance(right.result, tuple | list):
-                right.result = [right.result]
-            result = list(left.result) + list(right.result)
+            results = {r if isinstance(r, tuple | list) else (r,) for r in results}
+            result = sum(map(list, results), [])
 
         if result is not None and result != []:
-            unify_workflows(result, new, set_only=True)
-            new.set_result(result)
+            unify_workflows(result, base, set_only=True)
+            base.set_result(result)
 
-        return new
+        return base
 
     def remap(self, step_id: str) -> str:
         """Apply name simplification if requested.
@@ -900,6 +909,7 @@ class BaseStep(WorkflowComponent):
         if with_arguments:
             for argument in self.arguments.values():
                 unify_workflows(argument, workflow, set_only=True)
+        self._id = None
 
     @property
     def return_type(self) -> Any:
@@ -922,6 +932,9 @@ class BaseStep(WorkflowComponent):
             return self.task.target
         return inspect.signature(inspect.unwrap(self.task.target)).return_annotation
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
     @property
     def name(self) -> str:
         """Name for this step.
@@ -938,12 +951,13 @@ class BaseStep(WorkflowComponent):
             self._id = self._generate_id()
             return self._id
 
-        check_id = self._generate_id()
-        if check_id != self._id:
-            return self._id
-            raise RuntimeError(
-                f"Cannot change a step after requesting its ID: {self.task}"
-            )
+        if CHECK_IDS:
+            check_id = self._generate_id()
+            if check_id != self._id:
+                return self._id
+                raise RuntimeError(
+                    f"Cannot change a step after requesting its ID: {self.task}"
+                )
         return self._id
 
     def _generate_id(self) -> str:
@@ -1346,10 +1360,7 @@ def merge_workflows(*workflows: Workflow) -> Workflow:
     Returns:
         One workflow with all steps.
     """
-    base = list(workflows).pop()
-    for workflow in workflows:
-        base = Workflow.assimilate(base, workflow)
-    return base
+    return Workflow.assimilate(*workflows)
 
 
 def is_task(task: Lazy) -> bool:
