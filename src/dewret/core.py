@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import base64
-from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union, Any, get_args, get_origin, Annotated
+from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union, Any, get_args, get_origin, Annotated, Never
 from contextlib import contextmanager
 from contextvars import ContextVar
 from sympy import Expr, Symbol
@@ -20,7 +20,8 @@ def strip_annotations(parent_type: type) -> tuple[type, tuple]:
     return parent_type, tuple(metadata)
 
 class WorkflowProtocol(Protocol):
-    ...
+    def remap(self, name: str) -> str:
+        ...
 
 class UnevaluatableError(Exception):
     ...
@@ -35,7 +36,7 @@ class ConstructConfiguration(TypedDict):
 CONSTRUCT_CONFIGURATION: ContextVar[ConstructConfiguration] = ContextVar("construct-configuration")
 
 @contextmanager
-def set_configuration(**kwargs: Unpack[ConstructConfiguration]):
+def set_configuration(**kwargs: Unpack[ConstructConfiguration]) -> Iterator[ContextVar[ConstructConfiguration]]:
     try:
         previous = ConstructConfiguration(**CONSTRUCT_CONFIGURATION.get())
     except LookupError:
@@ -55,8 +56,8 @@ def set_configuration(**kwargs: Unpack[ConstructConfiguration]):
     finally:
         CONSTRUCT_CONFIGURATION.set(previous)
 
-def get_configuration(key: str):
-    return CONSTRUCT_CONFIGURATION.get()[key]
+def get_configuration(key: str) -> RawType:
+    return CONSTRUCT_CONFIGURATION.get().get(key) # type: ignore
 
 class Reference(Generic[U], Symbol):
     """Superclass for all symbolic references to values."""
@@ -126,8 +127,8 @@ class IterableMixin(Reference[U]):
     __fixed_len__: int | None = None
 
     def __init__(self, typ: type[U] | None=None, **kwargs):
-        base = strip_annotations(typ)[0]
         super().__init__(typ=typ, **kwargs)
+        base = strip_annotations(self.__type__)[0]
         if get_origin(base) == tuple and (args := get_args(base)):
             # In the special case of an explicitly-typed tuple, we can state a length.
             self.__fixed_len__ = len(args)
@@ -181,7 +182,7 @@ class Iterated(Reference[U]):
 
     @property
     def __type__(self) -> type:
-        return Iterator[self.__wrapped__.__type__]
+        return self.__wrapped__.__type__
 
     def __hash__(self) -> int:
         return hash(self.__root_name__)
