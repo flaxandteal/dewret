@@ -3,7 +3,7 @@
 from typing import Callable
 from queue import Queue
 import yaml
-from dewret.tasks import construct, subworkflow, task, factory, set_configuration
+from dewret.tasks import construct, workflow, task, factory, set_configuration
 from dewret.renderers.cwl import render
 from dewret.workflow import param
 
@@ -35,19 +35,19 @@ def add_and_queue(num: int, queue: Queue[int]) -> Queue[int]:
     return queue
 
 
-@subworkflow()
+@workflow()
 def make_queue(num: int | float) -> Queue[int]:
     """Add a number to a queue."""
     queue = QueueFactory()
     return add_and_queue(num=to_int(num=num), queue=queue)
 
 
-@subworkflow()
+@workflow()
 def get_global_queue(num: int | float) -> Queue[int]:
     """Add a number to a global queue."""
     return add_and_queue(num=to_int(num=num), queue=GLOBAL_QUEUE)
 
-@subworkflow()
+@workflow()
 def get_global_queues(num: int | float) -> list[Queue[int] | int]:
     """Add a number to a global queue."""
     return [
@@ -56,17 +56,17 @@ def get_global_queues(num: int | float) -> list[Queue[int] | int]:
     ]
 
 
-@subworkflow()
+@workflow()
 def add_constant(num: int | float) -> int:
     """Add a global constant to a number."""
     return to_int(num=sum(left=num, right=CONSTANT))
 
-@subworkflow()
+@workflow()
 def add_constants(num: int | float) -> int:
     """Add a global constant to a number."""
     return to_int(num=sum(left=sum(left=num, right=CONSTANT), right=CONSTANT))
 
-@subworkflow()
+@workflow()
 def get_values(num: int | float) -> tuple[int | float, int]:
     """Add a global constant to a number."""
     return (sum(left=num, right=CONSTANT), add_constant(CONSTANT))
@@ -75,14 +75,14 @@ def get_values(num: int | float) -> tuple[int | float, int]:
 def test_cwl_for_pairs() -> None:
     """Check whether we can produce CWL of pairs."""
 
-    @subworkflow()
+    @workflow()
     def pair_pi() -> tuple[float, float]:
         return pi(), pi()
 
     with set_configuration(flatten_all_nested=True):
         result = pair_pi()
-        workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)["__root__"]
+        wkflw = construct(result, simplify_ids=True)
+    rendered = render(wkflw)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -112,8 +112,8 @@ def test_subworkflows_can_use_globals() -> None:
     """Produce a subworkflow that uses a global."""
     my_param = param("num", typ=int)
     result = increment(num=add_constant(num=increment(num=my_param)))
-    workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow)
+    wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw)
     rendered = subworkflows["__root__"]
 
     assert len(subworkflows) == 2
@@ -163,8 +163,8 @@ def test_subworkflows_can_use_factories() -> None:
     """Produce a subworkflow that uses a factory."""
     my_param = param("num", typ=int)
     result = pop(queue=make_queue(num=increment(num=my_param)))
-    workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow, allow_complex_types=True)
+    wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
 
     assert len(subworkflows) == 2
@@ -208,8 +208,8 @@ def test_subworkflows_can_use_global_factories() -> None:
     """Check whether we can produce a subworkflow that uses a global factory."""
     my_param = param("num", typ=int)
     result = pop(queue=get_global_queue(num=increment(num=my_param)))
-    workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow, allow_complex_types=True)
+    wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
 
     assert len(subworkflows) == 2
@@ -258,8 +258,8 @@ def test_subworkflows_can_return_lists() -> None:
     """Check whether we can produce a subworkflow that returns a list."""
     my_param = param("num", typ=int)
     result = get_global_queues(num=increment(num=my_param))
-    workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow, allow_complex_types=True)
+    wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     del subworkflows["__root__"]
 
@@ -397,8 +397,8 @@ def test_can_merge_workflows() -> None:
     my_param = param("num", typ=int)
     value = to_int(num=increment(num=my_param))
     result = sum(left=value, right=increment(num=value))
-    workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow, allow_complex_types=True)
+    wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     del subworkflows["__root__"]
 
@@ -451,8 +451,8 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
     """Produce a subworkflow that uses a global."""
     my_param = param("num", typ=int)
     result = increment(num=add_constants(num=increment(num=my_param)))
-    workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow)
+    wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw)
     rendered = subworkflows["__root__"]
     del subworkflows["__root__"]
 

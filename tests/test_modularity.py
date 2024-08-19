@@ -1,14 +1,14 @@
 """Verify CWL can be made with split up and nested calls."""
 
 import yaml
-from dewret.tasks import subworkflow, construct, set_configuration
+from dewret.tasks import workflow, construct, set_configuration
 from dewret.renderers.cwl import render
 from ._lib.extra import double, sum, increase
 
 STARTING_NUMBER: int = 23
 
 
-@subworkflow()
+@workflow()
 def algorithm() -> int | float:
     """Creates a graph of task calls."""
     left = double(num=increase(num=STARTING_NUMBER))

@@ -4,7 +4,7 @@ import yaml
 from attr import define
 from dataclasses import dataclass
 from typing import Iterable
-from dewret.tasks import task, construct, subworkflow, set_configuration
+from dewret.tasks import task, construct, workflow, set_configuration
 from dewret.renderers.cwl import render
 
 STARTING_NUMBER: int = 23
@@ -44,19 +44,19 @@ def pair(left: int, right: float) -> tuple[int, float]:
     return (left, right)
 
 
-@subworkflow()
+@workflow()
 def algorithm() -> float:
     """Sum two split values."""
     return combine(left=split().first, right=split().second)
 
 
-@subworkflow()
+@workflow()
 def algorithm_with_pair() -> tuple[int, float]:
     """Pairs two split dataclass values."""
     return pair(left=split_into_dataclass().first, right=split_into_dataclass().second)
 
 
-@subworkflow()
+@workflow()
 def algorithm_with_dataclasses() -> float:
     """Sums two split dataclass values."""
     return combine(
