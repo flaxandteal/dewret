@@ -1,4 +1,4 @@
-from dewret.tasks import task, subworkflow
+from dewret.tasks import task, workflow
 from dewret.annotations import AtRender
 
 from .other import nothing
@@ -8,7 +8,7 @@ test: float = nothing
 
 from inspect import get_annotations
 
-@subworkflow()
+@workflow()
 def try_nothing() -> int:
     """Check that we can see AtRender in another module."""
 
@@ -54,7 +54,7 @@ def pi() -> float:
     return math.pi
 
 
-@subworkflow()
+@workflow()
 def triple_and_one(num: int | float) -> int | float:
     """Triple a number by doubling and adding again, then add 1."""
     return sum(left=sum(left=double(num=num), right=num), right=1)

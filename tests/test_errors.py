@@ -2,7 +2,7 @@
 
 import pytest
 from dewret.workflow import Task, Lazy
-from dewret.tasks import construct, task, subworkflow, TaskException
+from dewret.tasks import construct, task, workflow, TaskException
 from dewret.annotations import AtRender
 from dewret.renderers.cwl import render
 from ._lib.extra import increment, pi, reverse_list  # noqa: F401
@@ -17,7 +17,7 @@ def add_task(left: int, right: int) -> int:
 ADD_TASK_LINE_NO: int = 11
 
 
-@subworkflow()
+@workflow()
 def badly_add_task(left: int, right: int) -> int:
     """Badly attempts to add two numbers."""
     return add_task(left=left)  # type: ignore
@@ -90,13 +90,13 @@ def pi_with_invisible_module_task() -> float:
     return extra.double(3.14 / 2)
 
 
-@subworkflow()
+@workflow()
 def unacceptable_object_usage() -> int:
     """Invalid use of custom object within nested task."""
     return MyStrangeClass(add_task(left=3, right=4))  # type: ignore
 
 
-@subworkflow()
+@workflow()
 def unacceptable_nested_return(int_not_global: AtRender[bool]) -> int | Lazy:
     """Bad subworkflow that fails to return a task."""
     add_task(left=3, right=4)
@@ -244,7 +244,7 @@ good_num: int = 4
 def test_must_annotate_global() -> None:
     worse_num = 3
 
-    @subworkflow()
+    @workflow()
     def check_annotation() -> int | float:
         return increment(num=bad_num)
 
@@ -256,7 +256,7 @@ def test_must_annotate_global() -> None:
         == "Could not find a type annotation for bad_num for check_annotation"
     )
 
-    @subworkflow()
+    @workflow()
     def check_annotation_2() -> int | float:
         return increment(num=worse_num)
 
@@ -268,7 +268,7 @@ def test_must_annotate_global() -> None:
         == "Cannot use free variables - please put worse_num at the global scope"
     )
 
-    @subworkflow()
+    @workflow()
     def check_annotation_3() -> int | float:
         return increment(num=good_num)
 

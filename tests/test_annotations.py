@@ -2,7 +2,7 @@ import pytest
 import yaml
 from typing import Literal
 
-from dewret.tasks import task, construct, subworkflow, TaskException
+from dewret.tasks import task, construct, workflow, TaskException
 from dewret.renderers.cwl import render
 from dewret.annotations import AtRender, FunctionAnalyser, Fixed
 from dewret.core import set_configuration
@@ -24,12 +24,12 @@ def fn(arg5: int, arg6: AtRender[int]) -> float:
     return arg5 + arg6 + arg7 + arg8 + int(ARG1) + int(ARG2)
 
 
-@subworkflow()
+@workflow()
 def to_int_bad(num: int, should_double: bool) -> int | float:
     """Cast to an int."""
     return increment(num=num) if should_double else sum(left=num, right=num)
 
-@subworkflow()
+@workflow()
 def to_int(num: int, should_double: AtRender[bool]) -> int | float:
     """Cast to an int."""
     return increment(num=num) if should_double else sum(left=num, right=num)
@@ -58,11 +58,11 @@ def test_can_analyze_annotations():
 def test_at_render() -> None:
     with pytest.raises(TaskException) as _:
         result = to_int_bad(num=increment(num=3), should_double=True)
-        workflow = construct(result, simplify_ids=True)
+        wkflw = construct(result, simplify_ids=True)
 
     result = to_int(num=increment(num=3), should_double=True)
-    workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow, allow_complex_types=True)
+    wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -99,8 +99,8 @@ def test_at_render() -> None:
     """)
 
     result = to_int(num=increment(num=3), should_double=False)
-    workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow, allow_complex_types=True)
+    wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -140,14 +140,14 @@ def test_at_render() -> None:
 def test_at_render_between_modules() -> None:
     nothing = False
     result = try_nothing()
-    workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow, allow_complex_types=True)
+    wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
 
 list_2: Fixed[list[int]] = [0, 1, 2, 3]
 
 def test_can_loop_over_fixed_length() -> None:
-    @subworkflow()
+    @workflow()
     def loop_over_lists(list_1: list[int]) -> list[int]:
         result = []
         for a, b in zip(list_1, list_2):
@@ -156,8 +156,8 @@ def test_can_loop_over_fixed_length() -> None:
 
     with set_configuration(flatten_all_nested=True):
         result = loop_over_lists(list_1=[5, 6, 7, 8])
-        workflow = construct(result, simplify_ids=True)
-    subworkflows = render(workflow, allow_complex_types=True)
+        wkflw = construct(result, simplify_ids=True)
+    subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     assert rendered == yaml.safe_load("""
         class: Workflow

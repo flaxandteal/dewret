@@ -1,6 +1,6 @@
 import yaml
 import pytest
-from dewret.tasks import construct, task, factory, subworkflow, TaskException
+from dewret.tasks import construct, task, factory, workflow, TaskException
 from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.tasks import set_configuration
@@ -12,7 +12,7 @@ def configuration():
     with set_configuration() as configuration:
         yield configuration.get()
 
-@subworkflow()
+@workflow()
 def floor(num: int, expected: AtRender[bool]) -> int:
     """Converts int/float to int."""
     from dewret.tasks import get_configuration

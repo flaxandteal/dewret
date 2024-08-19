@@ -310,7 +310,7 @@ def factory(fn: Callable[..., RetType]) -> Callable[..., RetType]:
     return task(is_factory=True)(fn)
 
 
-def subworkflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
+def workflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Shortcut for marking a task as nested.
 
     A nested task is one which calls other tasks and does not
@@ -326,7 +326,7 @@ def subworkflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetTyp
     ... def increment(num: int) -> int:
     ...     return num + 1
 
-    >>> @subworkflow()
+    >>> @workflow()
     ... def double_increment(num: int) -> int:
     ...     return increment(increment(num=num))
 
@@ -494,7 +494,7 @@ def task(
                                 def {var}(...) -> ...:
                                     ...
 
-                                @subworkflow() <<<--- likely what you want
+                                @workflow() <<<--- likely what you want
                                 def {fn.__name__}(...) -> ...:
                                     ...
                                     {var}(...)
