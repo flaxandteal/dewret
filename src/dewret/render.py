@@ -31,16 +31,15 @@ def get_render_method(renderer: Path | RawRenderModule | StructuredRenderModule,
     if isinstance(renderer, Path):
         if (render_dir := str(renderer.parent)) not in sys.path:
             sys.path.append(render_dir)
-        package_init = renderer.parent
 
         # Attempt to load renderer as package, falling back to a single module otherwise.
         # This enables relative imports in renderers and therefore the ability to modularize.
         try:
-            loader = importlib.machinery.SourceFileLoader("renderer", str(package_init / "__init__.py"))
-            sys.modules["renderer"] = loader.load_module(f"renderer")
-            render_module = importlib.import_module(f"renderer.{renderer.stem}", "renderer")
+            loader = importlib.machinery.SourceFileLoader("__renderer__", str(renderer.parent / "__init__.py"))
+            sys.modules["__renderer__"] = loader.load_module(f"__renderer__")
+            render_module = importlib.import_module(f"__renderer__.{renderer.stem}", "__renderer__")
         except ImportError:
-            loader = importlib.machinery.SourceFileLoader("renderer", str(renderer))
+            loader = importlib.machinery.SourceFileLoader("__renderer__", str(renderer))
             render_module = loader.load_module()
     else:
         render_module = renderer

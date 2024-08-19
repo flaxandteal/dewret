@@ -66,11 +66,11 @@ from .tasks import Backend, construct
     "--output",
     default="-"
 )
-@click.argument("workflow_py")
+@click.argument("workflow_py", type=click.Path(exists=True))
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
 def render(
-    workflow_py: str, task: str, arguments: list[str], pretty: bool, backend: Backend, construct_args: str, renderer: str, renderer_args: str, output: str
+    workflow_py: Path, task: str, arguments: list[str], pretty: bool, backend: Backend, construct_args: str, renderer: str, renderer_args: str, output: str
 ) -> None:
     """Render a workflow.
 
@@ -78,7 +78,7 @@ def render(
     TASK is the name of (decorated) task in workflow module.
     ARGUMENTS is zero or more pairs representing constant arguments to pass to the task, in the format `key:val` where val is a JSON basic type.
     """
-    sys.path.append(str(Path(workflow_py).parent))
+    sys.path.append(str(workflow_py.parent))
     kwargs = {}
     for arg in arguments:
         if ":" not in arg:
@@ -129,8 +129,17 @@ def render(
         opener = _opener
 
     render = get_render_method(render_module, pretty=pretty)
-    loader = importlib.machinery.SourceFileLoader("workflow", workflow_py)
-    workflow = loader.load_module()
+    loader = importlib.machinery.SourceFileLoader("workflow", str(workflow_py))
+    workflow_init = workflow_py.parent
+
+    # Try to import the workflow as a package, if possible, to allow relative imports.
+    try:
+        loader = importlib.machinery.SourceFileLoader("__workflow__", str(workflow_py.parent / "__init__.py"))
+        sys.modules["workflow"] = loader.load_module(f"__workflow__")
+        workflow = importlib.import_module(f"__workflow__.{workflow_py.stem}", "__workflow__")
+    except ImportError:
+        loader = importlib.machinery.SourceFileLoader("__workflow__", str(workflow_py))
+        workflow = loader.load_module()
     task_fn = getattr(workflow, task)
 
     try:
