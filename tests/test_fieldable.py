@@ -59,6 +59,43 @@ def test_fields_of_parameters_usable() -> None:
           run: sum
     """)
 
+def test_can_get_field_reference_from_parameter():
+    @dataclass
+    class MyDataclass:
+        left: int
+    my_param = param("my_param", typ=MyDataclass)
+    result = sum(left=my_param.left, right=my_param)
+    wkflw = construct(result, simplify_ids=True)
+    param_references = {(str(p), p.__type__) for p in wkflw.find_parameters()}
+
+    assert param_references == {("my_param/left", int), ("my_param", MyDataclass)}
+    rendered = render(wkflw, allow_complex_types=True)["__root__"]
+    assert rendered == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          my_param:
+            label: my_param
+            type: MyDataclass
+        outputs:
+          out:
+            label: out
+            outputSource: sum-1/out
+            type:
+            - int
+            - double
+        steps:
+          sum-1:
+            in:
+              left:
+                source: my_param/left
+              right:
+                source: my_param
+            out:
+            - out
+            run: sum
+    """)
+
 def test_can_get_field_reference_iff_parent_type_has_field():
     @dataclass
     class MyDataclass:
