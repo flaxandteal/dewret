@@ -151,7 +151,7 @@ def test_can_loop_over_fixed_length() -> None:
     def loop_over_lists(list_1: list[int]) -> list[int]:
         result = []
         for a, b in zip(list_1, list_2):
-            result.append(a + b)
+            result.append(a + b + len(list_2))
         return result
 
     with set_configuration(flatten_all_nested=True):
@@ -164,8 +164,8 @@ def test_can_loop_over_fixed_length() -> None:
         cwlVersion: 1.2
         inputs: {}
         outputs:
-          expression: '[list_1[0] + list_2[0], list_1[1] + list_2[1], list_1[2] + list_2[2],
-            list_1[3] + list_2[3]]'
+          expression: '[4 + list_1[0] + list_2[0], 4 + list_1[1] + list_2[1], 4 + list_1[2] + list_2[2],
+            4 + list_1[3] + list_2[3]]'
           source:
           - list_1
           - list_2

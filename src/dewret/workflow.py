@@ -1191,6 +1191,11 @@ class IterableParameterReference(IterableMixin, ParameterReference[U]):
             while True:
                 yield None
 
+    def __len__(self):
+        inner, metadata = strip_annotations(self.__type__)
+        if metadata and "Fixed" in metadata and isinstance(self.__default__, Sized):
+            return len(self.__default__)
+        return super().__len__()
 
 class StepReference(FieldableMixin, Reference[U]):
     """Reference to an individual `Step`.
