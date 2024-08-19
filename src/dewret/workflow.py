@@ -230,6 +230,9 @@ class Parameter(Generic[T], Symbol):
             self.__tethered__ = caller
         self.__callers__.append(caller)
 
+    def __getattr__(self, attr: str) -> Reference[T]:
+        return getattr(self.make_reference(workflow=None), attr)
+
 
 def param(
     name: str,
