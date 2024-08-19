@@ -66,7 +66,7 @@ from .tasks import Backend, construct
     "--output",
     default="-"
 )
-@click.argument("workflow_py", type=click.Path(exists=True))
+@click.argument("workflow_py", type=click.Path(exists=True), path_type=Path)
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
 def render(
