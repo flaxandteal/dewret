@@ -20,6 +20,7 @@ this may be of use.
 """
 
 import importlib
+import importlib.util
 from pathlib import Path
 from contextlib import contextmanager
 import sys
@@ -131,14 +132,19 @@ def render(
     render = get_render_method(render_module, pretty=pretty)
     loader = importlib.machinery.SourceFileLoader("workflow", str(workflow_py))
     workflow_init = workflow_py.parent
+    pkg = "__workflow__"
 
     # Try to import the workflow as a package, if possible, to allow relative imports.
     try:
-        loader = importlib.machinery.SourceFileLoader("__workflow__", str(workflow_py.parent / "__init__.py"))
-        sys.modules["workflow"] = loader.load_module(f"__workflow__")
-        workflow = importlib.import_module(f"__workflow__.{workflow_py.stem}", "__workflow__")
+        spec = importlib.util.spec_from_file_location(pkg, str(workflow_py.parent / "__init__.py"))
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not open {pkg} package")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[pkg] = module
+        spec.loader.exec_module(module)
+        workflow = importlib.import_module(f"{pkg}.{workflow_py.stem}", pkg)
     except ImportError:
-        loader = importlib.machinery.SourceFileLoader("__workflow__", str(workflow_py))
+        loader = importlib.machinery.SourceFileLoader(pkg, str(workflow_py))
         workflow = loader.load_module()
     task_fn = getattr(workflow, task)
 
