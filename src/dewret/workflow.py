@@ -965,9 +965,6 @@ class BaseStep(WorkflowComponent):
             return self.task.target
         return inspect.signature(inspect.unwrap(self.task.target)).return_annotation
 
-    def __hash__(self) -> int:
-        return hash(self.id)
-
     @property
     def name(self) -> str:
         """Name for this step.
