@@ -41,6 +41,7 @@ def get_render_method(renderer: Path | RawRenderModule | StructuredRenderModule,
         except ImportError:
             loader = importlib.machinery.SourceFileLoader("__renderer__", str(renderer))
             render_module = loader.load_module()
+        sys.modules["__renderer_mod__"] = render_module
     else:
         render_module = renderer
     if hasattr(render_module, "render_raw"):

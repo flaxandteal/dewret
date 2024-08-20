@@ -24,7 +24,6 @@ from functools import partial
 from typing import Protocol, runtime_checkable, Any, cast
 from concurrent.futures import Executor, ThreadPoolExecutor
 from dewret.workflow import Workflow, Lazy, StepReference, Target
-from dewret.tasks import CONSTRUCT_CONFIGURATION
 
 
 @runtime_checkable

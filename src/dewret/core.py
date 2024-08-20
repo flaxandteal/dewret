@@ -1,15 +1,18 @@
 from dataclasses import dataclass
 import base64
+from functools import lru_cache
 from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union, Any, get_args, get_origin, Annotated, Never
 from contextlib import contextmanager
 from contextvars import ContextVar
 from sympy import Expr, Symbol
+import copy
 
 BasicType = str | float | bool | bytes | int | None
 RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
 FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
 
 U = TypeVar("U")
+T = TypeVar("T", bound=TypedDict)
 
 def strip_annotations(parent_type: type) -> tuple[type, tuple]:
     # Strip out any annotations. This should be auto-flattened, so in theory only one iteration could occur.
@@ -33,31 +36,59 @@ class ConstructConfiguration(TypedDict):
     allow_plain_dict_fields: NotRequired[bool]
     field_separator: NotRequired[str]
 
-CONSTRUCT_CONFIGURATION: ContextVar[ConstructConfiguration] = ContextVar("construct-configuration")
+class GlobalConfiguration(TypedDict):
+    construct: ConstructConfiguration
+    render: dict
+
+CONFIGURATION: ContextVar[GlobalConfiguration] = ContextVar("configuration")
 
 @contextmanager
-def set_configuration(**kwargs: Unpack[ConstructConfiguration]) -> Iterator[ContextVar[ConstructConfiguration]]:
+def set_configuration(**kwargs: Unpack[ConstructConfiguration]) -> Iterator[ContextVar[GlobalConfiguration]]:
+    with _set_configuration("construct", kwargs) as var:
+        yield var
+
+@contextmanager
+def set_render_configuration(kwargs) -> Iterator[ContextVar[GlobalConfiguration]]:
+    with _set_configuration("render", kwargs) as var:
+        yield var
+
+@lru_cache
+def default_renderer_config() -> dict:
     try:
-        previous = ConstructConfiguration(**CONSTRUCT_CONFIGURATION.get())
+        from __renderer_mod__ import default_config
+    except ImportError:
+        return {}
+    return default_config()
+
+@lru_cache
+def default_construct_config() -> ConstructConfiguration:
+    return ConstructConfiguration(
+        flatten_all_nested=False,
+        allow_positional_args=False,
+        allow_plain_dict_fields=False,
+        field_separator="/"
+    )
+
+@contextmanager
+def _set_configuration(config_group: str, kwargs: U) -> Iterator[ContextVar[GlobalConfiguration]]:
+    try:
+        previous = copy.deepcopy(GlobalConfiguration(**CONFIGURATION.get()))
     except LookupError:
-        previous = ConstructConfiguration(
-            flatten_all_nested=False,
-            allow_positional_args=False,
-            allow_plain_dict_fields=False,
-            field_separator="/"
-        )
-        CONSTRUCT_CONFIGURATION.set({})
+        previous = {"construct": default_construct_config(), "render": default_renderer_config()}
+        CONFIGURATION.set(previous)
 
     try:
-        CONSTRUCT_CONFIGURATION.get().update(previous)
-        CONSTRUCT_CONFIGURATION.get().update(kwargs)
+        CONFIGURATION.get()[config_group].update(kwargs)
 
-        yield CONSTRUCT_CONFIGURATION
+        yield CONFIGURATION
     finally:
-        CONSTRUCT_CONFIGURATION.set(previous)
+        CONFIGURATION.set(previous)
 
 def get_configuration(key: str) -> RawType:
-    return CONSTRUCT_CONFIGURATION.get().get(key) # type: ignore
+    return CONFIGURATION.get()["construct"].get(key) # type: ignore
+
+def get_render_configuration(key: str) -> RawType:
+    return CONFIGURATION.get()["render"].get(key) # type: ignore
 
 class Reference(Generic[U], Symbol):
     """Superclass for all symbolic references to values."""

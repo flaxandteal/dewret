@@ -44,6 +44,7 @@ from dewret.workflow import (
 )
 from dewret.utils import flatten, DataclassProtocol, firm_to_raw, flatten_if_set
 from dewret.render import base_render
+from dewret.core import get_render_configuration, set_render_configuration
 
 class CommandInputSchema(TypedDict):
     """Structure for referring to a raw type in CWL.
@@ -91,19 +92,11 @@ class CWLRendererConfiguration(TypedDict):
     factories_as_params: NotRequired[bool]
 
 
-CONFIGURATION: ContextVar[CWLRendererConfiguration] = ContextVar("cwl-configuration")
-DEFAULT_CONFIGURATION: CWLRendererConfiguration = {
-    "allow_complex_types": False,
-    "factories_as_params": False,
-}
-
-
-def configuration(key: str) -> Any:
-    """Retrieve current configuration (thread/async-local)."""
-    current_configuration = CONFIGURATION.get()
-    if key not in current_configuration:
-        raise KeyError("Unknown configuration settings.")
-    return current_configuration.get(key)
+def default_renderer_config() -> CWLRendererConfiguration:
+    return {
+        "allow_complex_types": False,
+        "factories_as_params": False,
+    }
 
 
 def with_type(result: Any) -> type:
@@ -285,7 +278,7 @@ def to_cwl_type(label: str, typ: type) -> CommandInputSchema:
             raise TypeError(
                 f"Cannot render complex type ({typ}) to CWL, have you enabled allow_complex_types configuration?"
             ) from err
-    elif configuration("allow_complex_types"):
+    elif get_render_configuration("allow_complex_types"):
         typ_dict["type"] = typ if isinstance(typ, str) else typ.__name__
     else:
         raise TypeError(f"Cannot render type ({typ}) to CWL")
@@ -570,10 +563,10 @@ class WorkflowDefinition:
         """
         parameters: list[ParameterReference | FactoryCall] = list(
             workflow.find_parameters(
-                include_factory_calls=not configuration("factories_as_params")
+                include_factory_calls=not get_render_configuration("factories_as_params")
             )
         )
-        if configuration("factories_as_params"):
+        if get_render_configuration("factories_as_params"):
             parameters += list(workflow.find_factories().values())
         return cls(
             steps=[
@@ -581,7 +574,7 @@ class WorkflowDefinition:
                 for step in workflow.steps
                 if not (
                     isinstance(step, FactoryCall)
-                    and configuration("factories_as_params")
+                    and get_render_configuration("factories_as_params")
                 )
             ],
             inputs=InputsDefinition.from_parameters(parameters),
@@ -624,12 +617,9 @@ def render(
         Reduced form as a native Python dict structure for
         serialization.
     """
-    config = CWLRendererConfiguration(**DEFAULT_CONFIGURATION)
-    config.update(kwargs)
-    CONFIGURATION.set(config)
-    rendered = base_render(
-        workflow,
-        lambda workflow: WorkflowDefinition.from_workflow(workflow).render()
-    )
-    CONFIGURATION.set(DEFAULT_CONFIGURATION)
+    with set_render_configuration(kwargs):
+        rendered = base_render(
+            workflow,
+            lambda workflow: WorkflowDefinition.from_workflow(workflow).render()
+        )
     return rendered
