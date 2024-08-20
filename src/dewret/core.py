@@ -35,6 +35,7 @@ class ConstructConfiguration(TypedDict):
     allow_positional_args: NotRequired[bool]
     allow_plain_dict_fields: NotRequired[bool]
     field_separator: NotRequired[str]
+    field_index_types: NotRequired[str]
 
 class GlobalConfiguration(TypedDict):
     construct: ConstructConfiguration
@@ -66,7 +67,8 @@ def default_construct_config() -> ConstructConfiguration:
         flatten_all_nested=False,
         allow_positional_args=False,
         allow_plain_dict_fields=False,
-        field_separator="/"
+        field_separator="/",
+        field_index_types="int",
     )
 
 @contextmanager
@@ -148,7 +150,7 @@ class Reference(Generic[U], Symbol):
         """Referral name for this reference."""
         workflow = self.__workflow__
         name = self.__root_name__
-        return workflow.remap(name)
+        return workflow.remap(name) or name
 
     def __str__(self) -> str:
         """Global description of the reference."""

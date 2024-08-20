@@ -101,8 +101,8 @@ def firm_to_raw(value: FirmType) -> RawType:
 def flatten(value: Any) -> RawType:
     return crawl_raw(value, lambda entry: entry)
 
-def is_expr(value: Any) -> bool:
-    return is_raw(value, lambda x: isinstance(x, Basic) or isinstance(x, tuple) or isinstance(x, Reference) or isinstance(x, Raw))
+def is_expr(value: Any, permitted_references: type=Reference) -> bool:
+    return is_raw(value, lambda x: isinstance(x, Basic) or isinstance(x, tuple) or isinstance(x, permitted_references) or isinstance(x, Raw))
 
 def is_raw_type(typ: type) -> bool:
     """Check if a type counts as "raw"."""

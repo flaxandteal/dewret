@@ -40,6 +40,10 @@ U = TypeVar("U")
 RetType = TypeVar("RetType")
 
 CHECK_IDS = False
+AVAILABLE_TYPES = {
+    "int": int,
+    "str": str
+}
 
 
 class Lazy(Protocol):
@@ -160,7 +164,8 @@ class Parameter(Generic[T], Symbol):
             self.register_caller(tethered)
 
     def is_loopable(self, typ: type):
-        base = get_origin(strip_annotations(typ)[0])
+        base = strip_annotations(typ)[0]
+        base = get_origin(base) or base
         return inspect.isclass(base) and issubclass(base, Iterable) and not issubclass(base, str | bytes)
 
     @property
@@ -326,7 +331,7 @@ class Workflow:
         result: target reference to evaluate, if yet present.
     """
 
-    steps: list["BaseStep"]
+    _steps: list["BaseStep"]
     tasks: MutableMapping[str, "Task"]
     result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]] | None
     _remapping: dict[str, str] | None
@@ -334,11 +339,15 @@ class Workflow:
 
     def __init__(self, name: str | None = None) -> None:
         """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
-        self.steps = []
+        self._steps = []
         self.tasks = {}
         self.result: StepReference[Any] | None = None
         self._remapping = None
         self._name = name
+
+    @property
+    def steps(self) -> set[BaseStep]:
+        return set(self._steps)
 
     def __str__(self) -> str:
         """Name of the workflow, if available."""
@@ -349,16 +358,17 @@ class Workflow:
     def __repr__(self) -> str:
         if self._name:
             return self.name
-        comp_tup = tuple(sorted(s.id for s in self.steps))
-
-        return f"workflow-{hasher(comp_tup)}"
+        return self.id
 
     def __hash__(self) -> int:
         """Hashes for finding."""
-        return hash((
-            self._name,
-            tuple(self.steps),
-        ))
+        return hash(self.id)
+
+    @property
+    def id(self) -> str:
+        comp_tup = tuple(sorted(s.id for s in self.steps))
+        return f"workflow-{hasher(comp_tup)}"
+
 
     def __eq__(self, other: object) -> bool:
         """Is this the same workflow?
@@ -369,7 +379,7 @@ class Workflow:
         if not isinstance(other, Workflow):
             return False
         return (
-            self.steps == other.steps
+            self._steps == other._steps
             and self.tasks == other.tasks
             and self.result == other.result
             and self._remapping == other._remapping
@@ -393,7 +403,7 @@ class Workflow:
 
     def find_factories(self) -> dict[str, FactoryCall]:
         """Steps that are factory calls."""
-        return {step.id: step for step in self.steps if isinstance(step, FactoryCall)}
+        return {step_id: step for step_id, step in self.indexed_steps.items() if isinstance(step, FactoryCall)}
 
     def find_parameters(
         self, include_factory_calls: bool = True
@@ -412,7 +422,7 @@ class Workflow:
         return {ref for ref in references if isinstance(ref, ParameterReference)}
 
     @property
-    def _indexed_steps(self) -> dict[str, BaseStep]:
+    def indexed_steps(self) -> dict[str, BaseStep]:
         """Steps mapped by ID.
 
         Forces generation of IDs. Note that this effectively
@@ -425,7 +435,7 @@ class Workflow:
         return OrderedDict(sorted(((step.id, step) for step in self.steps), key=lambda x: x[0]))
 
     @classmethod
-    def assimilate(cls, *workflows) -> "Workflow":
+    def assimilate(cls, *workflow_args: Workflow) -> "Workflow":
         """Combine two Workflows into one Workflow.
 
         Takes two workflows and unifies them by combining steps
@@ -438,18 +448,18 @@ class Workflow:
             left: workflow to use as base
             right: workflow to combine on top
         """
-        workflows = set(workflows)
-        base = next(iter(workflows))
+        workflows = sorted((w for w in set(workflow_args)), key=lambda w: w.id)
+        base = workflows[0]
 
         if len(workflows) == 1:
             return base
 
-        names = {w._name for w in workflows if w._name}
-        base._name = base._name or (names and next(iter(names))) or None
+        names = sorted({w._name for w in workflows if w._name})
+        base._name = base._name or (names and names[0]) or None
 
         #left_steps = left._indexed_steps
         #right_steps = right._indexed_steps
-        all_steps = sum((list(w._indexed_steps.items()) for w in workflows), [])
+        all_steps = sorted(sum((list(w.indexed_steps.items()) for w in workflows), []), key=lambda s: s[0])
 
         for _, step in all_steps:
         #for step in list(left_steps.values()) + list(right_steps.values()):
@@ -470,17 +480,17 @@ class Workflow:
             if task != indexed_tasks[task_id]:
                 raise RuntimeError(f"Two tasks have same name {task_id} but do not match")
 
-        base.steps = list(indexed_steps.values())
+        base._steps = sorted(indexed_steps.values(), key=lambda s: s.id)
         base.tasks = indexed_tasks
 
         for step in base.steps:
             step.set_workflow(base, with_arguments=True)
 
-        results = set((w.result for w in workflows if w.result))
+        results = sorted(set((w.result for w in workflows if w.result)))
         if len(results) == 1:
-            result = next(iter(results))
+            result = results[0]
         else:
-            results = {r if isinstance(r, tuple | list) else (r,) for r in results}
+            results = sorted({r if isinstance(r, tuple | list) else (r,) for r in results})
             result = sum(map(list, results), [])
 
         if result is not None and result != []:
@@ -508,7 +518,7 @@ class Workflow:
         counter = Counter[Task | Workflow]()
         self._remapping = {}
         infix_str = ("-".join(infix) + "-") if infix else ""
-        for step in self.steps:
+        for key, step in self.indexed_steps.items():
             counter[step.task] += 1
             self._remapping[step.id] = f"{step.task}-{infix_str}{counter[step.task]}"
             if isinstance(step, NestedStep):
@@ -565,7 +575,7 @@ class Workflow:
         step = NestedStep(self, name, subworkflow, kwargs)
         if positional_args is not None:
             step.positional_args = positional_args
-        self.steps.append(step)
+        self._steps.append(step)
         return_type = return_type or step.return_type
         if return_type is inspect._empty:
             raise TypeError("All tasks should have a type annotation.")
@@ -595,7 +605,7 @@ class Workflow:
         step = step_maker(self, task, kwargs, raw_as_parameter=raw_as_parameter)
         if positional_args is not None:
             step.positional_args = positional_args
-        self.steps.append(step)
+        self._steps.append(step)
         return_type = step.return_type
         if (
             return_type is inspect._empty
@@ -697,6 +707,7 @@ class WorkflowLinkedComponent(Protocol):
 class FieldableProtocol(Protocol):
     __field__: tuple[str, ...]
     __field_sep__: str
+    __field_index_types__: tuple[type, ...]
 
     def __init__(self, *args, field: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -723,6 +734,20 @@ class FieldableMixin:
         return get_configuration("field_separator")
 
     @property
+    def __field_index_types__(self) -> tuple[type, ...]:
+        types = get_configuration("field_index_types")
+        if not isinstance(types, str):
+            raise TypeError("Field index types must be provided as a comma-separated names")
+        tup_all = tuple(AVAILABLE_TYPES.get(typ) for typ in types.split(",") if typ)
+        tup = tuple(t for t in tup_all if t is not None)
+        if tup_all != tup:
+            raise ValueError(
+                "Setting for fixed index types contains unavailable type: " +
+                f"{str(get_configuration("field_index_types"))} vs {tup}"
+            )
+        return tup
+
+    @property
     def __name__(self: FieldableProtocol) -> str:
         """Name for this step.
 
@@ -732,10 +757,14 @@ class FieldableMixin:
         return super().__name__ + self.__field_suffix__
 
     @property
+    def __field_str__(self) -> str:
+        return self.__field_suffix__.lstrip(self.__field_sep__)
+
+    @property
     def __field_suffix__(self) -> str:
         result = ""
         for cmpt in self.__field__:
-            if isinstance(cmpt, int):
+            if any(isinstance(cmpt, typ) for typ in self.__field_index_types__):
                 result += f"[{cmpt}]"
             else:
                 result += f"{self.__field_sep__}{cmpt}"
@@ -751,9 +780,9 @@ class FieldableMixin:
         # Get new type, for the specific field.
         parent_type, _ = strip_annotations(self.__type__)
         field_type = fallback_type
+        base = get_origin(parent_type) or parent_type
 
         if isinstance(field, int):
-            base = get_origin(parent_type)
             if not inspect.isclass(base) or not issubclass(base, Sequence):
                 raise AttributeError(f"Tried to index int {field} into a non-sequence type {parent_type} (base: {base})")
             if not (field_type := get_args(parent_type)[0]):
@@ -779,7 +808,7 @@ class FieldableMixin:
                     field_type = parent_type.__annotations__[field]
                 except KeyError:
                     raise AttributeError(f"TypedDict {parent_type} does not have field {field}")
-            if not field_type and get_configuration("allow_plain_dict_fields") and strip_annotations(get_origin(parent_type))[0] is dict:
+            if not field_type and get_configuration("allow_plain_dict_fields") and inspect.isclass(base) and issubclass(base, dict):
                 args = get_args(parent_type)
                 if len(args) == 2 and args[0] is str:
                     field_type = args[1]
@@ -889,10 +918,14 @@ class BaseStep(WorkflowComponent):
         kwargs["step"] = self
         kwargs.setdefault("typ", self.return_type)
         typ = kwargs["typ"]
-        base = get_origin(strip_annotations(typ)[0])
+        base = strip_annotations(typ)[0]
+        base = get_origin(base) or base
         if inspect.isclass(base) and issubclass(base, Iterable) and not issubclass(base, str | bytes):
             return IterableStepReference(**kwargs)
         return StepReference(**kwargs)
+
+    def __hash__(self) -> int:
+        return hash(self.id)
 
     def set_workflow(self, workflow: Workflow, with_arguments: bool = True) -> None:
         """Move the step reference to another workflow.
@@ -1049,12 +1082,16 @@ class FactoryCall(Step):
             arguments: key-value pairs to pass to the function - for a factory call, these _must_ be raw.
             raw_as_parameter: whether to turn any raw-type arguments into workflow parameters (or just keep them as default argument values).
         """
-        for arg in list(arguments.values()):
-            if not is_raw(arg) and not (
+        for key, arg in arguments.items():
+            if not is_expr(arg) and not (
                 isinstance(arg, ParameterReference) and is_raw_type(arg.__type__)
             ):
+                try:
+                    arg_name = str(arg)
+                except:
+                    arg_name = "(unnamed)"
                 raise RuntimeError(
-                    f"Factories must be constructed with raw types {arg} {type(arg)}"
+                    f"Factories must be constructed with raw types in {arg_name} {type(arg)}"
                 )
         super().__init__(workflow=workflow, task=task, arguments=arguments, raw_as_parameter=raw_as_parameter)
 
