@@ -130,7 +130,6 @@ def render(
         opener = _opener
 
     render = get_render_method(render_module, pretty=pretty)
-    loader = importlib.machinery.SourceFileLoader("workflow", str(workflow_py))
     workflow_init = workflow_py.parent
     pkg = "__workflow__"
 
@@ -149,7 +148,7 @@ def render(
     task_fn = getattr(workflow, task)
 
     try:
-        with set_configuration(**construct_kwargs), set_render_configuration(**renderer_kwargs):
+        with set_configuration(**construct_kwargs), set_render_configuration(renderer_kwargs):
             rendered = render(construct(task_fn(**kwargs), **construct_kwargs), **renderer_kwargs)
     except Exception as exc:
         import traceback

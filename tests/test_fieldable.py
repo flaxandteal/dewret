@@ -282,3 +282,30 @@ def test_can_use_plain_dict_fields():
         wkflw = construct(result, simplify_ids=True)
         assert str(wkflw.result["left"]) == "test_dict-1/left"
         assert wkflw.result["left"].__type__ == int | float
+
+def test_can_configure_field_separator():
+    @dataclass
+    class IndexTest:
+        left: Fixed[list[int]]
+
+    @task()
+    def test_sep() -> IndexTest:
+        return IndexTest(left=[3])
+
+    with set_configuration(field_index_types="int"):
+        result = test_sep().left[0]
+        wkflw = construct(result, simplify_ids=True)
+        rendered = render(wkflw, allow_complex_types=True)["__root__"]
+        assert str(wkflw.result) == "test_sep-1/left[0]"
+
+    #with set_configuration(field_index_types="int,str"):
+    #    result = test_sep().left[0]
+    #    wkflw = construct(result, simplify_ids=True)
+    #    rendered = render(wkflw, allow_complex_types=True)["__root__"]
+    #    assert str(wkflw.result) == "test_sep-1[left][0]"
+
+    #with set_configuration(field_index_types=""):
+    #    result = test_sep().left[0]
+    #    wkflw = construct(result, simplify_ids=True)
+    #    rendered = render(wkflw, allow_complex_types=True)["__root__"]
+    #    assert str(wkflw.result) == "test_sep-1/left/0"

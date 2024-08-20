@@ -66,7 +66,7 @@ class WorkflowDefinition:
     @classmethod
     def from_workflow(cls, workflow: Workflow):
         steps = []
-        for step in workflow.steps:
+        for step in workflow.indexed_steps.values():
             if isinstance(step, Step):
                 steps.append(StepDefinition.from_step(step))
             elif isinstance(step, NestedStep):

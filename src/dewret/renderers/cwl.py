@@ -105,8 +105,8 @@ def with_type(result: Any) -> type:
     return type(result)
 
 def with_field(result: Any) -> str:
-    if hasattr(result, "__field__"):
-        return "/".join(result.__field__) or "out"
+    if hasattr(result, "__field__") and result.__field__:
+        return result.__field_str__
     else:
         return "out"
 
@@ -571,7 +571,7 @@ class WorkflowDefinition:
         return cls(
             steps=[
                 StepDefinition.from_step(step)
-                for step in workflow.steps
+                for step in workflow.indexed_steps.values()
                 if not (
                     isinstance(step, FactoryCall)
                     and get_render_configuration("factories_as_params")

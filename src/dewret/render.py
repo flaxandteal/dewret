@@ -72,7 +72,7 @@ def base_render(
     """
     primary_workflow = build_cb(workflow)
     subworkflows = {}
-    for step in workflow.steps:
+    for step in workflow.indexed_steps.values():
         if isinstance(step, NestedStep):
             nested_subworkflows = base_render(step.subworkflow, build_cb)
             subworkflows.update(nested_subworkflows)

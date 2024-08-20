@@ -507,7 +507,6 @@ def task(
                         raise RuntimeError(f"Could not find a type annotation for {var} for {fn.__name__}")
                     elif (
                         analyser.is_at_construct_arg(var, exhaustive=True) or
-                        isinstance(value, Reference) or
                         value is evaluate or value is construct  # Allow manual building.
                     ):
                         kwargs[var] = value
@@ -527,6 +526,8 @@ def task(
                             tethered=False,
                             typ=analyser.get_argument_annotation(var, exhaustive=True) or UNSET
                         ).make_reference(workflow=workflow)
+                    elif is_expr(value) and expr_to_references(value)[1] is not []:
+                        kwargs[var] = value
                     elif nested:
                         raise NotImplementedError(
                             f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}"
