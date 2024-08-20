@@ -150,7 +150,7 @@ class Reference(Generic[U], Symbol):
         """Referral name for this reference."""
         workflow = self.__workflow__
         name = self.__root_name__
-        return workflow.remap(name) or name
+        return workflow.remap(name) if workflow is not None else name
 
     def __str__(self) -> str:
         """Global description of the reference."""
