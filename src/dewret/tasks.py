@@ -65,7 +65,7 @@ from .workflow import (
 )
 from .backends._base import BackendModule
 from .annotations import FunctionAnalyser
-from .core import get_configuration, set_configuration, CONSTRUCT_CONFIGURATION, IteratedGenerator, ConstructConfiguration
+from .core import get_configuration, set_configuration, IteratedGenerator, ConstructConfiguration
 import ast
 
 Param = ParamSpec("Param")
