@@ -19,8 +19,8 @@ permissions:
   contents: read
 
 jobs:
-  build_conda:
-    name: Build package
+  build-conda:
+    name: Build conda package
     runs-on: ubuntu-latest # Currently, only need noarch
     # runs-on: ${{ matrix.os }}
     # strategy:
@@ -59,7 +59,7 @@ jobs:
         path: |
           output/**/*.tar.bz2
           output/**/*.conda
-  build_wheel:
+  build-wheel:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ubuntu-latest # Currently, only need noarch
     # runs-on: ${{ matrix.os }}
@@ -72,7 +72,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: hynek/build-and-inspect-python-package@v2
-  sdist:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -84,9 +84,100 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
       - name: Build package
-        run: python -m build --sdist
+        run: python -m build
       - uses: actions/upload-artifact@v3
-        name: Upload sdist
+        name: Upload wheel
         with:
           name: wheels
           path: dist
+
+  publish-to-pypi:
+    name: >-
+      Publish Python 🐍 distribution 📦 to PyPI
+    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    needs:
+    - build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dewret  # Replace <package-name> with your PyPI project name
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: wheels
+        path: dist/
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-to-prefix-dev:
+    name: >-
+      Publish Python 🐍 distribution 📦 to prefix.dev
+    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    needs:
+    - build-conda
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download all the dists
+      uses: actions/download-artifact@v4
+      with:
+        name: conda-package
+        path: output
+    - uses: prefix-dev/setup-pixi@v0.6.0
+      name: Setup pixi
+      with:
+        pixi-version: v0.19.1
+        cache: false
+        manifest-path: "pyproject.toml"
+        auth-host: https://prefix.dev/api/v1/upload/dewret
+        auth-token: ${{ secrets.PREFIX_DEV_TOKEN }}
+    - name: Upload to prefix.dev
+      run: pixi upload https://prefix.dev/api/v1/upload/dewret output/**/*.conda
+
+  github-release:
+    name: >-
+      Sign the Python 🐍 distribution 📦 with Sigstore
+      and upload them to GitHub Release
+    needs:
+    - publish-to-pypi
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # IMPORTANT: mandatory for making GitHub Releases
+      id-token: write  # IMPORTANT: mandatory for sigstore
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: wheels
+        path: dist/
+    - name: Sign the dists with Sigstore
+      uses: sigstore/gh-action-sigstore-python@v1.2.3
+      with:
+        inputs: >-
+          ./dist/*.tar.gz
+          ./dist/*.whl
+    - name: Create GitHub Release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: >-
+        gh release create
+        '${{ github.ref_name }}'
+        --repo '${{ github.repository }}'
+        --notes ""
+    - name: Upload artifact signatures to GitHub Release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      # Upload to GitHub Release using the `gh` CLI.
+      # `dist/` contains the built packages, and the
+      # sigstore-produced signatures and certificates.
+      run: >-
+        gh release upload
+        '${{ github.ref_name }}' dist/**
+        --repo '${{ github.repository }}'

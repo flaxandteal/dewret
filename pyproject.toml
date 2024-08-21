@@ -57,3 +57,7 @@ test = ["pytest", "coverage", "ruff", "mypy"]
 docs = [
   "portray @ git+https://github.com/flaxandteal/portray.git#v1.8.0-fat"
 ]
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
