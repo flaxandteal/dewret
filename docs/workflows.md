@@ -63,19 +63,15 @@ In code, this would be:
 ...     left=double(num=increment(num=23)),
 ...     right=mod10(num=increment(num=23))
 ... )
->>> workflow = construct(result, simplify_ids=True)
->>> cwl = render(workflow)
+>>> wkflw = construct(result, simplify_ids=True)
+>>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
   increment-1-num:
     default: 23
-    label: increment-1-num
-    type: int
-  increment-2-num:
-    default: 23
-    label: increment-2-num
+    label: num
     type: int
 outputs:
   out:
@@ -86,7 +82,7 @@ steps:
   double-1:
     in:
       num:
-        source: increment-2/out
+        source: increment-1/out
     out:
     - out
     run: double
@@ -94,13 +90,6 @@ steps:
     in:
       num:
         source: increment-1-num
-    out:
-    - out
-    run: increment
-  increment-2:
-    in:
-      num:
-        source: increment-2-num
     out:
     - out
     run: increment
@@ -157,8 +146,8 @@ This duplication can be avoided by explicitly indicating that the parameters are
 ...     left=double(num=increment(num=num)),
 ...     right=mod10(num=increment(num=num))
 ... )
->>> workflow = construct(result, simplify_ids=True)
->>> cwl = render(workflow)
+>>> wkflw = construct(result, simplify_ids=True)
+>>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
@@ -232,8 +221,8 @@ For example:
 ...    return (num + INPUT_NUM) % INPUT_NUM
 >>>
 >>> result = rotate(num=5)
->>> workflow = construct(result, simplify_ids=True)
->>> cwl = render(workflow)
+>>> wkflw = construct(result, simplify_ids=True)
+>>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
@@ -244,7 +233,7 @@ inputs:
     type: int
   rotate-1-num:
     default: 5
-    label: rotate-1-num
+    label: num
     type: int
 outputs:
   out:
@@ -284,22 +273,24 @@ As code:
 ```python
 >>> import sys
 >>> import yaml
->>> from dewret.tasks import task, construct, nested_task
+>>> from dewret.core import set_configuration
+>>> from dewret.tasks import task, construct, workflow
 >>> from dewret.renderers.cwl import render
 >>> INPUT_NUM = 3
 >>> @task()
 ... def rotate(num: int) -> int:
-...    """Rotate an integer."""
-...    return (num + INPUT_NUM) % INPUT_NUM
+...     """Rotate an integer."""
+...     return (num + INPUT_NUM) % INPUT_NUM
 >>>
->>> @nested_task()
+>>> @workflow()
 ... def double_rotate(num: int) -> int:
-...    """Rotate an integer twice."""
-...    return rotate(num=rotate(num=num))
+...     """Rotate an integer twice."""
+...     return rotate(num=rotate(num=num))
 >>>
->>> result = double_rotate(num=3)
->>> workflow = construct(result, simplify_ids=True)
->>> cwl = render(workflow)
+>>> with set_configuration(flatten_all_nested=True):
+...     result = double_rotate(num=3)
+...     wkflw = construct(result, simplify_ids=True)
+...     cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
@@ -315,7 +306,7 @@ inputs:
 outputs:
   out:
     label: out
-    outputSource: rotate-2/out
+    outputSource: rotate-1/out
     type: int
 steps:
   rotate-1:
@@ -323,7 +314,7 @@ steps:
       INPUT_NUM:
         source: INPUT_NUM
       num:
-        source: num
+        source: rotate-2/out
     out:
     - out
     run: rotate
@@ -332,7 +323,7 @@ steps:
       INPUT_NUM:
         source: INPUT_NUM
       num:
-        source: rotate-1/out
+        source: num
     out:
     - out
     run: rotate
@@ -349,7 +340,7 @@ For example, the following code renders the same workflow as in the previous exa
 
 
 ```python
-@nested_task()
+@workflow()
 def double_rotate(num: int) -> int:
    """Rotate an integer twice."""
    unused_var = increment(num=num)
@@ -409,19 +400,15 @@ As code:
 ...     left=shuffle(max_cards_per_suit=13).hearts,
 ...     right=shuffle(max_cards_per_suit=13).diamonds
 ... )
->>> workflow = construct(red_total, simplify_ids=True)
->>> cwl = render(workflow)
+>>> wkflw = construct(red_total, simplify_ids=True)
+>>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
   shuffle-1-max_cards_per_suit:
     default: 13
-    label: shuffle-1-max_cards_per_suit
-    type: int
-  shuffle-2-max_cards_per_suit:
-    default: 13
-    label: shuffle-2-max_cards_per_suit
+    label: max_cards_per_suit
     type: int
 outputs:
   out:
@@ -447,28 +434,10 @@ steps:
         label: spades
         type: int
     run: shuffle
-  shuffle-2:
-    in:
-      max_cards_per_suit:
-        source: shuffle-2-max_cards_per_suit
-    out:
-      clubs:
-        label: clubs
-        type: int
-      diamonds:
-        label: diamonds
-        type: int
-      hearts:
-        label: hearts
-        type: int
-      spades:
-        label: spades
-        type: int
-    run: shuffle
   sum-1:
     in:
       left:
-        source: shuffle-2/hearts
+        source: shuffle-1/hearts
       right:
         source: shuffle-1/diamonds
     out:
@@ -510,19 +479,15 @@ Here, we show the same example with `dataclasses`.
 ...     left=shuffle(max_cards_per_suit=13).hearts,
 ...     right=shuffle(max_cards_per_suit=13).diamonds
 ... )
->>> workflow = construct(red_total, simplify_ids=True)
->>> cwl = render(workflow)
+>>> wkflw = construct(red_total, simplify_ids=True)
+>>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
   shuffle-1-max_cards_per_suit:
     default: 13
-    label: shuffle-1-max_cards_per_suit
-    type: int
-  shuffle-2-max_cards_per_suit:
-    default: 13
-    label: shuffle-2-max_cards_per_suit
+    label: max_cards_per_suit
     type: int
 outputs:
   out:
@@ -548,28 +513,10 @@ steps:
         label: spades
         type: int
     run: shuffle
-  shuffle-2:
-    in:
-      max_cards_per_suit:
-        source: shuffle-2-max_cards_per_suit
-    out:
-      clubs:
-        label: clubs
-        type: int
-      diamonds:
-        label: diamonds
-        type: int
-      hearts:
-        label: hearts
-        type: int
-      spades:
-        label: spades
-        type: int
-    run: shuffle
   sum-1:
     in:
       left:
-        source: shuffle-2/hearts
+        source: shuffle-1/hearts
       right:
         source: shuffle-1/diamonds
     out:
@@ -589,7 +536,7 @@ dewret will produce multiple output workflows that reference each other.
 >>> import yaml
 >>> from attrs import define
 >>> from numpy import random
->>> from dewret.tasks import task, construct, subworkflow
+>>> from dewret.tasks import task, construct, workflow
 >>> from dewret.renderers.cwl import render
 >>> @define
 ... class PackResult:
@@ -611,21 +558,21 @@ dewret will produce multiple output workflows that reference each other.
 ...        spades=random.randint(max_cards_per_suit),
 ...        diamonds=random.randint(max_cards_per_suit)
 ...    )
->>> @subworkflow()
-... def red_total():
+>>> @workflow()
+... def red_total() -> int:
 ...     return sum(
 ...         left=shuffle(max_cards_per_suit=13).hearts,
 ...         right=shuffle(max_cards_per_suit=13).diamonds
 ...     )
->>> @subworkflow()
-... def black_total():
+>>> @workflow()
+... def black_total() -> int:
 ...     return sum(
 ...         left=shuffle(max_cards_per_suit=13).spades,
 ...         right=shuffle(max_cards_per_suit=13).clubs
 ...     )
 >>> total = sum(left=red_total(), right=black_total())
->>> workflow = construct(total, simplify_ids=True)
->>> cwl, subworkflows = render(workflow)
+>>> wkflw = construct(total, simplify_ids=True)
+>>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
@@ -667,7 +614,7 @@ as a second term.
 >>> import yaml
 >>> from attrs import define
 >>> from numpy import random
->>> from dewret.tasks import task, construct, subworkflow
+>>> from dewret.tasks import task, construct, workflow
 >>> from dewret.renderers.cwl import render
 >>> @define
 ... class PackResult:
@@ -689,33 +636,25 @@ as a second term.
 ... def sum(left: int, right: int) -> int:
 ...    return left + right
 >>>
->>> @subworkflow()
-... def red_total():
+>>> @workflow()
+... def red_total() -> int:
 ...     return sum(
 ...         left=shuffle(max_cards_per_suit=13).hearts,
 ...         right=shuffle(max_cards_per_suit=13).diamonds
 ...     )
->>> @subworkflow()
-... def black_total():
+>>> @workflow()
+... def black_total() -> int:
 ...     return sum(
 ...         left=shuffle(max_cards_per_suit=13).spades,
 ...         right=shuffle(max_cards_per_suit=13).clubs
 ...     )
 >>> total = sum(left=red_total(), right=black_total())
->>> workflow = construct(total, simplify_ids=True)
->>> cwl, subworkflows = render(workflow)
->>> yaml.dump(subworkflows["red_total-1"], sys.stdout, indent=2)
+>>> wkflw = construct(total, simplify_ids=True)
+>>> cwl = render(wkflw)
+>>> yaml.dump(cwl["red_total-1"], sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
-inputs:
-  shuffle-1-1-max_cards_per_suit:
-    default: 13
-    label: shuffle-1-1-max_cards_per_suit
-    type: int
-  shuffle-1-2-max_cards_per_suit:
-    default: 13
-    label: shuffle-1-2-max_cards_per_suit
-    type: int
+inputs: {}
 outputs:
   out:
     label: out
@@ -725,25 +664,7 @@ steps:
   shuffle-1-1:
     in:
       max_cards_per_suit:
-        source: shuffle-1-1-max_cards_per_suit
-    out:
-      clubs:
-        label: clubs
-        type: int
-      diamonds:
-        label: diamonds
-        type: int
-      hearts:
-        label: hearts
-        type: int
-      spades:
-        label: spades
-        type: int
-    run: shuffle
-  shuffle-1-2:
-    in:
-      max_cards_per_suit:
-        source: shuffle-1-2-max_cards_per_suit
+        default: 13
     out:
       clubs:
         label: clubs
@@ -761,7 +682,7 @@ steps:
   sum-1-1:
     in:
       left:
-        source: shuffle-1-2/hearts
+        source: shuffle-1-1/hearts
       right:
         source: shuffle-1-1/diamonds
     out:
@@ -783,7 +704,7 @@ Below is the default output, treating `Pack` as a task.
 ```python
 >>> import sys
 >>> import yaml
->>> from dewret.tasks import subworkflow, factory, nested_task, construct, task
+>>> from dewret.tasks import workflow, factory, workflow, construct, task
 >>> from attrs import define
 >>> from dewret.renderers.cwl import render
 >>> @define
@@ -799,39 +720,39 @@ Below is the default output, treating `Pack` as a task.
 ... def sum(left: int, right: int) -> int:
 ...    return left + right
 >>>
->>> @nested_task()
-... def black_total(pack: PackResult):
+>>> @workflow()
+... def black_total(pack: PackResult) -> int:
 ...     return sum(
 ...         left=pack.spades,
 ...         right=pack.clubs
 ...     )
 >>> pack = Pack(hearts=13, spades=13, diamonds=13, clubs=13)
->>> workflow = construct(black_total(pack=pack), simplify_ids=True)
->>> cwl = render(workflow)
+>>> wkflw = construct(black_total(pack=pack), simplify_ids=True)
+>>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
   PackResult-1-clubs:
     default: 13
-    label: PackResult-1-clubs
+    label: clubs
     type: int
   PackResult-1-diamonds:
     default: 13
-    label: PackResult-1-diamonds
+    label: diamonds
     type: int
   PackResult-1-hearts:
     default: 13
-    label: PackResult-1-hearts
+    label: hearts
     type: int
   PackResult-1-spades:
     default: 13
-    label: PackResult-1-spades
+    label: spades
     type: int
 outputs:
   out:
     label: out
-    outputSource: sum-1/out
+    outputSource: black_total-1/out
     type: int
 steps:
   PackResult-1:
@@ -858,15 +779,13 @@ steps:
         label: spades
         type: int
     run: PackResult
-  sum-1:
+  black_total-1:
     in:
-      left:
-        source: PackResult-1/spades
-      right:
-        source: PackResult-1/clubs
+      pack:
+        source: PackResult-1/out
     out:
     - out
-    run: sum
+    run: black_total
 
 ```
 
@@ -876,7 +795,7 @@ types are allowed.
 ```python
 >>> import sys
 >>> import yaml
->>> from dewret.tasks import task, factory, nested_task, construct
+>>> from dewret.tasks import task, factory, workflow, construct
 >>> from attrs import define
 >>> from dewret.renderers.cwl import render
 >>> @define
@@ -891,34 +810,34 @@ types are allowed.
 ... def sum(left: int, right: int) -> int:
 ...    return left + right
 >>>
->>> @nested_task()
-... def black_total(pack: PackResult):
+>>> @workflow()
+... def black_total(pack: PackResult) -> int:
 ...     return sum(
 ...         left=pack.spades,
 ...         right=pack.clubs
 ...     )
 >>> pack = Pack(hearts=13, spades=13, diamonds=13, clubs=13)
->>> workflow = construct(black_total(pack=pack), simplify_ids=True)
->>> cwl = render(workflow, allow_complex_types=True, factories_as_params=True)
+>>> wkflw = construct(black_total(pack=pack), simplify_ids=True)
+>>> cwl = render(wkflw, allow_complex_types=True, factories_as_params=True)["black_total-1"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
-  PackResult-1:
-    label: PackResult-1
+  pack:
+    label: pack
     type: record
 outputs:
   out:
     label: out
-    outputSource: sum-1/out
+    outputSource: sum-1-1/out
     type: int
 steps:
-  sum-1:
+  sum-1-1:
     in:
       left:
-        source: PackResult-1/spades
+        source: pack/spades
       right:
-        source: PackResult-1/clubs
+        source: pack/clubs
     out:
     - out
     run: sum

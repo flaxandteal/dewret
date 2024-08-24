@@ -76,9 +76,9 @@ def test_can_get_field_reference_from_parameter():
     my_param = param("my_param", typ=MyDataclass)
     result = sum(left=my_param.left, right=sum(left=my_param.right.left, right=my_param))
     wkflw = construct(result, simplify_ids=True)
-    param_references = {(str(p), p.__type__) for p in wkflw.find_parameters()}
+    params = {(str(p), p.__type__) for p in wkflw.find_parameters()}
 
-    assert param_references == {("my_param/left", int), ("my_param", MyDataclass), ("my_param/right/left", int)}
+    assert params == {("my_param", MyDataclass)}
     rendered = render(wkflw, allow_complex_types=True)["__root__"]
     assert rendered == yaml.safe_load("""
         class: Workflow

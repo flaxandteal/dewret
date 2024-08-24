@@ -56,8 +56,17 @@ class FunctionAnalyser:
 
     @property
     def return_type(self) -> type:
-        """Return type of the callable."""
-        return get_type_hints(inspect.unwrap(self.fn), include_extras=True)["return"]
+        """Return type of the callable.
+
+        Returns: expected type of the return value.
+
+        Raises:
+          ValueError: if the return value does not appear to be type-hinted.
+        """
+        hints = get_type_hints(inspect.unwrap(self.fn), include_extras=True)
+        if "return" not in hints:
+            raise ValueError(f"Could not find type-hint for return value of {self.fn}")
+        return hints["return"]
 
     @staticmethod
     def _typ_has(typ: type, annotation: type) -> bool:
