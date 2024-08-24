@@ -26,6 +26,7 @@ from types import FrameType, TracebackType, UnionType, ModuleType
 from typing import Any, cast, Union, Protocol, ClassVar, Callable, Iterable, get_args, get_origin, Annotated
 from pathlib import Path
 from collections.abc import Sequence, Mapping
+from dataclasses import asdict, is_dataclass
 from sympy import Basic, Integer, Float, Rational
 
 from .core import Reference, BasicType, RawType, FirmType, Raw
@@ -110,6 +111,8 @@ def crawl_raw(value: Any, action: Callable[[Any], Any]) -> RawType:
         return value
     if isinstance(value, Mapping):
         return {key: flatten(item) for key, item in value.items()}
+    if is_dataclass(value) and not isinstance(value, type):
+        return crawl_raw(asdict(value), action)
     if isinstance(value, Sequence):
         return [flatten(item) for item in value]
     if (raw := ensure_raw(value)) is not None:

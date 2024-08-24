@@ -38,14 +38,15 @@ def test_can_supply_nested_raw():
           max_list-1:
             in:
               lst:
-                expression: $(2*reverse_list-1)
+                source: reverse_list-1/out
+                valueFrom: $(2*self)
             out:
             - out
             run: max_list
           reverse_list-1:
             in:
               to_sort:
-                expression: $((1.0, 3.0, pi))
+                valueFrom: $((1.0, 3.0, inputs.pi))
             out:
             - out
             run: reverse_list

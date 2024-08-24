@@ -5,7 +5,7 @@ import importlib
 from functools import lru_cache
 from types import FunctionType
 from dataclasses import dataclass
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Callable, get_origin, get_args, Mapping, TypeAliasType
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Callable, get_origin, get_args, Mapping, TypeAliasType, get_type_hints
 
 T = TypeVar("T")
 AtRender = Annotated[T, "AtRender"]
@@ -26,7 +26,7 @@ class FunctionAnalyser:
 
     @property
     def return_type(self):
-        return inspect.signature(inspect.unwrap(self.fn)).return_annotation
+        return get_type_hints(inspect.unwrap(self.fn), include_extras=True)["return"]
 
     @staticmethod
     def _typ_has(typ: type, annotation: type) -> bool:
@@ -69,10 +69,11 @@ class FunctionAnalyser:
         all_annotations: dict[str, type] = {}
         typ: type | None = None
         if (typ := self.fn.__annotations__.get(arg)):
-            ...
+            if isinstance(typ, str):
+                typ = get_type_hints(self.fn, include_extras=True).get(arg)
         elif exhaustive:
-            if "__annotations__" in self.fn.__globals__:
-                if (typ := self.fn.__globals__["__annotations__"].get(arg)):
+            if (anns := get_type_hints(sys.modules[self.fn.__module__], include_extras=True)):
+                if (typ := anns.get(arg)):
                     ...
                 elif (orig_pair := self.get_all_imported_names().get(arg)):
                     orig_module, orig_name = orig_pair

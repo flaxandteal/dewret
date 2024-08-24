@@ -4,12 +4,12 @@ from functools import lru_cache
 from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union, Any, get_args, get_origin, Annotated, Never
 from contextlib import contextmanager
 from contextvars import ContextVar
-from sympy import Expr, Symbol
+from sympy import Expr, Symbol, Basic
 import copy
 
 BasicType = str | float | bool | bytes | int | None
 RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
-FirmType = BasicType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
+FirmType = RawType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
 
 U = TypeVar("U")
 T = TypeVar("T", bound=TypedDict)
@@ -87,10 +87,16 @@ def _set_configuration(config_group: str, kwargs: U) -> Iterator[ContextVar[Glob
         CONFIGURATION.set(previous)
 
 def get_configuration(key: str) -> RawType:
-    return CONFIGURATION.get()["construct"].get(key) # type: ignore
+    try:
+        return CONFIGURATION.get()["construct"].get(key) # type: ignore
+    except LookupError:
+        return default_construct_config().get(key)
 
 def get_render_configuration(key: str) -> RawType:
-    return CONFIGURATION.get()["render"].get(key) # type: ignore
+    try:
+        return CONFIGURATION.get()["render"].get(key) # type: ignore
+    except LookupError:
+        return default_renderer_config().get(key)
 
 class Reference(Generic[U], Symbol):
     """Superclass for all symbolic references to values."""
@@ -129,7 +135,7 @@ class Reference(Generic[U], Symbol):
     def __eq__(self, other) -> bool:
         if isinstance(other, list) or other is None:
             return False
-        if not isinstance(other, Reference):
+        if not isinstance(other, Reference) and not isinstance(other, Basic):
             self._raise_unevaluatable_error()
         return super().__eq__(other)
 
@@ -193,44 +199,7 @@ class IteratedGenerator(Generic[U]):
     def __iter__(self):
         count = -1
         for _ in self.__wrapped__.__inner_iter__():
-            yield Iterated(to_wrap=self.__wrapped__, iteration=(count := count + 1))
-
-
-class Iterated(Reference[U]):
-    __wrapped__: Reference[U]
-    __iteration__: int
-
-    def __init__(self, to_wrap: Reference[U], iteration: int, *args, **kwargs):
-        self.__wrapped__ = to_wrap
-        self.__iteration__ = iteration
-        super().__init__(*args, **kwargs)
-
-    @property
-    def _(self):
-        return self.__wrapped__._
-
-    @property
-    def __root_name__(self) -> str:
-        return f"{self.__wrapped__.__root_name__}[{self.__iteration__}]"
-
-    @property
-    def __type__(self) -> type:
-        return self.__wrapped__.__type__
-
-    def __hash__(self) -> int:
-        return hash(self.__root_name__)
-
-    @property
-    def __field__(self) -> tuple[str]:
-        return tuple(list(self.__wrapped__.__field__) + [str(self.__iteration__)])
-
-    @property
-    def __workflow__(self) -> WorkflowProtocol:
-        return self.__wrapped__.__workflow__
-
-    @__workflow__.setter
-    def __workflow__(self, workflow: WorkflowProtocol) -> None:
-        self.__wrapped__.__workflow__ = workflow
+            yield self.__wrapped__.__make_reference__(field=(count := count + 1))
 
 
 @dataclass

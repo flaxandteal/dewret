@@ -1,3 +1,4 @@
+from __future__ import annotations
 import yaml
 from dataclasses import dataclass
 
@@ -19,10 +20,9 @@ class Sides:
 SIDES: Sides = Sides(3, 6)
 
 @workflow()
-def sum_sides():
+def sum_sides() -> float:
     return sum(left=SIDES.left, right=SIDES.right)
 
-@pytest.mark.skip(reason="Need expression support")
 def test_fields_of_parameters_usable() -> None:
     result = sum_sides()
     wkflw = construct(result, simplify_ids=True)
@@ -34,10 +34,20 @@ def test_fields_of_parameters_usable() -> None:
       inputs:
         SIDES:
           label: SIDES
+          default:
+            left: 3
+            right: 6
           type: record
-          items:
-            left: int
-            right: int
+          fields:
+            left:
+              default: 3
+              label: left
+              type: int
+            right:
+              default: 6
+              label: right
+              type: int
+          label: SIDES
       outputs:
         out:
           label: out
@@ -49,26 +59,26 @@ def test_fields_of_parameters_usable() -> None:
         sum-1-1:
           in:
             left:
-              source: SIDES
-              valueFrom: $(self.left)
+              source: SIDES/left
             right:
-              source: SIDES
-              valueFrom: $(self.right)
+              source: SIDES/right
           out:
           - out
           run: sum
     """)
 
+@dataclass
+class MyDataclass:
+    left: int
+    right: "MyDataclass"
+
 def test_can_get_field_reference_from_parameter():
-    @dataclass
-    class MyDataclass:
-        left: int
     my_param = param("my_param", typ=MyDataclass)
-    result = sum(left=my_param.left, right=my_param)
+    result = sum(left=my_param.left, right=sum(left=my_param.right.left, right=my_param))
     wkflw = construct(result, simplify_ids=True)
     param_references = {(str(p), p.__type__) for p in wkflw.find_parameters()}
 
-    assert param_references == {("my_param/left", int), ("my_param", MyDataclass)}
+    assert param_references == {("my_param/left", int), ("my_param", MyDataclass), ("my_param/right/left", int)}
     rendered = render(wkflw, allow_complex_types=True)["__root__"]
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -80,7 +90,7 @@ def test_can_get_field_reference_from_parameter():
         outputs:
           out:
             label: out
-            outputSource: sum-1/out
+            outputSource: sum-2/out
             type:
             - int
             - float
@@ -88,9 +98,18 @@ def test_can_get_field_reference_from_parameter():
           sum-1:
             in:
               left:
-                source: my_param/left
+                source: my_param/right/left
               right:
                 source: my_param
+            out:
+            - out
+            run: sum
+          sum-2:
+            in:
+              left:
+                source: my_param/left
+              right:
+                source: sum-1/out
             out:
             - out
             run: sum
@@ -129,11 +148,11 @@ def test_can_get_field_references_from_dataclass():
     assert str(wkflw.result) == "get_left-1"
     assert wkflw.result.__type__ == int
 
-def test_can_get_field_references_from_typed_dict():
-    class MyDict(TypedDict):
-        left: int
-        right: float
+class MyDict(TypedDict):
+    left: int
+    right: float
 
+def test_can_get_field_references_from_typed_dict():
     @workflow()
     def test_dict(**my_dict: Unpack[MyDict]) -> MyDict:
         result: MyDict = {"left": mod10(num=my_dict["left"]), "right": pi()}
@@ -144,6 +163,10 @@ def test_can_get_field_references_from_typed_dict():
 
     assert str(wkflw.result["left"]) == "test_dict-1/left"
     assert wkflw.result["left"].__type__ == int
+
+@dataclass
+class MyListWrapper:
+    my_list: list[int]
 
 def test_can_iterate():
     @task()
@@ -194,10 +217,6 @@ def test_can_iterate():
 
     assert wkflw.result._.step.positional_args == {"alpha": True, "beta": True, "charlie": True}
 
-    @dataclass
-    class MyListWrapper:
-        my_list: list[int]
-
     @task()
     def test_list_2() -> MyListWrapper:
         return MyListWrapper(my_list=[1, 2])
@@ -238,12 +257,9 @@ def test_can_iterate():
               - 1
             - - 2
               - 3
+            items: array
             label: param
-            type:
-              type:
-                items: array
-                label: param
-                type: array
+            type: array
         outputs:
           out:
             label: out
@@ -253,7 +269,8 @@ def test_can_iterate():
           mod10-1:
             in:
               num:
-                expression: $(param[0][0] + param[0][1] + param[1][0] + param[1][1] + mod10-2)
+                valueFrom: $(inputs.param[0][0] + inputs.param[0][1] + inputs.param[1][0] + inputs.param[1][1] + self)
+                source: mod10-2/out
             out:
             - out
             run: mod10
@@ -283,11 +300,11 @@ def test_can_use_plain_dict_fields():
         assert str(wkflw.result["left"]) == "test_dict-1/left"
         assert wkflw.result["left"].__type__ == int | float
 
-def test_can_configure_field_separator():
-    @dataclass
-    class IndexTest:
-        left: Fixed[list[int]]
+@dataclass
+class IndexTest:
+    left: Fixed[list[int]]
 
+def test_can_configure_field_separator():
     @task()
     def test_sep() -> IndexTest:
         return IndexTest(left=[3])

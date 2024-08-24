@@ -387,12 +387,7 @@ def task(
             **kwargs: Param.kwargs,
         ) -> RetType:
             configuration = None
-            try:
-                allow_positional_args = get_configuration("allow_positional_args")
-            except LookupError:
-                configuration = set_configuration()
-                configuration.__enter__()
-                allow_positional_args = get_configuration("allow_positional_args")
+            allow_positional_args = get_configuration("allow_positional_args")
 
             try:
                 # Ensure that all arguments are passed as keyword args and prevent positional args.
