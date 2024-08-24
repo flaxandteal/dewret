@@ -86,7 +86,7 @@ def test_input_factories() -> None:
           days_in_future-1-num:
             default: 3
             type: int
-            label: days_in_future-1-num
+            label: num
           get_now-1:
             label: get_now-1
             type: datetime
@@ -115,7 +115,7 @@ def test_input_factories() -> None:
           days_in_future-1-num:
             default: 3
             type: int
-            label: days_in_future-1-num
+            label: num
         outputs:
           out:
             label: out
@@ -154,7 +154,7 @@ def test_cwl_with_parameter() -> None:
         class: Workflow
         inputs:
           increment-{hsh}-num:
-            label: increment-{hsh}-num
+            label: num
             type: int
             default: 3
         outputs:
@@ -171,7 +171,7 @@ def test_cwl_with_parameter() -> None:
             out: [out]
     """)
 
-def test_cwl_with_parameter() -> None:
+def test_cwl_with_positional_parameter() -> None:
     """Check whether we can move raw input to parameters.
 
     Produces CWL for a call with a changeable raw value, that is converted
@@ -191,7 +191,7 @@ def test_cwl_with_parameter() -> None:
         class: Workflow
         inputs:
           increment-{hsh}-num:
-            label: increment-{hsh}-num
+            label: num
             type: int
             default: 3
         outputs:
@@ -357,14 +357,14 @@ def test_cwl_references() -> None:
         class: Workflow
         inputs:
           increment-{hsh_increment}-num:
-            label: increment-{hsh_increment}-num
+            label: num
             type: int
             default: 3
         outputs:
           out:
             label: out
             outputSource: double-{hsh_double}/out
-            type: 
+            type:
             - int
             - float
         steps:
@@ -397,14 +397,14 @@ def test_complex_cwl_references() -> None:
         class: Workflow
         inputs:
           increment-1-num:
-            label: increment-1-num
+            label: num
             type: int
             default: 23
         outputs:
           out:
             label: out
             outputSource: sum-1/out
-            type: 
+            type:
             - int
             - float
         steps:
@@ -459,7 +459,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             type: int
           sum-1-right:
             default: 3
-            label: sum-1-right
+            label: right
             type: int
         outputs:
           out:
@@ -548,8 +548,7 @@ def test_tuple_floats() -> None:
     """
     result = tuple_float_return()
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)
-    print(yaml.dump(rendered))
+    rendered = render(workflow)["__root__"]
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
@@ -558,11 +557,10 @@ def test_tuple_floats() -> None:
           out:
             label: out
             outputSource: tuple_float_return-1/out
-            type: 
-              items: 
-                - type: float
-                - type: float
-              type: array
+            items:
+              - float
+              - float
+            type: array
         steps:
           tuple_float_return-1:
             run: tuple_float_return

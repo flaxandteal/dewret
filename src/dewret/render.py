@@ -8,6 +8,7 @@ import yaml
 from .workflow import Workflow, NestedStep
 from .core import RawType
 from .workflow import Workflow
+from .utils import load_module_or_package
 
 RenderConfiguration = TypeVar("RenderConfiguration", bound=dict[str, Any])
 
@@ -34,13 +35,7 @@ def get_render_method(renderer: Path | RawRenderModule | StructuredRenderModule,
 
         # Attempt to load renderer as package, falling back to a single module otherwise.
         # This enables relative imports in renderers and therefore the ability to modularize.
-        try:
-            loader = importlib.machinery.SourceFileLoader("__renderer__", str(renderer.parent / "__init__.py"))
-            sys.modules["__renderer__"] = loader.load_module(f"__renderer__")
-            render_module = importlib.import_module(f"__renderer__.{renderer.stem}", "__renderer__")
-        except ImportError:
-            loader = importlib.machinery.SourceFileLoader("__renderer__", str(renderer))
-            render_module = loader.load_module()
+        render_module = load_module_or_package("__renderer__", renderer)
         sys.modules["__renderer_mod__"] = render_module
     else:
         render_module = renderer

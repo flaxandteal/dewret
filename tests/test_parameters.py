@@ -34,7 +34,7 @@ def test_cwl_parameters() -> None:
             type: int
             default: 3
           rotate-1-num:
-            label: rotate-1-num
+            label: num
             type: int
             default: 3
         outputs:
@@ -77,7 +77,7 @@ def test_complex_parameters() -> None:
             type: int
             default: 23
           rotate-2-num:
-            label: rotate-2-num
+            label: num
             type: int
             default: 23
         outputs:

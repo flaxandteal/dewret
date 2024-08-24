@@ -44,7 +44,7 @@ def test_fields_of_parameters_usable() -> None:
           outputSource: sum-1-1/out
           type:
           - int
-          - double
+          - float
       steps:
         sum-1-1:
           in:
@@ -83,7 +83,7 @@ def test_can_get_field_reference_from_parameter():
             outputSource: sum-1/out
             type:
             - int
-            - double
+            - float
         steps:
           sum-1:
             in:

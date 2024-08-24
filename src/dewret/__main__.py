@@ -32,6 +32,7 @@ import click
 import json
 
 from .core import set_configuration, set_render_configuration
+from .utils import load_module_or_package
 from .render import get_render_method, RawRenderModule, StructuredRenderModule
 from .tasks import Backend, construct
 
@@ -130,21 +131,8 @@ def render(
         opener = _opener
 
     render = get_render_method(render_module, pretty=pretty)
-    workflow_init = workflow_py.parent
     pkg = "__workflow__"
-
-    # Try to import the workflow as a package, if possible, to allow relative imports.
-    try:
-        spec = importlib.util.spec_from_file_location(pkg, str(workflow_py.parent / "__init__.py"))
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Could not open {pkg} package")
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[pkg] = module
-        spec.loader.exec_module(module)
-        workflow = importlib.import_module(f"{pkg}.{workflow_py.stem}", pkg)
-    except ImportError:
-        loader = importlib.machinery.SourceFileLoader(pkg, str(workflow_py))
-        workflow = loader.load_module()
+    workflow = load_module_or_package(pkg, workflow_py)
     task_fn = getattr(workflow, task)
 
     try:

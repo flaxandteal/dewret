@@ -70,7 +70,7 @@ def test_at_render() -> None:
         inputs:
           increment-1-num:
             default: 3
-            label: increment-1-num
+            label: num
             type: int
         outputs:
           out:
@@ -78,7 +78,7 @@ def test_at_render() -> None:
             outputSource: to_int-1/out
             type:
             - int
-            - double
+            - float
         steps:
           increment-1:
             in:
@@ -108,7 +108,7 @@ def test_at_render() -> None:
         inputs:
           increment-1-num:
             default: 3
-            label: increment-1-num
+            label: num
             type: int
         outputs:
           out:
@@ -116,7 +116,7 @@ def test_at_render() -> None:
             outputSource: to_int-1/out
             type:
             - int
-            - double
+            - float
         steps:
           increment-1:
             in:
