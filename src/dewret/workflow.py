@@ -1203,7 +1203,7 @@ class FactoryCall(Step):
             arguments: key-value pairs to pass to the function - for a factory call, these _must_ be raw.
             raw_as_parameter: whether to turn any raw-type arguments into workflow parameters (or just keep them as default argument values).
         """
-        for key, arg in arguments.items():
+        for _, arg in arguments.items():
             if not is_expr(arg) and not (
                 isinstance(arg, ParameterReference) and is_raw_type(arg.__type__)
             ):
