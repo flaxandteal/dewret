@@ -20,8 +20,11 @@ General types and functions to centralize common logic.
 import hashlib
 import json
 import sys
-from types import FrameType, TracebackType, UnionType
+import importlib
+import importlib.util
+from types import FrameType, TracebackType, UnionType, ModuleType
 from typing import Any, cast, Union, Protocol, ClassVar, Callable, Iterable, get_args, get_origin, Annotated
+from pathlib import Path
 from collections.abc import Sequence, Mapping
 from sympy import Basic, Integer, Float, Rational
 
@@ -58,6 +61,24 @@ def make_traceback(skip: int = 2) -> TracebackType | None:
         frame = frame.f_back
     return tb
 
+def load_module_or_package(target_name: str, path: Path) -> ModuleType:
+    # Try to import the workflow as a package, if possible, to allow relative imports.
+    try:
+        spec = importlib.util.spec_from_file_location(target_name, str(path.parent / "__init__.py"))
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not open {path.parent} package")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[target_name] = module
+        spec.loader.exec_module(module)
+        workflow = importlib.import_module(f"{target_name}.{path.stem}", target_name)
+    except ImportError as exc:
+        spec = importlib.util.spec_from_file_location(target_name, str(path))
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not open {path} module") from exc
+        workflow = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(workflow)
+
+    return workflow
 
 def flatten_if_set(value: Any) -> RawType | Unset:
     """Takes a Raw-like structure and makes it RawType or Unset.

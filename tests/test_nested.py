@@ -26,14 +26,14 @@ def test_can_supply_nested_raw():
           pi:
             default: 3.141592653589793
             label: pi
-            type: double
+            type: float
         outputs:
           out:
             label: out
             outputSource: max_list-1/out
             type:
             - int
-            - double
+            - float
         steps:
           max_list-1:
             in:
