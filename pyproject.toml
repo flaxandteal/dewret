@@ -27,6 +27,12 @@ select = ["D", "F", "B"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[[tool.mypy.overrides]]
+module = [
+    "sympy",
+]
+ignore_missing_imports = true
+
 [project]
 name = "dewret"
 description = "DEclarative Workflow REndering Tool"

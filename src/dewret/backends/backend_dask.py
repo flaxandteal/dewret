@@ -99,6 +99,8 @@ def run(workflow: Workflow | None, task: Lazy | list[Lazy] | tuple[Lazy], thread
     Args:
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
+        thread_pool: thread pool for executing the workflows, to allow initialization of configuration contextvars.
+        **kwargs: any configuration arguments for this backend.
     """
     # def _check_delayed(task: Lazy | list[Lazy] | tuple[Lazy]) -> Delayed:
     #     # We need isinstance to reassure type-checker.
