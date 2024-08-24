@@ -80,12 +80,13 @@ class WorkflowDefinition:
         return cls(name=name, steps=steps)
 
     def render(self):
+        steps = "\n".join('* ' + indent(step.render(), '  ')[3:] for step in self.steps)
         return \
 f"""
 I found a workflow called {self.name}.
 It has {len(self.steps)} steps!
 They are:
-{'\n'.join('* ' + indent(step.render(), '  ')[3:] for step in self.steps)}
+{steps}
 It probably got made with JUMP={JUMP}
 """
 
