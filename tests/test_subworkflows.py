@@ -6,6 +6,7 @@ import yaml
 from dewret.tasks import construct, workflow, task, factory, set_configuration
 from dewret.renderers.cwl import render
 from dewret.workflow import param
+from attrs import define
 
 from ._lib.extra import increment, sum, pi
 
@@ -542,3 +543,72 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
             - out
             run: to_int
     """))
+
+@define
+class PackResult:
+    hearts: int
+    clubs: int
+    spades: int
+    diamonds: int
+
+def test_combining_attrs_and_factories():
+    Pack = factory(PackResult)
+
+    @task()
+    def sum(left: int, right: int) -> int:
+       return left + right
+
+    @workflow()
+    def black_total(pack: PackResult) -> int:
+        return sum(
+            left=pack.spades,
+            right=pack.clubs
+        )
+    pack = Pack(hearts=13, spades=13, diamonds=13, clubs=13)
+    wkflw = construct(black_total(pack=pack), simplify_ids=True)
+    cwl = render(wkflw, allow_complex_types=True, factories_as_params=True)
+    assert cwl["__root__"] == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          PackResult-1:
+            label: PackResult-1
+            type: record
+        outputs:
+          out:
+            label: out
+            outputSource: black_total-1/out
+            type: int
+        steps:
+          black_total-1:
+            in:
+              pack:
+                source: PackResult-1/out
+            out:
+            - out
+            run: black_total
+    """)
+
+    assert cwl["black_total-1"] == yaml.safe_load("""
+        class: Workflow
+        cwlVersion: 1.2
+        inputs:
+          pack:
+            label: pack
+            type: record
+        outputs:
+          out:
+            label: out
+            outputSource: sum-1-1/out
+            type: int
+        steps:
+          sum-1-1:
+            in:
+              left:
+                source: pack/spades
+              right:
+                source: pack/clubs
+            out:
+            - out
+            run: sum
+    """)

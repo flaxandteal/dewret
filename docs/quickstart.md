@@ -97,14 +97,14 @@ and backends, as well as bespoke serialization or formatting.
 >>>
 >>> result = increment(num=3)
 >>> workflow = construct(result, simplify_ids=True)
->>> cwl = render(workflow)
+>>> cwl = render(workflow)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
   increment-1-num:
     default: 3
-    label: increment-1-num
+    label: num
     type: int
 outputs:
   out:

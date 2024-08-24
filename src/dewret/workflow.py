@@ -465,7 +465,7 @@ class Workflow:
 
     def find_parameters(
         self, include_factory_calls: bool = True
-    ) -> set[ParameterReference]:
+    ) -> set[Parameter]:
         """Crawl steps for parameter references.
 
         As the workflow does not hold its own list of parameters, this
@@ -477,7 +477,7 @@ class Workflow:
         _, references = expr_to_references(
             step.arguments for step in self.steps if (include_factory_calls or not isinstance(step, FactoryCall))
         )
-        return {ref for ref in references if isinstance(ref, ParameterReference)}
+        return {ref._.parameter for ref in references if isinstance(ref, ParameterReference)}
 
     @property
     def indexed_steps(self) -> dict[str, BaseStep]:
@@ -545,7 +545,7 @@ class Workflow:
         for step in base.steps:
             step.set_workflow(base, with_arguments=True)
 
-        results = sorted(set((w.result for w in workflows if w.result)))
+        results = sorted(set((w.result for w in workflows if w.has_result)))
         if len(results) == 1:
             result = results[0]
         else:
@@ -587,9 +587,9 @@ class Workflow:
         param_counter = Counter[str]()
         name_to_original: dict[str, str] = {}
         for name, param in {
-            pr._.parameter.__name__: pr._.parameter
-            for pr in self.find_parameters()
-            if isinstance(pr, ParameterReference)
+            param.__name__: param
+            for param in self.find_parameters()
+            if isinstance(param, Parameter)
         }.items():
             if param.__original_name__ != name:
                 param_counter[param.__original_name__] += 1
@@ -1000,7 +1000,7 @@ class BaseStep(WorkflowComponent):
 
                 def _to_param_ref(value):
                     if isinstance(value, Parameter):
-                        return value.make_parameter(workflow=workflow)
+                        return value.make_reference(workflow=workflow)
                 expression, refs = expr_to_references(value, remap=_to_param_ref)
 
                 for ref in refs:
