@@ -129,6 +129,7 @@ class ConstructConfiguration:
     allow_plain_dict_fields: bool = False
     field_separator: str = "/"
     field_index_types: str = "int"
+    simplify_ids: bool = True
 
 class ConstructConfigurationTypedDict(TypedDict):
     """Basic configuration of the construction process.
@@ -143,6 +144,7 @@ class ConstructConfigurationTypedDict(TypedDict):
     allow_plain_dict_fields: bool
     field_separator: str
     field_index_types: str
+    simplify_ids: bool
 
 @define
 class GlobalConfiguration:
