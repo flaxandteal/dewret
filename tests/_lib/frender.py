@@ -4,11 +4,10 @@
 """
 
 from textwrap import indent
-from typing import Unpack, TypedDict, Any
+from typing import Unpack, TypedDict
 from dataclasses import dataclass
-from contextvars import ContextVar
 
-from dewret.core import RawType
+from dewret.core import set_render_configuration
 from dewret.workflow import Workflow, Step, NestedStep
 from dewret.render import base_render
 
@@ -17,10 +16,10 @@ from .extra import JUMP
 class FrenderRendererConfiguration(TypedDict):
     allow_complex_types: bool
 
-CONFIGURATION: ContextVar[FrenderRendererConfiguration] = ContextVar("configuration")
-CONFIGURATION.set({
-    "allow_complex_types": True
-})
+def default_config() -> FrenderRendererConfiguration:
+    return FrenderRendererConfiguration({
+        "allow_complex_types": True
+    })
 
 @dataclass
 class NestedStepDefinition:
@@ -103,7 +102,7 @@ def render_raw(
         Reduced form as a native Python dict structure for
         serialization.
     """
-    CONFIGURATION.get().update(kwargs)
+    set_render_configuration(kwargs)
     return base_render(
         workflow,
         lambda workflow: WorkflowDefinition.from_workflow(workflow).render()
