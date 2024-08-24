@@ -2,7 +2,7 @@ import yaml
 import pytest
 import math
 from dewret.workflow import param
-from dewret.tasks import construct, task, factory
+from dewret.tasks import construct
 from dewret.renderers.cwl import render
 
 from ._lib.extra import reverse_list, max_list

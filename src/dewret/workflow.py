@@ -502,9 +502,10 @@ class Workflow:
         This could happen if the hashing function is flawed
         or some Python magic to do with Targets being passed.
 
-        Argument:
-            left: workflow to use as base
-            right: workflow to combine on top
+        Args:
+            workflow_args: workflows to use as base
+
+        j
         """
         workflows = sorted((w for w in set(workflow_args)), key=lambda w: w.id)
         base = workflows[0]
@@ -1586,20 +1587,6 @@ class IterableStepReference(IterableMixin, StepReference[U]):
         """
         # We cast this so that we can treat a step iterator as if it really loops over results.
         yield cast(Reference, IteratedGenerator(self))
-
-def merge_workflows(*workflows: Workflow) -> Workflow:
-    """Combine several workflows into one.
-
-    Merges a series of workflows by combining steps and tasks.
-
-    Argument:
-        *workflows: series of workflows to combine.
-
-    Returns:
-        One workflow with all steps.
-    """
-    return Workflow.assimilate(*workflows)
-
 
 def is_task(task: Lazy) -> bool:
     """Decide whether this is a task.

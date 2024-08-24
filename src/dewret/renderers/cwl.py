@@ -556,7 +556,7 @@ class OutputsDefinition:
 
     @classmethod
     def from_results(
-        cls, results: dict[str, StepReference[Any]] | list[StepReference[Any]] | tuple[StepReference[Any]]
+        cls, results: dict[str, StepReference[Any]] | list[StepReference[Any]] | tuple[StepReference[Any], ...]
     ) -> "OutputsDefinition":
         """Takes a mapping of results into a CWL structure.
 
