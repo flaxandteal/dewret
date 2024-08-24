@@ -83,9 +83,9 @@ def load_module_or_package(target_name: str, path: Path) -> ModuleType:
             spec = importlib.util.spec_from_file_location(target_name, str(package_init))
             if spec is None or spec.loader is None:
                 raise ImportError(f"Could not open {path.parent} package")
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[target_name] = module
-            spec.loader.exec_module(module)
+            package = importlib.util.module_from_spec(spec)
+            sys.modules[target_name] = package
+            spec.loader.exec_module(package)
             module = importlib.import_module(f"{target_name}.{path.stem}", target_name)
         except ImportError as exc:
             exception = exc
