@@ -843,7 +843,7 @@ class FieldableMixin(_Fieldable):
         if tup_all != tup:
             raise ValueError(
                 "Setting for fixed index types contains unavailable type: " +
-                f"{str(get_configuration("field_index_types"))} vs {tup}"
+                f"{str(get_configuration('field_index_types'))} vs {tup}"
             )
         return tup
 
