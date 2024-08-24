@@ -20,19 +20,18 @@ Basic constructs for describing a workflow.
 from __future__ import annotations
 import inspect
 from collections.abc import Mapping, MutableMapping, Callable
-import base64
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter, OrderedDict
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable, get_origin, get_args, Generator, Sized, Sequence, get_type_hints
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal, Iterable, get_origin, get_args, Generator, Sized, Sequence, get_type_hints, TYPE_CHECKING
 from uuid import uuid4
-from sympy import Symbol, Expr, Basic, Tuple, Dict, nan
-
 import logging
+
+from sympy import Symbol, Expr, Basic
 
 logger = logging.getLogger(__name__)
 
-from .core import RawType, IterableMixin, Reference, get_configuration, Raw, IteratedGenerator, strip_annotations
+from .core import IterableMixin, Reference, get_configuration, Raw, IteratedGenerator, strip_annotations, WorkflowProtocol, WorkflowComponent
 from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
 
 T = TypeVar("T")
@@ -146,6 +145,7 @@ class Parameter(Generic[T], Symbol):
             default: value to infer type, etc. from.
             tethered: a workflow or step that demands this parameter; None if not yet present, False if not desired.
             autoname: whether we should customize this name for uniqueness (it is not user-set).
+            typ: a type to override what would be automatically inferred.
         """
         self.__original_name__ = name
 
@@ -163,13 +163,25 @@ class Parameter(Generic[T], Symbol):
         if tethered and isinstance(tethered, BaseStep):
             self.register_caller(tethered)
 
-    def is_loopable(self, typ: type):
+    @staticmethod
+    def is_loopable(typ: type):
+        """Checks if this type can be looped over.
+
+        In particular, checks if this is an iterable that is NOT a str or bytes, possibly disguised
+        behind an Annotated.
+
+        Args:
+            typ: type to check.
+
+        Returns: True if loopable, otherwise False.
+        """
         base = strip_annotations(typ)[0]
         base = get_origin(base) or base
         return inspect.isclass(base) and issubclass(base, Iterable) and not issubclass(base, str | bytes)
 
     @property
     def __type__(self):
+        """Type associated with this parameter."""
         if self.__fixed_type__ is not UNSET:
             return self.__fixed_type__
 
@@ -185,9 +197,20 @@ class Parameter(Generic[T], Symbol):
         return raw_type
 
     def __eq__(self, other):
+        """Comparing two parameters.
+
+        Currently, this uses the hashes.
+
+        TODO: confirm this is an iff.
+        """
         return hash(self) == hash(other)
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs) -> "Parameter":
+        """Creates a Parameter.
+
+        Required, as Parameters are an instance of sympy Expression, so
+        we must instantiate via it.
+        """
         instance = Expr.__new__(cls)
         instance._assumptions0 = {}
         return instance
@@ -201,6 +224,17 @@ class Parameter(Generic[T], Symbol):
         return hash(self.__name__)
 
     def make_reference(self, **kwargs) -> "ParameterReference":
+        """Creates a new reference for the parameter.
+
+        The kwargs will be passed to the constructor, but the 
+
+        Args:
+            typ: type of the new reference's target.
+            **kwargs: arguments to pass to the constructor.
+
+        Returns: checks if `typ` is loopable and gives an IterableParameterReference if so,
+            otherwise a normal ParameterReference.
+        """
         kwargs["parameter"] = self
         kwargs.setdefault("typ", self.__type__)
         typ = kwargs["typ"]
@@ -238,6 +272,13 @@ class Parameter(Generic[T], Symbol):
         self.__callers__.append(caller)
 
     def __getattr__(self, attr: str) -> Reference[T]:
+        """Retrieve a reference to a field within this Parameter.
+
+        Arg:
+            attr: a field to find.
+
+        Returns: a new reference with the `attr` appended to the field tuple.
+        """
         return getattr(self.make_reference(workflow=None), attr)
 
 
@@ -333,7 +374,7 @@ class Workflow:
 
     _steps: list["BaseStep"]
     tasks: MutableMapping[str, "Task"]
-    result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]] | None
+    result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any], ...] | None
     _remapping: dict[str, str] | None
     _name: str | None
 
@@ -347,6 +388,10 @@ class Workflow:
 
     @property
     def steps(self) -> set[BaseStep]:
+        """Get deduplicated steps.
+
+        Returns: steps for looping over without duplicates.
+        """
         return set(self._steps)
 
     def __str__(self) -> str:
@@ -356,6 +401,12 @@ class Workflow:
         return self.name
 
     def __repr__(self) -> str:
+        """Representation of the workflow.
+
+        This will be the `id` if the workflow is anonymous.
+
+        Returns: string identifier for this workflow.
+        """
         if self._name:
             return self.name
         return self.id
@@ -366,6 +417,7 @@ class Workflow:
 
     @property
     def id(self) -> str:
+        """Consistent ID based off the step IDs."""
         comp_tup = tuple(sorted(s.id for s in self.steps))
         return f"workflow-{hasher(comp_tup)}"
 
@@ -388,7 +440,13 @@ class Workflow:
 
     @property
     def has_result(self) -> bool:
-        return not(self.result is None or self.result is [])
+        """Confirms whether this workflow has a non-empty result.
+
+        Either None or an empty list/tuple are considered empty for this purpose.
+
+        Returns: True if the workflow has a result, False otherwise.
+        """
+        return not(self.result is None or (isinstance(self.result, list | tuple) and not self.result))
 
     @property
     def name(self) -> str:
@@ -465,7 +523,7 @@ class Workflow:
         #for step in list(left_steps.values()) + list(right_steps.values()):
             step.set_workflow(base)
 
-        indexed_steps = {}
+        indexed_steps: dict[str, BaseStep] = {}
         for step_id, step in all_steps:
             indexed_steps.setdefault(step_id, step)
             if step != indexed_steps[step_id]:
@@ -474,7 +532,7 @@ class Workflow:
                 )
 
         all_tasks = sum((list(w.tasks.items()) for w in workflows), [])
-        indexed_tasks = {}
+        indexed_tasks: dict[str, Task] = {}
         for task_id, task in all_tasks:
             indexed_tasks.setdefault(task_id, task)
             if task != indexed_tasks[task_id]:
@@ -518,7 +576,7 @@ class Workflow:
         counter = Counter[Task | Workflow]()
         self._remapping = {}
         infix_str = ("-".join(infix) + "-") if infix else ""
-        for key, step in self.indexed_steps.items():
+        for step in self.indexed_steps.values():
             counter[step.task] += 1
             self._remapping[step.id] = f"{step.task}-{infix_str}{counter[step.task]}"
             if isinstance(step, NestedStep):
@@ -570,7 +628,11 @@ class Workflow:
         Args:
             name: name of the subworkflow.
             subworkflow: the subworkflow itself.
+            return_type: a forced type for the return, or None.
             kwargs: any key-value arguments to pass in the call.
+            positional_args: a mapping of arguments to bools, True if the argument is positional or otherwise False.
+
+        Returns: a reference to the step that calls out to a new workflow.
         """
         step = NestedStep(self, name, subworkflow, kwargs)
         if positional_args is not None:
@@ -579,7 +641,7 @@ class Workflow:
         return_type = return_type or step.return_type
         if return_type is inspect._empty:
             raise TypeError("All tasks should have a type annotation.")
-        return step.make_reference(typ=return_type)
+        return step.make_reference(workflow=self, typ=return_type)
 
     def add_step(
         self,
@@ -599,6 +661,7 @@ class Workflow:
             kwargs: any key-value arguments to pass in the call.
             raw_as_parameter: whether to turn any discovered raw arguments into workflow parameters.
             is_factory: whether this step should be a Factory.
+            positional_args: a mapping of arguments to bools, True if the argument is positional or otherwise False.
         """
         task = self.register_task(fn)
         step_maker = FactoryCall if is_factory else Step
@@ -613,33 +676,38 @@ class Workflow:
             and not inspect.isclass(fn)
         ):
             raise TypeError("All tasks should have a type annotation.")
-        return step.make_reference(typ=return_type)
+        return step.make_reference(workflow=self, typ=return_type)
 
     @staticmethod
     def from_result(
-        result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]], simplify_ids: bool = False, nested: bool = True
+        result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any], ...], simplify_ids: bool = False, nested: bool = True
     ) -> Workflow:
         """Create from a desired result.
 
         Starts from a result, and builds a workflow to output it.
         """
-        result, refs = expr_to_references(result)
-        if not refs:
+        expr, _refs = expr_to_references(result)
+        if not _refs:
             raise RuntimeError(
                 "Attempted to build a workflow from a return-value/result/expression with no references."
             )
-        refs = list(refs)
+        refs = list(_refs)
+        if isinstance(refs[0], Parameter):
+            raise RuntimeError("Attempted to build a workflow from an input parameter.")
         workflow = refs[0].__workflow__
         # Ensure that we have exactly one workflow, even if multiple results.
         for entry in refs[1:]:
             if entry.__workflow__ != workflow:
                 raise RuntimeError("If multiple results, they must share a single workflow")
-        workflow.set_result(result)
+        workflow.set_result(expr)
         if simplify_ids:
             workflow.simplify_ids()
+        if not isinstance(workflow, Workflow):
+            # This may be better as a cast, since this seems an artificial case.
+            raise TypeError("Can only return a workflow of the same type")
         return workflow
 
-    def set_result(self, result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]]) -> None:
+    def set_result(self, result: Basic | list[Basic] | tuple[Basic]) -> None:
         """Choose the result step.
 
         Sets a step as being the result for the entire workflow.
@@ -658,34 +726,14 @@ class Workflow:
         self.result = result
 
     @property
-    def result_type(self):
+    def result_type(self) -> type:
+        """Overall return type of this workflow."""
         if self.result is None:
             return type(None)
         if hasattr(self.result, "__type__"):
             return self.result.__type__
         # TODO: get individual types!
         return type(self.result)
-
-
-class WorkflowComponent:
-    """Base class for anything directly tied to an individual `Workflow`.
-
-    Attributes:
-        __workflow__: the `Workflow` that this is tied to.
-    """
-
-    __workflow__: Workflow
-
-    def __init__(self, *args, workflow: Workflow, **kwargs):
-        """Tie to a `Workflow`.
-
-        All subclasses must call this.
-
-        Args:
-            workflow: the `Workflow` to tie to.
-        """
-        self.__workflow__ = workflow
-        super().__init__(*args, **kwargs)
 
 
 class WorkflowLinkedComponent(Protocol):
@@ -705,39 +753,90 @@ class WorkflowLinkedComponent(Protocol):
 
 
 class FieldableProtocol(Protocol):
-    __field__: tuple[str, ...]
-    __field_sep__: str
-    __field_index_types__: tuple[type, ...]
+    """Expected interfaces for a type that can take fields.
+
+    Attributes:
+        __field__: tuple representing the named fields, either strings or integers.
+    """
+    __field__: tuple[str | int, ...]
+
+    @property
+    def __field_sep__(self) -> str:
+        """The separator that should be used by default when rendering a name."""
+
+    @property
+    def __field_index_types__(self) -> tuple[type, ...]:
+        """Get the types that will be rendered as an index [x] rather than a field .x on stringifying.
+
+        Will be taken from the `field_index_types` construct configuration.
+        """
 
     def __init__(self, *args, field: str | None = None, **kwargs):
+        """Extract the field name from the initializer arguments, if provided."""
         super().__init__(*args, **kwargs)
 
     @property
-    def __type__(self):
+    def __name__(self: FieldableProtocol) -> str:
+        """Name of the fieldable, which may not be `name` if this is needed as an internal reference."""
+        return self.name
+
+    @property
+    def __type__(self) -> type:
+        """Type of this field with the overall target."""
         ...
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """The name for the target, accounting for the field."""
         return "name"
 
-    def __make_reference__(self, *args, **kwargs) -> "FieldableProtocol":
+    def __make_reference__(self, *args, **kwargs) -> Reference[Any]:
+        """Create a reference with constructor arguments, usually to a subfield."""
         ...
 
+# This required so that Mixins can trust that
+# superclasss attributes will be available for mypy,
+# but do not confuse the MRO.
+if TYPE_CHECKING:
+    _Fieldable = FieldableProtocol
+else:
+    _Fieldable = object
+
 # Subclass Reference so that we know Reference methods/attrs are available.
-class FieldableMixin:
-    def __init__(self: FieldableProtocol, *args, field: str | int | tuple | None = None, **kwargs):
+class FieldableMixin(_Fieldable):
+    """Tooling for enhancing a type with referenceable fields."""
+
+    def __init__(self: FieldableProtocol, *args, field: str | int | tuple[str | int, ...] | None = None, **kwargs):
+        """Extract the requested field, if any, from the initializer arguments.
+
+        Args:
+            field: the new subfield, either an index (int) or a fieldname (str) or a field tuple representing the whole path, or None.
+            *args: arguments to pass to the other initializers.
+            **kwargs: arguments to pass to the other initializers.
+        """
         self.__field__: tuple[str, ...] = (field if isinstance(field, tuple) else (field,)) if field is not None else ()
         super().__init__(*args, **kwargs)
 
     @property
     def __field_sep__(self) -> str:
-        return get_configuration("field_separator")
+        """Get the field separator.
+
+        Will be taken from the configuration key, `field_separator`.
+        """
+        sep = get_configuration("field_separator")
+        if not isinstance(sep, str):
+            raise TypeError(f"The `field_separator` configuration argument must be a string not {type(sep)}")
+        return sep
 
     @property
     def __field_index_types__(self) -> tuple[type, ...]:
+        """Get the types that will be rendered as an index [x] rather than a field .x on stringifying.
+
+        Will be taken from the `field_index_types` construct configuration.
+        """
         types = get_configuration("field_index_types")
         if not isinstance(types, str):
-            raise TypeError("Field index types must be provided as a comma-separated names")
+            raise TypeError(f"The `field_index_types` configuration argument should be a comma-separated string of types from: {", ".join(AVAILABLE_TYPES.keys())}")
         tup_all = tuple(AVAILABLE_TYPES.get(typ) for typ in types.split(",") if typ)
         tup = tuple(t for t in tup_all if t is not None)
         if tup_all != tup:
@@ -748,20 +847,13 @@ class FieldableMixin:
         return tup
 
     @property
-    def __name__(self: FieldableProtocol) -> str:
-        """Name for this step.
-
-        May be remapped by the workflow to something nicer
-        than the ID.
-        """
-        return super().__name__ + self.__field_suffix__
-
-    @property
     def __field_str__(self) -> str:
+        """Stringified field, without the name."""
         return self.__field_suffix__.lstrip(self.__field_sep__)
 
     @property
     def __field_suffix__(self) -> str:
+        """Stringified field, without the name but with an appropriate separator at the start."""
         result = ""
         for cmpt in self.__field__:
             if any(isinstance(cmpt, typ) for typ in self.__field_index_types__):
@@ -770,13 +862,26 @@ class FieldableMixin:
                 result += f"{self.__field_sep__}{cmpt}"
         return result
 
-    def find_field(self: FieldableProtocol, field, fallback_type: type | None = None, **init_kwargs: Any) -> Reference:
+    @property
+    def __name__(self) -> str:
+        """Name for this step.
+
+        May be remapped by the workflow to something nicer
+        than the ID.
+        """
+        return super().__name__ + self.__field_suffix__
+
+    def find_field(self: FieldableProtocol, field: str | int, fallback_type: type | None = None, **init_kwargs: Any) -> Reference:
         """Field within the reference, if possible.
+
+        Args:
+            field: the field to search for.
+            fallback_type: the type to use if we do not know a more specific one.
+            **init_kwargs: arguments to use for constructing a new reference (via `__make_reference__`).
 
         Returns:
             A field-specific version of this reference.
         """
-
         # Get new type, for the specific field.
         parent_type, _ = strip_annotations(self.__type__)
         field_type = fallback_type
@@ -798,34 +903,37 @@ class FieldableMixin:
                     if field_type is None:
                         field_type = next(iter(filter(lambda fld: fld.name == field, dataclass_fields(parent_type)))).type
                 except StopIteration:
-                    raise AttributeError(f"Dataclass {parent_type} does not have field {field}")
+                    raise AttributeError(f"Dataclass {parent_type} does not have field {field}") from None
             elif attr_has(parent_type):
                 resolve_types(parent_type)
                 try:
                     field_type = getattr(attrs_fields(parent_type), field).type
-                except AttributeError:
-                    raise AttributeError(f"attrs-class {parent_type} does not have field {field}")
+                except AttributeError as exc:
+                    raise AttributeError(f"attrs-class {parent_type} does not have field {field}") from exc
             # TypedDict
             elif inspect.isclass(parent_type) and issubclass(parent_type, dict) and hasattr(parent_type, "__annotations__"):
                 try:
                     field_type = get_type_hints(parent_type, include_extras=True)[field]
-                except KeyError:
-                    raise AttributeError(f"TypedDict {parent_type} does not have field {field}")
+                except KeyError as exc:
+                    raise AttributeError(f"TypedDict {parent_type} does not have field {field}") from exc
             if not field_type and get_configuration("allow_plain_dict_fields") and inspect.isclass(base) and issubclass(base, dict):
                 args = get_args(parent_type)
                 if len(args) == 2 and args[0] is str:
                     field_type = args[1]
                 else:
-                    raise AttributeError(f"Can only get fields for plain dicts if annotated dict[str, TYPE]")
+                    raise AttributeError("Can only get fields for plain dicts if annotated dict[str, TYPE]")
 
         if field_type:
             if not issubclass(self.__class__, Reference):
                 raise TypeError("Only references can have a fieldable mixin")
 
+            new_field: tuple[str | int, ...] | str | int
             if self.__field__:
-                field = tuple(list(self.__field__) + [field])
+                new_field = tuple(list(self.__field__) + [field])
+            else:
+                new_field = field
 
-            return self.__make_reference__(typ=field_type, field=field, **init_kwargs)
+            return self.__make_reference__(typ=field_type, field=new_field, **init_kwargs)
 
         raise AttributeError(
             f"Could not determine the type for field {field} in type {parent_type} (type of parent type is {type(parent_type)})"
@@ -844,7 +952,7 @@ class BaseStep(WorkflowComponent):
 
     _id: str | None = None
     task: Task | Workflow
-    arguments: Mapping[str, Reference | Raw]
+    arguments: Mapping[str, Basic | Reference | Raw]
     workflow: Workflow
     positional_args: dict[str, bool] | None = None
 
@@ -884,20 +992,21 @@ class BaseStep(WorkflowComponent):
                     and is_raw(value)
                 ):
                     if raw_as_parameter:
-                        value = param(key, value, tethered=None).make_reference(workflow=workflow)
+                        # We use param for convenience but note that it is a reference in disguise.
+                        value = cast(Parameter, param(key, value, tethered=None)).make_reference(workflow=workflow)
                     else:
                         value = Raw(value)
 
                 def _to_param_ref(value):
                     if isinstance(value, Parameter):
                         return value.make_parameter(workflow=workflow)
-                value, refs = expr_to_references(value, remap=_to_param_ref)
+                expression, refs = expr_to_references(value, remap=_to_param_ref)
 
                 for ref in refs:
                     if isinstance(ref, ParameterReference):
                         parameter = ref._.parameter
                         parameter.register_caller(self)
-                self.arguments[key] = value
+                self.arguments[key] = expression
             else:
                 raise RuntimeError(
                     f"Non-references must be a serializable type: {key}>{value} {type(value)}"
@@ -918,6 +1027,15 @@ class BaseStep(WorkflowComponent):
         )
 
     def make_reference(self, **kwargs) -> "StepReference":
+        """Create a reference to this step.
+
+        Builds a reference to the (result of) this step, which will be iterable if appropriate.
+
+        Args:
+            **kwargs: arguments for reference constructor, which will be supplemented appropriately.
+
+        Returns: a reference to the result of this step.
+        """
         kwargs["step"] = self
         kwargs.setdefault("typ", self.return_type)
         typ = kwargs["typ"]
@@ -928,6 +1046,7 @@ class BaseStep(WorkflowComponent):
         return StepReference(**kwargs)
 
     def __hash__(self) -> int:
+        """Searchable hash for this step."""
         return hash(self.id)
 
     def set_workflow(self, workflow: Workflow, with_arguments: bool = True) -> None:
@@ -1016,7 +1135,7 @@ class NestedStep(BaseStep):
         workflow: Workflow,
         name: str,
         subworkflow: Workflow,
-        arguments: Mapping[str, Reference | Raw],
+        arguments: Mapping[str, Basic | Reference | Raw],
         raw_as_parameter: bool = False,
     ):
         """Create a NestedStep.
@@ -1029,7 +1148,7 @@ class NestedStep(BaseStep):
             raw_as_parameter: whether raw-type arguments should be made (outer) workflow parameters.
         """
         self.__subworkflow__ = subworkflow
-        base_arguments = {p.name: p for p in subworkflow.find_parameters()}
+        base_arguments: dict[str, Basic | Reference | Raw] = {p.name: p for p in subworkflow.find_parameters()}
         base_arguments.update(arguments)
         super().__init__(
             workflow=workflow,
@@ -1053,8 +1172,8 @@ class NestedStep(BaseStep):
         Returns:
             Expected type of the return value.
         """
-        return super().return_type
-        if self.__subworkflow__.result is None or self.__subworkflow__.result is []:
+        result = self.__subworkflow__.result
+        if result is None or (isinstance(result, list | tuple) and not result):
             raise RuntimeError("Can only use a subworkflow if the reference exists.")
         return self.__subworkflow__.result_type
 
@@ -1098,10 +1217,12 @@ class FactoryCall(Step):
 
     @property
     def __name__(self):
+        """Get the name of this factory call."""
         return self.name
 
     @property
     def __original_name__(self) -> str:
+        """Original name of a factory call is just its normal name."""
         return self.name
 
     @property
@@ -1110,7 +1231,7 @@ class FactoryCall(Step):
         return UnsetType(self.return_type)
 
 
-class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
+class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
     """Reference to an individual `Parameter`.
 
     Allows us to refer to the outputs of a `Parameter` in subsequent `Parameter`
@@ -1126,6 +1247,11 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
     """
 
     class ParameterReferenceMetadata(Generic[T]):
+        """Holder for attributes of this reference that we do not wish to risk confusing with fieldnames.
+
+        Attributes:
+            parameter: the parameter to which this reference refers.
+        """
         parameter: Parameter[T]
 
         def __init__(self, parameter: Parameter[T], *args, typ: type[U] | None=None, **kwargs):
@@ -1134,6 +1260,9 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
             Args:
                 workflow: `Workflow` that this is tied to.
                 parameter: `Parameter` that this refers to.
+                typ: type that should override inferred type or None.
+                *args: any arguments for other initializers.
+                **kwargs: any arguments for other initializers.
             """
             self.parameter = parameter
 
@@ -1149,7 +1278,7 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
             return self.parameter.__name__
 
     @property
-    def __default__(self) -> T | Unset:
+    def __default__(self) -> U | Unset:
         """Default value of the parameter."""
         default = self._.parameter.default
         if isinstance(default, Unset):
@@ -1172,11 +1301,27 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
         return self._.parameter.name
 
     def __init__(self, parameter: Parameter[U], *args, typ: type[U] | None=None, **kwargs):
+        """Extract the parameter and type for setup.
+
+        Args:
+            parameter: the parameter to reference.
+            typ: an overriding type for this reference, or None.
+            *args: arguments for other initializers.
+            **kwargs: arguments for other initializers.
+        """
         typ = typ or parameter.__type__
         self._ = self.ParameterReferenceMetadata(parameter, *args, typ, **kwargs)
         super().__init__(*args, typ=typ, **kwargs)
 
     def __getitem__(self, attr: str) -> "ParameterReference":
+        """Retrieve a field.
+
+        Args:
+            attr: attribute to get.
+
+        Returns: a reference to the field within this parameter, possibly nesting if we are already
+            referencing a field.
+        """
         try:
             return self.find_field(
                 field=attr,
@@ -1194,12 +1339,21 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
 
     @property
     def __original_name__(self) -> str:
+        """The name of the original parameter, without any field, etc."""
         return self._.parameter.__original_name__
 
     def __getattr__(self, attr: str) -> "ParameterReference":
+        """Retrieve a field.
+
+        Args:
+            attr: attribute to get.
+
+        Returns: a reference to the field within this parameter, possibly nesting if we are already
+            referencing a field.
+        """
         try:
             return self[attr]
-        except KeyError as exc:
+        except KeyError as _:
             return super().__getattribute__(attr)
 
     def __repr__(self) -> str:
@@ -1233,11 +1387,18 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
             (isinstance(other, ParameterReference) and self._.parameter == other._.parameter and self.__field__ == other.__field__)
         )
 
-    def __make_reference__(self, **kwargs) -> "StepReference":
+    def __make_reference__(self, **kwargs) -> "ParameterReference":
+        """Get a reference for the same parameter."""
         return self._.parameter.make_reference(**kwargs)
 
 class IterableParameterReference(IterableMixin, ParameterReference[U]):
-    def __iter__(self):
+    """Iterable form of parameter references."""
+    def __iter__(self) -> Generator[Reference, None, None]:
+        """Iterate over this parameter.
+
+        Returns:
+            Get values back for this parameter, normally references of the appropriate type.
+        """
         inner, metadata = strip_annotations(self.__type__)
         if metadata and "AtRender" in metadata and isinstance(self.__default__, Iterable):
             yield from self.__default__
@@ -1245,6 +1406,13 @@ class IterableParameterReference(IterableMixin, ParameterReference[U]):
             yield from super().__iter__()
 
     def __inner_iter__(self) -> Generator[Any, None, None]:
+        """Iterate over this parameter.
+
+        This is intended for overriding as a convenience way of iterating over a parameter,
+        and the yielded values will be ignored, in favour of new references.
+
+        Returns: a generator of any type.
+        """
         inner, metadata = strip_annotations(self.__type__)
         if self.__fixed_len__ is not None:
             yield from range(self.__fixed_len__)
@@ -1255,6 +1423,7 @@ class IterableParameterReference(IterableMixin, ParameterReference[U]):
                 yield None
 
     def __len__(self):
+        """If it is possible to get a hard-codeable length from this iterable parameter, do so."""
         inner, metadata = strip_annotations(self.__type__)
         if metadata and "Fixed" in metadata and isinstance(self.__default__, Sized):
             return len(self.__default__)
@@ -1267,12 +1436,19 @@ class StepReference(FieldableMixin, Reference[U]):
     arguments.
 
     Attributes:
-        step: `Step` referred to.
+        _: metadata wrapping the `Step` referred to.
     """
 
     step: BaseStep
 
     class StepReferenceMetadata:
+        """Wrapper for any metadata that we would not want to conflict with fieldnames.
+
+        Attributes:
+            step: the step being wrapped.
+            _typ: the type to return, if overriding the step's own type, or None.
+        """
+
         def __init__(
             self, step: BaseStep, typ: type[U] | None = None
         ):
@@ -1288,7 +1464,8 @@ class StepReference(FieldableMixin, Reference[U]):
             self._typ = typ
 
         @property
-        def return_type(self):
+        def return_type(self) -> type:
+            """Type of this reference, which may be overridden or may be the step's own type."""
             return self._typ or self.step.return_type
 
     _: StepReferenceMetadata
@@ -1303,6 +1480,8 @@ class StepReference(FieldableMixin, Reference[U]):
             step: `Step` that this refers to.
             typ: the type that the step will output.
             field: if provided, a specific field to pull out of an attrs result class.
+            *args: arguments for other initializers.
+            **kwargs: arguments for other initializers.
         """
         typ = typ or step.return_type
         self._ = self.StepReferenceMetadata(step, typ=typ)
@@ -1317,6 +1496,7 @@ class StepReference(FieldableMixin, Reference[U]):
         return self._.step.id + self.__field_suffix__
 
     def __hash__(self) -> int:
+        """Hashable value for this workflow."""
         return hash((repr(self), id(self.__workflow__)))
 
     def __getitem__(self, attr: str) -> "StepReference[Any]":
@@ -1349,6 +1529,7 @@ class StepReference(FieldableMixin, Reference[U]):
             ) from exc
 
     def __getattr__(self, attr: str) -> "StepReference":
+        """Retrieve a field within this workflow."""
         try:
             return self[attr]
         except KeyError as exc:
@@ -1359,6 +1540,7 @@ class StepReference(FieldableMixin, Reference[U]):
 
     @property
     def __type__(self) -> type:
+        """Get the type to which this step reference refers."""
         return self._.return_type
 
     @property
@@ -1371,7 +1553,7 @@ class StepReference(FieldableMixin, Reference[U]):
         return self._.step.name
 
     @property
-    def __workflow__(self) -> Workflow:
+    def __workflow__(self) -> WorkflowProtocol:
         """Related workflow.
 
         Returns:
@@ -1389,11 +1571,21 @@ class StepReference(FieldableMixin, Reference[U]):
         self._.step.set_workflow(workflow)
 
     def __make_reference__(self, **kwargs) -> "StepReference":
+        """Create a new reference for the same step."""
         return self._.step.make_reference(**kwargs)
 
 class IterableStepReference(IterableMixin, StepReference[U]):
-    def __iter__(self):
-        yield IteratedGenerator(self)
+    """Iterable form of a step reference."""
+    def __iter__(self) -> Generator[Reference, None, None]:
+        """Gets a sentinel value for iterating over this step's results.
+
+        Bear in mind that this means an iterable step reference will iterate exactly once,
+        and return this Generator. The IteratedGenerator can be used as an iterator itself,
+        and will yield an infinite sequence of numbered field references, which renderers can use
+        for zipping with a fixed length iterator, or simply prepping fieldnames for serialization.
+        """
+        # We cast this so that we can treat a step iterator as if it really loops over results.
+        yield cast(Reference, IteratedGenerator(self))
 
 def merge_workflows(*workflows: Workflow) -> Workflow:
     """Combine several workflows into one.
@@ -1424,8 +1616,16 @@ def is_task(task: Lazy) -> bool:
     """
     return isinstance(task, LazyEvaluation)
 
-def expr_to_references(expression: Any, remap: Callable[[Any], Any] | None = None) -> tuple[Basic | None, set[Reference | Parameter]]:
-    to_check = []
+def expr_to_references(expression: Any, remap: Callable[[Any], Any] | None = None) -> tuple[Basic | None, list[Reference | Parameter]]:
+    """Pull out any references, or other free symbols, from an expression.
+
+    Args:
+        expression: normally a reference that can be immediately returned, but may be a sympy expression or a dict/tuple/list/etc. of such.
+        remap: a callable to project certain values down before extracting symbols, or None.
+
+    Returns: a pair of the expression with any applied simplifications/standardizations, and the list of References/Parameters found.
+    """
+    to_check: list[Reference | Parameter] = []
     def _to_expr(value):
         if remap and (res := remap(value)) is not None:
             return _to_expr(res)
@@ -1481,16 +1681,30 @@ def expr_to_references(expression: Any, remap: Callable[[Any], Any] | None = Non
     #    raise RuntimeError("The only symbols allowed are references (to e.g. step or parameter)")
     return expression, to_check
 
-def unify_workflows(expression: Any, base_workflow: Workflow | None, set_only: bool = False) -> Workflow | None:
+def unify_workflows(expression: Any, base_workflow: Workflow | None, set_only: bool = False) -> tuple[Basic | None, Workflow | None]:
+    """Takes an expression and ensures all of its references exist in the same workflow.
+
+    Args:
+        expression: any valid argument to `dewret.workflow.expr_to_references`.
+        base_workflow: the desired workflow to align on, or None.
+        set_only: whether to bother assimilating all the workflows (False), or to assume that has been done (False).
+
+    Returns: a pair of the (standardized) expression and the workflow that now contains it.
+    """
     expression, to_check = expr_to_references(expression)
     if not to_check:
         return expression, base_workflow
 
     # Build a unified workflow
     collected_workflow = base_workflow or next(iter(to_check)).__workflow__
+    # This is a bit of an artifical check. We could rule out non-Workflow WorkflowProtocol implementers and simplify this.
+    if not isinstance(collected_workflow, Workflow):
+        raise NotImplementedError("Can only unify workflows on the same type: Workflow")
     if not set_only:
         for step_result in to_check:
             new_workflow = step_result.__workflow__
+            if not isinstance(new_workflow, Workflow):
+                raise NotImplementedError("Can only unify workflows on the same type: Workflow")
             if collected_workflow != new_workflow and collected_workflow and new_workflow:
                 collected_workflow = Workflow.assimilate(collected_workflow, new_workflow)
 

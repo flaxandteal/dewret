@@ -41,7 +41,7 @@ from dewret.workflow import (
     Unset,
     expr_to_references
 )
-from dewret.utils import flatten, DataclassProtocol, firm_to_raw, flatten_if_set
+from dewret.utils import crawl_raw, DataclassProtocol, firm_to_raw, flatten_if_set
 from dewret.render import base_render
 from dewret.core import get_render_configuration, set_render_configuration
 
@@ -213,7 +213,7 @@ class ReferenceDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
-        representation = {}
+        representation: dict[str, RawType] = {}
         if self.source is not None:
             representation["source"] = self.source
         if self.value_from is not None:
@@ -285,7 +285,7 @@ class StepDefinition:
                 )
                 for key, ref in self.in_.items()
             },
-            "out": flatten(self.out),
+            "out": crawl_raw(self.out),
         }
 
 
@@ -536,7 +536,7 @@ class InputsDefinition:
             # Would rather not cast, but CommandInputSchema is dict[RawType]
             # by construction, where type is seen as a TypedDict subclass.
             item = firm_to_raw(cast(FirmType, input.type))
-            if not isinstance(input.default, Unset):
+            if isinstance(item, dict) and not isinstance(input.default, Unset):
                 item["default"] = firm_to_raw(input.default)
             result[key] = item
         return result
@@ -605,9 +605,9 @@ class OutputsDefinition:
             serialization.
         """
         return [
-            flatten(output) for output in self.outputs
+            crawl_raw(output) for output in self.outputs
         ] if isinstance(self.outputs, list) else {
-            key: flatten(output)
+            key: crawl_raw(output)
             for key, output in self.outputs.items()
         }
 
