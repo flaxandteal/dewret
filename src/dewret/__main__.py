@@ -27,7 +27,7 @@ import sys
 import re
 import yaml
 from typing import Any
-import sys
+from types import ModuleType
 import click
 import json
 
@@ -90,9 +90,11 @@ def render(
         key, val = arg.split(":", 1)
         kwargs[key] = json.loads(val)
 
-    render_module: Path | RawRenderModule | StructuredRenderModule
+    render_module: Path | ModuleType
     if (mtch := re.match(r"^([a-z_0-9-.]+)$", renderer)):
         render_module = importlib.import_module(f"dewret.renderers.{mtch.group(1)}")
+        if not isinstance(render_module, RawRenderModule) and not isinstance(render_module, StructuredRenderModule):
+            raise NotImplementedError("The imported render module does not seem to match the `RawRenderModule` or `StructuredRenderModule` protocols.")
     elif renderer.startswith("@"):
         render_module = Path(renderer[1:])
     else:

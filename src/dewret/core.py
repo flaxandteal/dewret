@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from abc import abstractmethod, abstractstaticmethod
+from abc import abstractmethod
 import importlib
 import base64
 from attrs import define
 from functools import lru_cache
-from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union, Any, get_args, get_origin, Annotated, Literal, Callable, cast, runtime_checkable
+from typing import Generic, TypeVar, Protocol, Iterator, Unpack, TypedDict, NotRequired, Generator, Union, Any, get_args, get_origin, Annotated, Callable, cast, runtime_checkable
 from contextlib import contextmanager
 from contextvars import ContextVar
 from sympy import Expr, Symbol, Basic
@@ -129,7 +129,7 @@ class ConstructConfiguration:
     allow_plain_dict_fields: bool = False
     field_separator: str = "/"
     field_index_types: str = "int"
-    simplify_ids: bool = True
+    simplify_ids: bool = False
 
 class ConstructConfigurationTypedDict(TypedDict):
     """Basic configuration of the construction process.
@@ -139,12 +139,12 @@ class ConstructConfigurationTypedDict(TypedDict):
 
     **THIS MUST BE KEPT IDENTICAL TO ConstructConfiguration.**
     """
-    flatten_all_nested: bool
-    allow_positional_args: bool
-    allow_plain_dict_fields: bool
-    field_separator: str
-    field_index_types: str
-    simplify_ids: bool
+    flatten_all_nested: NotRequired[bool]
+    allow_positional_args: NotRequired[bool]
+    allow_plain_dict_fields: NotRequired[bool]
+    field_separator: NotRequired[str]
+    field_index_types: NotRequired[str]
+    simplify_ids: NotRequired[bool]
 
 @define
 class GlobalConfiguration:

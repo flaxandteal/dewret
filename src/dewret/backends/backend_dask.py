@@ -19,10 +19,8 @@ Lazy-evaluation via `dask.delayed`.
 
 from dask.delayed import delayed, DelayedLeaf
 from dask.config import config
-import contextvars
-from functools import partial
 from typing import Protocol, runtime_checkable, Any, cast
-from concurrent.futures import Executor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dewret.workflow import Workflow, Lazy, StepReference, Target
 
 
@@ -102,7 +100,6 @@ def run(workflow: Workflow | None, task: Lazy | list[Lazy] | tuple[Lazy], thread
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
     """
-
     # def _check_delayed(task: Lazy | list[Lazy] | tuple[Lazy]) -> Delayed:
     #     # We need isinstance to reassure type-checker.
     #     if isinstance(task, list) or isinstance(task, tuple):
