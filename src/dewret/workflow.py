@@ -837,7 +837,7 @@ class FieldableMixin(_Fieldable):
         """
         types = get_configuration("field_index_types")
         if not isinstance(types, str):
-            raise TypeError(f"The `field_index_types` configuration argument should be a comma-separated string of types from: {", ".join(AVAILABLE_TYPES.keys())}")
+            raise TypeError(f"The `field_index_types` configuration argument should be a comma-separated string of types from: {', '.join(AVAILABLE_TYPES.keys())}")
         tup_all = tuple(AVAILABLE_TYPES.get(typ) for typ in types.split(",") if typ)
         tup = tuple(t for t in tup_all if t is not None)
         if tup_all != tup:
