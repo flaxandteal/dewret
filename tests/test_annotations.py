@@ -164,10 +164,13 @@ def test_can_loop_over_fixed_length() -> None:
         cwlVersion: 1.2
         inputs: {}
         outputs:
-          expression: '[4 + list_1[0] + list_2[0], 4 + list_1[1] + list_2[1], 4 + list_1[2] + list_2[2],
-            4 + list_1[3] + list_2[3]]'
-          source:
-          - list_1
-          - list_2
+          out:
+            type: float
+            label: out
+            expression: '[4 + list_1[0] + list_2[0], 4 + list_1[1] + list_2[1], 4 + list_1[2] + list_2[2],
+              4 + list_1[3] + list_2[3]]'
+            source:
+            - list_1
+            - list_2
         steps: {}
     """)

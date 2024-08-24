@@ -24,7 +24,7 @@ import base64
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter, OrderedDict
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable, get_origin, get_args, Generator, Sized, Sequence
+from typing import Protocol, Any, TypeVar, Generic, cast, Literal, TypeAliasType, Annotated, Iterable, get_origin, get_args, Generator, Sized, Sequence, get_type_hints
 from uuid import uuid4
 from sympy import Symbol, Expr, Basic, Tuple, Dict, nan
 
@@ -793,7 +793,10 @@ class FieldableMixin:
         else:
             if is_dataclass(parent_type):
                 try:
-                    field_type = next(iter(filter(lambda fld: fld.name == field, dataclass_fields(parent_type)))).type
+                    type_hints = get_type_hints(parent_type, localns={parent_type.__name__: parent_type}, include_extras=True)
+                    field_type = type_hints.get(field)
+                    if field_type is None:
+                        field_type = next(iter(filter(lambda fld: fld.name == field, dataclass_fields(parent_type)))).type
                 except StopIteration:
                     raise AttributeError(f"Dataclass {parent_type} does not have field {field}")
             elif attr_has(parent_type):
@@ -805,7 +808,7 @@ class FieldableMixin:
             # TypedDict
             elif inspect.isclass(parent_type) and issubclass(parent_type, dict) and hasattr(parent_type, "__annotations__"):
                 try:
-                    field_type = parent_type.__annotations__[field]
+                    field_type = get_type_hints(parent_type, include_extras=True)[field]
                 except KeyError:
                     raise AttributeError(f"TypedDict {parent_type} does not have field {field}")
             if not field_type and get_configuration("allow_plain_dict_fields") and inspect.isclass(base) and issubclass(base, dict):
@@ -825,7 +828,7 @@ class FieldableMixin:
             return self.__make_reference__(typ=field_type, field=field, **init_kwargs)
 
         raise AttributeError(
-            f"Could not determine the type for field {field} in type {parent_type}"
+            f"Could not determine the type for field {field} in type {parent_type} (type of parent type is {type(parent_type)})"
         )
 
 class BaseStep(WorkflowComponent):
@@ -963,7 +966,8 @@ class BaseStep(WorkflowComponent):
                 )
         if isinstance(self.task.target, type):
             return self.task.target
-        return inspect.signature(inspect.unwrap(self.task.target)).return_annotation
+        ann = get_type_hints(inspect.unwrap(self.task.target), include_extras=True)["return"]
+        return ann
 
     @property
     def name(self) -> str:
@@ -1097,6 +1101,10 @@ class FactoryCall(Step):
         return self.name
 
     @property
+    def __original_name__(self) -> str:
+        return self.name
+
+    @property
     def __default__(self) -> Unset:
         """Dummy default property for use as property."""
         return UnsetType(self.return_type)
@@ -1183,6 +1191,10 @@ class ParameterReference(WorkflowComponent, FieldableMixin, Reference[U]):
                     if isinstance(attr, int) else ""
                 )
             ) from exc
+
+    @property
+    def __original_name__(self) -> str:
+        return self._.parameter.__original_name__
 
     def __getattr__(self, attr: str) -> "ParameterReference":
         try:

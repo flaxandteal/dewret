@@ -21,11 +21,10 @@ current workflow.
 from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstance
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
-from contextvars import ContextVar
 from typing import TypedDict, NotRequired, get_origin, get_args, Union, cast, Any, Unpack, Iterable
 from types import UnionType
 from inspect import isclass
-from sympy import Expr, Basic, Tuple, sympify, Dict, jscode
+from sympy import Basic, Tuple, Dict, jscode, Symbol
 
 from dewret.core import (
     Raw,
@@ -70,7 +69,14 @@ InputSchemaType = Union[
     str, CommandInputSchema, list[str], list["InputSchemaType"], dict[str, "str | InputSchemaType"]
 ]
 
-def render_expression(ref: Any) -> str:
+def render_expression(ref: Any) -> "ReferenceDefinition":
+    """Turn a rich (sympy) expression into a CWL JS expression.
+
+    Args:
+        ref: a structure whose elements are all string-renderable or sympy Basic.
+
+    Returns: a ReferenceDefinition containing a string representation of the expression in the form `$(...)`.
+    """
     def _render(ref):
         if not isinstance(ref, Basic):
             if isinstance(ref, Mapping):
@@ -78,7 +84,39 @@ def render_expression(ref: Any) -> str:
             elif not isinstance(ref, str | bytes) and isinstance(ref, Iterable):
                 ref = Tuple(*(_render(val) for val in ref))
         return ref
-    return f"$({jscode(_render(ref))})"
+    expr = _render(ref)
+    if isinstance(expr, Basic):
+        values = list(expr.free_symbols)
+        step_syms = [sym for sym in expr.free_symbols if isinstance(sym, StepReference)]
+        param_syms = [sym for sym in expr.free_symbols if isinstance(sym, ParameterReference)]
+
+        if set(values) != set(step_syms) | set(param_syms):
+            raise NotImplementedError(f"Can only build expressions for step results and param results: {ref}")
+
+        if len(step_syms) > 1:
+            raise NotImplementedError(f"Can only create expressions with 1 step reference: {ref}")
+        if not (step_syms or param_syms):
+            ...
+        if values == [ref]:
+            if isinstance(ref, StepReference):
+                return ReferenceDefinition(source=to_name(ref), value_from=None)
+            else:
+                return ReferenceDefinition(source=ref.name, value_from=None)
+        source = None
+        for ref in values:
+            if isinstance(ref, StepReference):
+                field = with_field(ref)
+                parts = field.split("/")
+                base = f"/{parts[0]}" if parts and parts[0] else ""
+                if len(parts) > 1:
+                    expr = expr.subs(ref, f"self.{'.'.join(parts[1:])}")
+                else:
+                    expr = expr.subs(ref, "self")
+                source = f"{ref.__root_name__}{base}"
+            else:
+                expr = expr.subs(ref, Symbol(f"inputs.{ref.name}"))
+        return ReferenceDefinition(source=source, value_from=f"$({jscode(_render(expr))})")
+    return ReferenceDefinition(source=str(expr), value_from=None)
 
 class CWLRendererConfiguration(TypedDict):
     """Configuration for the renderer.
@@ -93,6 +131,14 @@ class CWLRendererConfiguration(TypedDict):
 
 
 def default_renderer_config() -> CWLRendererConfiguration:
+    """Default configuration for this renderer.
+
+    This is a hook-like call to give a configuration dict that this renderer
+    will respect, and sets any necessary default values.
+
+    Returns: a dict with (preferably) raw type structures to enable easy setting
+        from YAML/JSON.
+    """
     return {
         "allow_complex_types": False,
         "factories_as_params": False,
@@ -100,15 +146,44 @@ def default_renderer_config() -> CWLRendererConfiguration:
 
 
 def with_type(result: Any) -> type:
+    """Get a Python type from a value.
+
+    Does so either by using its `__type__` field (for example, for References)
+    or if unavailable, using `type()`.
+
+    Returns: a Python type.
+    """
     if hasattr(result, "__type__"):
         return result.__type__
     return type(result)
 
 def with_field(result: Any) -> str:
+    """Get a string representing any 'field' suffix of a value.
+
+    This only makes sense in the context of a Reference, which can represent
+    a deep reference with a known variable (parameter or step result, say) using
+    its `__field__` attribute. Defaults to `"out"` as this produces compliant CWL
+    where every output has a "fieldname".
+
+    Returns: a string representation of the field portion of the passed value or `"out"`.
+    """
     if hasattr(result, "__field__") and result.__field__:
         return result.__field_str__
     else:
         return "out"
+
+def to_name(result: Reference[Any]):
+    """Take a reference and get a name representing it.
+
+    The primary purpose of this method is to deal with the case where a reference is to the
+    whole result, as we always put this into an imagined `out` field for CWL consistency.
+
+    Returns: the name of the reference, including any field portion, appending an `"out"` fieldname if none.
+    """
+    if hasattr(result, "__field__") and not result.__field__ and isinstance(result, StepReference):
+        return f"{result.__name__}/out"
+    return result.__name__
+
 
 @define
 class ReferenceDefinition:
@@ -117,7 +192,8 @@ class ReferenceDefinition:
     Normally points to a value or a step.
     """
 
-    source: str
+    source: str | None
+    value_from: str | None
 
     @classmethod
     def from_reference(cls, ref: Reference) -> "ReferenceDefinition":
@@ -128,7 +204,7 @@ class ReferenceDefinition:
         Args:
             ref: reference to convert.
         """
-        return cls(source=to_name(ref))
+        return render_expression(ref)
 
     def render(self) -> dict[str, RawType]:
         """Render to a dict-like structure.
@@ -137,7 +213,12 @@ class ReferenceDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
-        return {"source": self.source}
+        representation = {}
+        if self.source is not None:
+            representation["source"] = self.source
+        if self.value_from is not None:
+            representation["valueFrom"] = self.value_from
+        return representation
 
 
 @define
@@ -196,11 +277,11 @@ class StepDefinition:
                 key: (
                     ref.render()
                     if isinstance(ref, ReferenceDefinition) else
-                    {"expression": render_expression(ref)}
+                    render_expression(ref).render()
                     if isinstance(ref, Basic) else
                     {"default": firm_to_raw(ref.value)}
                     if hasattr(ref, "value")
-                    else {"expression": render_expression(ref)}
+                    else render_expression(ref).render()
                 )
                 for key, ref in self.in_.items()
             },
@@ -208,32 +289,33 @@ class StepDefinition:
         }
 
 
-def cwl_type_from_value(label: str, val: RawType | Unset) -> InputSchemaType:
+def cwl_type_from_value(label: str, val: RawType | Unset) -> CommandInputSchema:
     """Find a CWL type for a given (possibly Unset) value.
 
     Args:
+        label: the label for the variable being checked to prefill the input def and improve debugging info.
         val: a raw Python variable or an unset variable.
 
     Returns:
-        Type as a string or list of strings.
+        Input schema type.
     """
     if val is not None and hasattr(val, "__type__"):
         raw_type = val.__type__
     else:
         raw_type = type(val)
 
-    return to_cwl_type(label, raw_type)["type"]
+    return to_cwl_type(label, raw_type)
 
 
 def to_cwl_type(label: str, typ: type) -> CommandInputSchema:
     """Map Python types to CWL types.
 
     Args:
+        label: the label for the variable being checked to prefill the input def and improve debugging info.
         typ: a Python basic type.
 
     Returns:
-        CWL specification type name, or a list
-        if a union.
+        CWL specification type dict.
     """
     typ_dict: CommandInputSchema = {
         "label": label,
@@ -276,12 +358,12 @@ def to_cwl_type(label: str, typ: type) -> CommandInputSchema:
                 typ_dict["type"] = "array"
         except IndexError as err:
             raise TypeError(
-                f"Cannot render complex type ({typ}) to CWL, have you enabled allow_complex_types configuration?"
+                f"Cannot render complex type ({typ}) to CWL for {label}, have you enabled allow_complex_types configuration?"
             ) from err
     elif get_render_configuration("allow_complex_types"):
         typ_dict["type"] = typ if isinstance(typ, str) else typ.__name__
     else:
-        raise TypeError(f"Cannot render type ({typ}) to CWL")
+        raise TypeError(f"Cannot render type ({typ}) to CWL for {label}")
     return typ_dict
 
 
@@ -296,6 +378,8 @@ class CommandOutputSchema(CommandInputSchema):
     """
 
     outputSource: NotRequired[str]
+    expression: NotRequired[str]
+    source: NotRequired[list[str]]
 
 
 def raw_to_command_input_schema(label: str, value: RawType | Unset) -> InputSchemaType:
@@ -312,7 +396,7 @@ def raw_to_command_input_schema(label: str, value: RawType | Unset) -> InputSche
         Structure used to define (possibly compound) basic types for input.
     """
     if isinstance(value, dict) or isinstance(value, list):
-        return {"type": _raw_to_command_input_schema_internal(label, value)}
+        return _raw_to_command_input_schema_internal(label, value)
     else:
         return cwl_type_from_value(label, value)
 
@@ -368,8 +452,7 @@ def to_output_schema(
 def _raw_to_command_input_schema_internal(
     label: str, value: RawType | Unset
 ) -> CommandInputSchema:
-    typ = cwl_type_from_value(label, value)
-    structure: CommandInputSchema = {"type": typ, "label": label}
+    structure: CommandInputSchema = cwl_type_from_value(label, value)
     if isinstance(value, dict):
         structure["fields"] = {
             key: _raw_to_command_input_schema_internal(key, val)
@@ -434,7 +517,7 @@ class InputsDefinition:
                     label=input.__name__,
                     default=(default := flatten_if_set(input.__default__)),
                     type=raw_to_command_input_schema(
-                        label=input.name, value=default
+                        label=input.__original_name__, value=default
                     ),
                 )
                 for input in parameters
@@ -450,22 +533,14 @@ class InputsDefinition:
         """
         result: dict[str, RawType] = {}
         for key, input in self.inputs.items():
-            item = {
-                # Would rather not cast, but CommandInputSchema is dict[RawType]
-                # by construction, where type is seen as a TypedDict subclass.
-                "type": firm_to_raw(cast(FirmType, input.type)),
-                "label": input.label,
-            }
+            # Would rather not cast, but CommandInputSchema is dict[RawType]
+            # by construction, where type is seen as a TypedDict subclass.
+            item = firm_to_raw(cast(FirmType, input.type))
             if not isinstance(input.default, Unset):
                 item["default"] = firm_to_raw(input.default)
             result[key] = item
         return result
 
-
-def to_name(result: Reference[Any]):
-    if hasattr(result, "__field__") and not result.__field__ and isinstance(result, StepReference):
-        return f"{result.__name__}/out"
-    return result.__name__
 
 @define
 class OutputsDefinition:
@@ -507,15 +582,19 @@ class OutputsDefinition:
             return cls(outputs=_build_results(results))
         except AttributeError:
             expr, references = expr_to_references(results)
-            references = sorted(
+            reference_names = sorted(
                 {
                     str(ref._.parameter) if isinstance(ref, ParameterReference) else str(ref._.step)
                     for ref in references
                 }
             )
             return cls(outputs={
-                "expression": str(expr),
-                "source": references
+                "out": {
+                    "type": "float", # WARNING: we assume any arithmetic expression returns a float.
+                    "label": "out",
+                    "expression": str(expr),
+                    "source": reference_names
+                }
             })
 
     def render(self) -> dict[str, RawType] | list[RawType]:
@@ -582,7 +661,7 @@ class WorkflowDefinition:
                 workflow.result
                 if isinstance(workflow.result, list | tuple | Tuple) else
                 {with_field(workflow.result): workflow.result}
-                if workflow.has_result else
+                if workflow.has_result and workflow.result is not None else
                 {}
             ),
             name=name,
