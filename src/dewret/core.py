@@ -103,6 +103,7 @@ class Reference(Generic[U], Symbol):
 
     _type: type[U] | None = None
     __workflow__: WorkflowProtocol
+    __iterated__: bool = False
 
     def __init__(self, *args, typ: type[U] | None = None, **kwargs):
         self._type = typ
@@ -199,7 +200,9 @@ class IteratedGenerator(Generic[U]):
     def __iter__(self):
         count = -1
         for _ in self.__wrapped__.__inner_iter__():
-            yield self.__wrapped__.__make_reference__(field=(count := count + 1))
+            ref = self.__wrapped__.__make_reference__(field=(count := count + 1))
+            ref.__iterated__ = True
+            yield ref
 
 
 @dataclass
