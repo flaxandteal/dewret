@@ -135,6 +135,20 @@ def test_can_get_field_reference_iff_parent_type_has_field() -> None:
     assert str(param_reference.left) == "my_param/left"
     assert param_reference.left.__type__ == int
 
+def test_can_get_go_upwards_from_a_field_reference() -> None:
+    """TODO: Docstring."""
+    @dataclass
+    class MyDataclass:
+        left: int
+        right: "MyDataclass"
+    my_param = param("my_param", typ=MyDataclass)
+    result = sum(left=my_param.left, right=my_param.left)
+    construct(result, simplify_ids=True)
+
+    back = my_param.right.left.__field_up__() # type: ignore
+    assert str(back) == "my_param/right"
+    assert back.__type__ == MyDataclass
+
 def test_can_get_field_references_from_dataclass() -> None:
     """TODO: Docstring."""
     @dataclass
