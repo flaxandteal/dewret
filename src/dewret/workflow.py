@@ -875,6 +875,18 @@ class FieldableMixin(_Fieldable):
                 result += f"{self.__field_sep__}{cmpt}"
         return result
 
+    def __field_up__(self) -> Reference[Any]:
+        """Get the parent field, if possible.
+
+        Returns: reference to the field above this.
+
+        Raises:
+            RuntimeError: if there is no field above this.
+        """
+        if self.__field__:
+            return self.__make_reference__(field=tuple(self.__field__[:-1]))
+        raise RuntimeError("Cannot go upwards unless currently using a field.")
+
     @property
     def __name__(self) -> str:
         """Name for this step.
