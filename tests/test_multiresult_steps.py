@@ -4,7 +4,8 @@ import yaml
 from attr import define
 from dataclasses import dataclass
 from typing import Iterable
-from dewret.tasks import task, construct, workflow, set_configuration
+from dewret.tasks import task, construct, workflow
+from dewret.core import set_configuration
 from dewret.renderers.cwl import render
 
 STARTING_NUMBER: int = 23

@@ -27,13 +27,13 @@ class NestedStepDefinition:
     subworkflow_name: str
 
     @classmethod
-    def from_nested_step(cls, nested_step: NestedStep):
+    def from_nested_step(cls, nested_step: NestedStep) -> "NestedStepDefinition":
         return cls(
             name=nested_step.name,
             subworkflow_name=nested_step.subworkflow.name
         )
 
-    def render(self):
+    def render(self) -> str:
         return \
 f"""
 A portal called {self.name} to another workflow,
@@ -45,12 +45,12 @@ class StepDefinition:
     name: str
 
     @classmethod
-    def from_step(cls, step: Step):
+    def from_step(cls, step: Step) -> "StepDefinition":
         return cls(
             name=step.name
         )
 
-    def render(self):
+    def render(self) -> str:
         return \
 f"""
 Something called {self.name}
@@ -63,8 +63,8 @@ class WorkflowDefinition:
     steps: list[StepDefinition | NestedStepDefinition]
 
     @classmethod
-    def from_workflow(cls, workflow: Workflow):
-        steps = []
+    def from_workflow(cls, workflow: Workflow) -> "WorkflowDefinition":
+        steps: list[StepDefinition | NestedStepDefinition] = []
         for step in workflow.indexed_steps.values():
             if isinstance(step, Step):
                 steps.append(StepDefinition.from_step(step))
@@ -79,7 +79,7 @@ class WorkflowDefinition:
             name = "Work Doe"
         return cls(name=name, steps=steps)
 
-    def render(self):
+    def render(self) -> str:
         steps = "\n".join('* ' + indent(step.render(), '  ')[3:] for step in self.steps)
         return \
 f"""
@@ -103,7 +103,8 @@ def render_raw(
         Reduced form as a native Python dict structure for
         serialization.
     """
-    set_render_configuration(kwargs)
+    # TODO: work out how to handle these hints correctly.
+    set_render_configuration(kwargs) # type: ignore
     return base_render(
         workflow,
         lambda workflow: WorkflowDefinition.from_workflow(workflow).render()

@@ -3,7 +3,8 @@
 from typing import Callable
 from queue import Queue
 import yaml
-from dewret.tasks import construct, workflow, task, factory, set_configuration
+from dewret.tasks import construct, workflow, task, factory
+from dewret.core import set_configuration
 from dewret.renderers.cwl import render
 from dewret.workflow import param
 from attrs import define
@@ -14,7 +15,7 @@ CONSTANT: int = 3
 
 QueueFactory: Callable[..., Queue[int]] = factory(Queue)
 
-GLOBAL_QUEUE: Queue = QueueFactory()
+GLOBAL_QUEUE: Queue[int] = QueueFactory()
 
 
 @task()
@@ -552,7 +553,7 @@ class PackResult:
     spades: int
     diamonds: int
 
-def test_combining_attrs_and_factories():
+def test_combining_attrs_and_factories() -> None:
     """TODO: Docstrings."""
     Pack = factory(PackResult)
 

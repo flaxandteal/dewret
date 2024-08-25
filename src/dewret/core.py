@@ -33,11 +33,12 @@ import copy
 BasicType = str | float | bool | bytes | int | None
 RawType = Union[BasicType, list["RawType"], dict[str, "RawType"]]
 FirmType = RawType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
+ExprType = FirmType | Basic | list["ExprType"] | dict[str, "ExprType"] | tuple["ExprType", ...] # type: ignore
 
 U = TypeVar("U")
 T = TypeVar("T")
 
-def strip_annotations(parent_type: type) -> tuple[type, tuple]:
+def strip_annotations(parent_type: type) -> tuple[type, tuple[str]]:
     """Discovers and removes annotations from a parent type.
 
     Args:
@@ -173,7 +174,7 @@ class GlobalConfiguration:
     Having a single configuration dict allows us to manage only one ContextVar.
     """
     construct: ConstructConfiguration
-    render: dict
+    render: dict[str, RawType]
 
 CONFIGURATION: ContextVar[GlobalConfiguration] = ContextVar("configuration")
 
@@ -189,7 +190,7 @@ def set_configuration(**kwargs: Unpack[ConstructConfigurationTypedDict]) -> Iter
         yield CONFIGURATION
 
 @contextmanager
-def set_render_configuration(kwargs) -> Iterator[ContextVar[GlobalConfiguration]]:
+def set_render_configuration(kwargs: dict[str, RawType]) -> Iterator[ContextVar[GlobalConfiguration]]:
     """Sets the render-time configuration.
 
     This is a context manager, so that a setting can be temporarily overridden and automatically restored.
@@ -271,7 +272,8 @@ def get_configuration(key: str) -> RawType:
     try:
         return getattr(CONFIGURATION.get().construct, key) # type: ignore
     except LookupError:
-        return getattr(ConstructConfiguration(), key)
+        # TODO: Not sure what the best way to typehint this is.
+        return getattr(ConstructConfiguration(), key) # type: ignore
 
 def get_render_configuration(key: str) -> RawType:
     """Retrieve configuration for the active renderer.
@@ -285,7 +287,7 @@ def get_render_configuration(key: str) -> RawType:
     Returns: (preferably) a JSON/YAML-serializable construct.
     """
     try:
-        return CONFIGURATION.get().render.get(key) # type: ignore
+        return CONFIGURATION.get().render.get(key)
     except LookupError:
         return default_renderer_config().get(key)
 
@@ -298,7 +300,7 @@ class WorkflowComponent:
 
     __workflow_real__: WorkflowProtocol
 
-    def __init__(self, *args, workflow: WorkflowProtocol, **kwargs):
+    def __init__(self, *args: Any, workflow: WorkflowProtocol, **kwargs: Any):
         """Tie to a `Workflow`.
 
         All subclasses must call this.
@@ -328,7 +330,7 @@ class Reference(Generic[U], Symbol, WorkflowComponent):
     _type: type[U] | None = None
     __iterated__: bool = False
 
-    def __init__(self, *args, typ: type[U] | None = None, **kwargs):
+    def __init__(self, *args: Any, typ: type[U] | None = None, **kwargs: Any):
         """Extract any specified type.
 
         Args:
@@ -340,15 +342,15 @@ class Reference(Generic[U], Symbol, WorkflowComponent):
         super().__init__(*args, **kwargs)
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Printable name of the reference."""
         return self.__name__
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> "Reference[U]":
         """As all references are sympy Expressions, the real returned object must be made with Expr."""
         instance = Expr.__new__(cls)
         instance._assumptions0 = {}
-        return instance
+        return cast(Reference[U], instance)
 
     @property
     def __root_name__(self) -> str:
@@ -369,10 +371,11 @@ class Reference(Generic[U], Symbol, WorkflowComponent):
             return self._type
         raise NotImplementedError()
 
-    def _raise_unevaluatable_error(self):
+    def _raise_unevaluatable_error(self) -> None:
+        """Convenience method to consistently formulate an UnevaluatableError for this reference."""
         raise UnevaluatableError(f"This reference, {self.__name__}, cannot be evaluated during construction.")
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> Any:
         """Test equality at construct-time, if sensible.
 
         Raises:
@@ -435,7 +438,7 @@ class IterableMixin(Reference[U]):
     """Functionality for iterating over references to give new references."""
     __fixed_len__: int | None = None
 
-    def __init__(self, typ: type[U] | None=None, **kwargs):
+    def __init__(self, typ: type[U] | None=None, **kwargs: Any):
         """Extract length, if available from type.
 
         Captures types of the form (e.g.) `tuple[int, float]` and records the length
@@ -493,7 +496,7 @@ class IterableMixin(Reference[U]):
             while True:
                 yield None
 
-    def __getitem__(self, attr: str | int) -> Reference[U]:
+    def __getitem__(self, attr: str | int) -> "Reference[U] | Any":
         """Get a reference to an individual item/field.
 
         Args:

@@ -38,7 +38,7 @@ def to_int(num: int, should_double: AtRender[bool]) -> int | float:
     """Cast to an int."""
     return increment(num=num) if should_double else sum(left=num, right=num)
 
-def test_can_analyze_annotations():
+def test_can_analyze_annotations() -> None:
     """TODO: Docstring."""
     my_obj = MyClass()
 

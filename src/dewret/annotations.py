@@ -55,7 +55,7 @@ class FunctionAnalyser:
         )
 
     @property
-    def return_type(self) -> type:
+    def return_type(self) -> Any:
         """Return type of the callable.
 
         Returns: expected type of the return value.
@@ -64,9 +64,10 @@ class FunctionAnalyser:
           ValueError: if the return value does not appear to be type-hinted.
         """
         hints = get_type_hints(inspect.unwrap(self.fn), include_extras=True)
-        if "return" not in hints:
+        if "return" not in hints or hints["return"] is None:
             raise ValueError(f"Could not find type-hint for return value of {self.fn}")
-        return hints["return"]
+        typ = hints["return"]
+        return typ
 
     @staticmethod
     def _typ_has(typ: type, annotation: type) -> bool:
@@ -87,11 +88,11 @@ class FunctionAnalyser:
             return True
         return False
 
-    def get_all_module_names(self):
+    def get_all_module_names(self) -> dict[str, Any]:
         """Find all of the annotations within this module."""
         return get_type_hints(sys.modules[self.fn.__module__], include_extras=True)
 
-    def get_all_imported_names(self):
+    def get_all_imported_names(self) -> dict[str, tuple[ModuleType, str]]:
         """Find all of the annotations that were imported into this module."""
         return self._get_all_imported_names(sys.modules[self.fn.__module__])
 
@@ -125,7 +126,7 @@ class FunctionAnalyser:
             return dict(zip(self.fn.__code__.co_freevars, (c.cell_contents for c in self.fn.__closure__), strict=False))
         return {}
 
-    def get_argument_annotation(self, arg: str, exhaustive: bool=False) -> type | None:
+    def get_argument_annotation(self, arg: str, exhaustive: bool=False) -> Any:
         """Retrieve the annotations for this argument.
 
         Args:

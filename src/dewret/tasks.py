@@ -49,20 +49,26 @@ from .workflow import (
     expr_to_references,
     unify_workflows,
     UNSET,
-    Reference,
     Workflow,
     Lazy,
     LazyEvaluation,
     Target,
     LazyFactory,
     Parameter,
+    ParameterReference,
     param,
     Task,
     is_task,
 )
 from .backends._base import BackendModule
 from .annotations import FunctionAnalyser
-from .core import get_configuration, set_configuration, IteratedGenerator, ConstructConfigurationTypedDict
+from .core import (
+    get_configuration,
+    set_configuration,
+    IteratedGenerator,
+    ConstructConfigurationTypedDict,
+    Reference
+)
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
@@ -136,7 +142,7 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy], __workflow__: Workflow, thread_pool=None, **kwargs: Any) -> Any:
+    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy], __workflow__: Workflow, thread_pool: ThreadPoolExecutor | None=None, **kwargs: Any) -> Any:
         """Evaluate a single task for a known workflow.
 
         Args:
@@ -210,7 +216,7 @@ class TaskManager:
 
         with set_configuration(**kwargs):
             context = copy_context().items()
-            def _initializer():
+            def _initializer() -> None:
                 for var, value in context:
                     var.set(value)
             thread_pool = ThreadPoolExecutor(initializer=_initializer)
@@ -421,9 +427,10 @@ def task(
                         positional_args[key] = True
                 sig.bind(**kwargs)
 
-                def _to_param_ref(value):
+                def _to_param_ref(value: Any) -> ParameterReference[Any] | None:
                     if isinstance(value, Parameter):
                         return value.make_reference(workflow=__workflow__)
+                    return None
 
                 refs = []
                 for key, val in kwargs.items():
@@ -459,7 +466,7 @@ def task(
                                 ) else None
                             )
                             kwargs[var] = cast(
-                                Parameter,
+                                Parameter[Any],
                                 param(
                                     var,
                                     value,
@@ -520,7 +527,7 @@ def task(
                         not inspect.isclass(value)
                     ):
                         kwargs[var] = cast(
-                            Parameter,
+                            Parameter[Any],
                             param(
                                 var,
                                 default=value,
@@ -550,7 +557,7 @@ def task(
                         nested_workflow = Workflow(name=fn.__name__)
                         nested_globals: Param.kwargs = {
                             var: cast(
-                                Parameter,
+                                Parameter[Any],
                                     param(
                                     var,
                                     default=value.__default__ if hasattr(value, "__default__") else UNSET,

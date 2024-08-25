@@ -33,17 +33,19 @@ from dewret.core import (
 )
 from dewret.workflow import (
     FactoryCall,
-    Reference,
     Workflow,
     BaseStep,
     StepReference,
     ParameterReference,
-    Unset,
     expr_to_references
 )
-from dewret.utils import crawl_raw, DataclassProtocol, firm_to_raw, flatten_if_set
+from dewret.utils import crawl_raw, DataclassProtocol, firm_to_raw, flatten_if_set, Unset
 from dewret.render import base_render
-from dewret.core import get_render_configuration, set_render_configuration
+from dewret.core import (
+    Reference,
+    get_render_configuration,
+    set_render_configuration
+)
 
 class CommandInputSchema(TypedDict):
     """Structure for referring to a raw type in CWL.
@@ -77,7 +79,7 @@ def render_expression(ref: Any) -> "ReferenceDefinition":
 
     Returns: a ReferenceDefinition containing a string representation of the expression in the form `$(...)`.
     """
-    def _render(ref):
+    def _render(ref: Any) -> Basic | RawType:
         if not isinstance(ref, Basic):
             if isinstance(ref, Mapping):
                 ref = Dict({key: _render(val) for key, val in ref.items()})
@@ -145,7 +147,7 @@ def default_renderer_config() -> CWLRendererConfiguration:
     }
 
 
-def with_type(result: Any) -> type:
+def with_type(result: Any) -> type | Any:
     """Get a Python type from a value.
 
     Does so either by using its `__type__` field (for example, for References)
@@ -168,11 +170,11 @@ def with_field(result: Any) -> str:
     Returns: a string representation of the field portion of the passed value or `"out"`.
     """
     if hasattr(result, "__field__") and result.__field__:
-        return result.__field_str__
+        return str(result.__field_str__)
     else:
         return "out"
 
-def to_name(result: Reference[Any]):
+def to_name(result: Reference[Any]) -> str:
     """Take a reference and get a name representing it.
 
     The primary purpose of this method is to deal with the case where a reference is to the
@@ -196,7 +198,7 @@ class ReferenceDefinition:
     value_from: str | None
 
     @classmethod
-    def from_reference(cls, ref: Reference) -> "ReferenceDefinition":
+    def from_reference(cls, ref: Reference[Any]) -> "ReferenceDefinition":
         """Build from a `Reference`.
 
         Converts a `dewret.workflow.Reference` into a CWL-rendering object.
@@ -441,8 +443,10 @@ def to_output_schema(
             fields=fields,
         )
     else:
+        # TODO: this complains because NotRequired keys are never present,
+        # but that does not seem like a problem here - likely a better solution.
         output = CommandOutputSchema(
-            **to_cwl_type(label, typ)
+            **to_cwl_type(label, typ) # type: ignore
         )
     if output_source is not None:
         output["outputSource"] = output_source
@@ -500,7 +504,7 @@ class InputsDefinition:
 
     @classmethod
     def from_parameters(
-        cls, parameters: list[ParameterReference | FactoryCall]
+        cls, parameters: list[ParameterReference[Any] | FactoryCall]
     ) -> "InputsDefinition":
         """Takes a list of parameters into a CWL structure.
 
@@ -552,7 +556,7 @@ class OutputsDefinition:
         outputs: sequence of results from a workflow.
     """
 
-    outputs: dict[str, "CommandOutputSchema"] | list["CommandOutputSchema"]
+    outputs: dict[str, "CommandOutputSchema"] | list["CommandOutputSchema"] | CommandOutputSchema
 
     @classmethod
     def from_results(
@@ -565,9 +569,10 @@ class OutputsDefinition:
         Returns:
             CWL-like structure representing all workflow outputs.
         """
-        def _build_results(result):
+        def _build_results(result: Any) -> RawType:
             if isinstance(result, Reference):
-                return to_output_schema(
+                # TODO: need to work out how to tell mypy that a TypedDict is also dict[str, RawType]
+                return to_output_schema( # type: ignore
                     with_field(result), with_type(result), output_source=to_name(result)
                 )
             results = result
@@ -579,7 +584,8 @@ class OutputsDefinition:
                 }
             )
         try:
-            return cls(outputs=_build_results(results))
+            # TODO: sort out this nested type building.
+            return cls(outputs=_build_results(results)) # type: ignore
         except AttributeError:
             expr, references = expr_to_references(results)
             reference_names = sorted(
@@ -640,7 +646,7 @@ class WorkflowDefinition:
             workflow: workflow to convert.
             name: name of this workflow, if it should have one.
         """
-        parameters: list[ParameterReference | FactoryCall] = list(
+        parameters: list[ParameterReference[Any] | FactoryCall] = list(
             workflow.find_parameters(
                 include_factory_calls=not get_render_configuration("factories_as_params")
             )
@@ -696,7 +702,8 @@ def render(
         Reduced form as a native Python dict structure for
         serialization.
     """
-    with set_render_configuration(kwargs):
+    # TODO: Again, convincing mypy that a TypedDict has RawType values.
+    with set_render_configuration(kwargs): # type: ignore
         rendered = base_render(
             workflow,
             lambda workflow: WorkflowDefinition.from_workflow(workflow).render()

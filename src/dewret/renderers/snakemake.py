@@ -26,15 +26,20 @@ import typing
 
 from attrs import define
 
-from dewret.core import Raw, BasicType
-from dewret.workflow import (
+from dewret.core import (
+    Raw,
+    BasicType,
     Reference,
+)
+from dewret.workflow import (
     Workflow,
     Task,
     Lazy,
     BaseStep,
 )
-from dewret.render import base_render
+from dewret.render import (
+    base_render,
+)
 
 MainTypes = typing.Union[
     BasicType, list[str], list["MainTypes"], dict[str, "MainTypes"]
@@ -59,7 +64,7 @@ class ReferenceDefinition:
     source: str
 
     @classmethod
-    def from_reference(cls, ref: Reference) -> "ReferenceDefinition":
+    def from_reference(cls, ref: Reference[typing.Any]) -> "ReferenceDefinition":
         """Build from a `Reference`.
 
         Converts a `dewret.workflow.Reference` into a Snakemake-rendering object.

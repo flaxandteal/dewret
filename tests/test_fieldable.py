@@ -6,8 +6,9 @@ from dataclasses import dataclass
 
 from typing import Unpack, TypedDict
 
-from dewret.tasks import task, construct, workflow, set_configuration
-from dewret.workflow import param
+from dewret.tasks import task, construct, workflow
+from dewret.core import set_configuration
+from dewret.workflow import param, StepReference
 from dewret.renderers.cwl import render
 from dewret.annotations import Fixed
 
@@ -77,10 +78,10 @@ class MyDataclass:
     left: int
     right: "MyDataclass"
 
-def test_can_get_field_reference_from_parameter():
+def test_can_get_field_reference_from_parameter() -> None:
     """TODO: Docstring."""
     my_param = param("my_param", typ=MyDataclass)
-    result = sum(left=my_param.left, right=sum(left=my_param.right.left, right=my_param))
+    result = sum(left=my_param.left, right=sum(left=my_param.right.left, right=my_param.left))
     wkflw = construct(result, simplify_ids=True)
     params = {(str(p), p.__type__) for p in wkflw.find_parameters()}
 
@@ -96,7 +97,7 @@ def test_can_get_field_reference_from_parameter():
         outputs:
           out:
             label: out
-            outputSource: sum-2/out
+            outputSource: sum-1/out
             type:
             - int
             - float
@@ -104,37 +105,37 @@ def test_can_get_field_reference_from_parameter():
           sum-1:
             in:
               left:
-                source: my_param/right/left
+                source: my_param/left
               right:
-                source: my_param
+                source: sum-2/out
             out:
             - out
             run: sum
           sum-2:
             in:
               left:
-                source: my_param/left
+                source: my_param/right/left
               right:
-                source: sum-1/out
+                source: my_param/left
             out:
             - out
             run: sum
     """)
 
-def test_can_get_field_reference_iff_parent_type_has_field():
+def test_can_get_field_reference_iff_parent_type_has_field() -> None:
     """TODO: Docstring."""
     @dataclass
     class MyDataclass:
         left: int
     my_param = param("my_param", typ=MyDataclass)
-    result = sum(left=my_param, right=my_param)
+    result = sum(left=my_param.left, right=my_param.left)
     wkflw = construct(result, simplify_ids=True)
     param_reference = list(wkflw.find_parameters())[0]
 
     assert str(param_reference.left) == "my_param/left"
     assert param_reference.left.__type__ == int
 
-def test_can_get_field_references_from_dataclass():
+def test_can_get_field_references_from_dataclass() -> None:
     """TODO: Docstring."""
     @dataclass
     class MyDataclass:
@@ -153,6 +154,7 @@ def test_can_get_field_references_from_dataclass():
     result = get_left(my_dataclass=test_dataclass(my_dataclass=MyDataclass(left=3, right=4.)))
     wkflw = construct(result, simplify_ids=True)
 
+    assert isinstance(wkflw.result, StepReference)
     assert str(wkflw.result) == "get_left-1"
     assert wkflw.result.__type__ == int
 
@@ -161,7 +163,7 @@ class MyDict(TypedDict):
     left: int
     right: float
 
-def test_can_get_field_references_from_typed_dict():
+def test_can_get_field_references_from_typed_dict() -> None:
     """TODO: Docstring."""
     @workflow()
     def test_dict(**my_dict: Unpack[MyDict]) -> MyDict:
@@ -171,6 +173,7 @@ def test_can_get_field_references_from_typed_dict():
     result = test_dict(left=3, right=4.)
     wkflw = construct(result, simplify_ids=True)
 
+    assert isinstance(wkflw.result, StepReference)
     assert str(wkflw.result["left"]) == "test_dict-1/left"
     assert wkflw.result["left"].__type__ == int
 
@@ -179,7 +182,7 @@ class MyListWrapper:
     """TODO: Docstring."""
     my_list: list[int]
 
-def test_can_iterate():
+def test_can_iterate() -> None:
     """TODO: Docstring."""
     @task()
     def test_task(alpha: int, beta: float, charlie: bool) -> int:
@@ -191,7 +194,8 @@ def test_can_iterate():
 
     @workflow()
     def test_iterated() -> int:
-        return test_task(*test_list())
+        # We ignore the type as mypy cannot confirm that the length and types match the args.
+        return test_task(*test_list()) # type: ignore
 
     with set_configuration(allow_positional_args=True, flatten_all_nested=True):
         result = test_iterated()
@@ -227,6 +231,7 @@ def test_can_iterate():
             run: test_task
     """)
 
+    assert isinstance(wkflw.result, StepReference)
     assert wkflw.result._.step.positional_args == {"alpha": True, "beta": True, "charlie": True}
 
     @task()
@@ -235,7 +240,8 @@ def test_can_iterate():
 
     @workflow()
     def test_iterated_2(my_wrapper: MyListWrapper) -> int:
-        return test_task(*my_wrapper.my_list)
+        # mypy cannot confirm argument types match.
+        return test_task(*my_wrapper.my_list) # type: ignore
 
     with set_configuration(allow_positional_args=True, flatten_all_nested=True):
         result = test_iterated_2(my_wrapper=test_list_2())
@@ -247,7 +253,8 @@ def test_can_iterate():
 
     @workflow()
     def test_iterated_3(param: Fixed[list[tuple[int, int]]]) -> int:
-        retval = mod10(*test_list_3()[0])
+        # mypy cannot confirm argument types match.
+        retval = mod10(*test_list_3()[0]) # type: ignore
         for pair in param:
             a, b = pair
             retval += a + b
@@ -300,7 +307,7 @@ def test_can_iterate():
             run: test_list_3
     """)
 
-def test_can_use_plain_dict_fields():
+def test_can_use_plain_dict_fields() -> None:
     """TODO: Docstring."""
     @workflow()
     def test_dict(left: int, right: float) -> dict[str, float | int]:
@@ -310,6 +317,7 @@ def test_can_use_plain_dict_fields():
     with set_configuration(allow_plain_dict_fields=True):
         result = test_dict(left=3, right=4.)
         wkflw = construct(result, simplify_ids=True)
+        assert isinstance(wkflw.result, StepReference)
         assert str(wkflw.result["left"]) == "test_dict-1/left"
         assert wkflw.result["left"].__type__ == int | float
 
@@ -318,7 +326,7 @@ class IndexTest:
     """TODO: Docstring."""
     left: Fixed[list[int]]
 
-def test_can_configure_field_separator():
+def test_can_configure_field_separator() -> None:
     """TODO: Docstring."""
     @task()
     def test_sep() -> IndexTest:

@@ -26,14 +26,14 @@ from contextlib import contextmanager
 import sys
 import re
 import yaml
-from typing import Any
+from typing import Any, IO, Generator
 from types import ModuleType
 import click
 import json
 
-from .core import set_configuration, set_render_configuration
+from .core import set_configuration, set_render_configuration, RawRenderModule, StructuredRenderModule
 from .utils import load_module_or_package
-from .render import get_render_method, RawRenderModule, StructuredRenderModule
+from .render import get_render_method
 from .tasks import Backend, construct
 
 
@@ -119,14 +119,14 @@ def render(
 
     if output == "-":
         @contextmanager
-        def _opener(key, _):
+        def _opener(key: str, _: str) -> Generator[IO[Any], None, None]:
             print(" ------ ", key, " ------ ")
             yield sys.stdout
             print()
         opener = _opener
     else:
         @contextmanager
-        def _opener(key, mode):
+        def _opener(key: str, mode: str) -> Generator[IO[Any], None, None]:
             output_file = output.replace("%", key)
             with Path(output_file).open(mode) as output_f:
                 yield output_f

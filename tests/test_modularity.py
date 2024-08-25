@@ -1,7 +1,8 @@
 """Verify CWL can be made with split up and nested calls."""
 
 import yaml
-from dewret.tasks import workflow, construct, set_configuration
+from dewret.tasks import workflow, construct
+from dewret.core import set_configuration
 from dewret.renderers.cwl import render
 from ._lib.extra import double, sum, increase
 
