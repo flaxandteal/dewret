@@ -71,7 +71,7 @@ def get_render_method(renderer: Path | RawRenderModule | StructuredRenderModule,
             raise NotImplementedError("This render module neither seems to be a structured nor a raw render module.")
         return render_module.render_raw
 
-    def _render(workflow: Workflow, render_module: StructuredRenderModule, pretty=False, **kwargs: RenderConfiguration) -> dict[str, str]:
+    def _render(workflow: Workflow, render_module: StructuredRenderModule, pretty: bool=False, **kwargs: RenderConfiguration) -> dict[str, str]:
         rendered = render_module.render(workflow, **kwargs)
         return {
             key: structured_to_raw(value, pretty=pretty)

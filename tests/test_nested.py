@@ -8,7 +8,7 @@ from dewret.renderers.cwl import render
 
 from ._lib.extra import reverse_list, max_list
 
-def test_can_supply_nested_raw():
+def test_can_supply_nested_raw() -> None:
     """TODO: Docstrings."""
     pi = param("pi", math.pi)
     result = reverse_list(to_sort=[1., 3., pi])

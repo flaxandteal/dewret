@@ -6,7 +6,7 @@ from dewret.render import get_render_method
 
 from ._lib.extra import increment, triple_and_one
 
-def test_can_load_render_module():
+def test_can_load_render_module() -> None:
     """TODO: Docstrings."""
     result = triple_and_one(num=increment(num=3))
     workflow = construct(result, simplify_ids=True)
