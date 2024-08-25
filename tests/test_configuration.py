@@ -19,7 +19,7 @@ def floor(num: int, expected: AtRender[bool]) -> int:
     """Converts int/float to int."""
     from dewret.tasks import get_configuration
     if get_configuration("flatten_all_nested") != expected:
-        raise AssertionError(f"Not expected configuration: {get_configuration('flatten_all_nested')} != {expected}")
+        raise AssertionError(f"Not expected configuration: {str(get_configuration('flatten_all_nested'))} != {expected}")
     return increment(num=num)
 
 def test_cwl_with_parameter(configuration) -> None:
