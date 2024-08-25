@@ -1,8 +1,9 @@
+"""Verify we can interrogate annotations."""
+
 import pytest
 import yaml
-from typing import Literal
 
-from dewret.tasks import task, construct, workflow, TaskException
+from dewret.tasks import construct, workflow, TaskException
 from dewret.renderers.cwl import render
 from dewret.annotations import AtRender, FunctionAnalyser, Fixed
 from dewret.core import set_configuration
@@ -13,12 +14,15 @@ ARG1: AtRender[bool] = True
 ARG2: bool = False
 
 class MyClass:
+    """TODO: Docstring."""
     def method(self, arg1: bool, arg2: AtRender[int]) -> float:
+        """TODO: Docstring."""
         arg3: float = 7.0
         arg4: AtRender[float] = 8.0
         return arg1 + arg2 + arg3 + arg4 + int(ARG1) + int(ARG2)
 
 def fn(arg5: int, arg6: AtRender[int]) -> float:
+    """TODO: Docstring."""
     arg7: float = 7.0
     arg8: AtRender[float] = 8.0
     return arg5 + arg6 + arg7 + arg8 + int(ARG1) + int(ARG2)
@@ -35,6 +39,7 @@ def to_int(num: int, should_double: AtRender[bool]) -> int | float:
     return increment(num=num) if should_double else sum(left=num, right=num)
 
 def test_can_analyze_annotations():
+    """TODO: Docstring."""
     my_obj = MyClass()
 
     analyser = FunctionAnalyser(my_obj.method)
@@ -56,6 +61,7 @@ def test_can_analyze_annotations():
     assert analyser.argument_has("ARG1", AtRender) is False
 
 def test_at_render() -> None:
+    """TODO: Docstring."""
     with pytest.raises(TaskException) as _:
         result = to_int_bad(num=increment(num=3), should_double=True)
         wkflw = construct(result, simplify_ids=True)
@@ -138,19 +144,20 @@ def test_at_render() -> None:
 
 
 def test_at_render_between_modules() -> None:
-    nothing = False
+    """TODO: Docstring."""
     result = try_nothing()
     wkflw = construct(result, simplify_ids=True)
     subworkflows = render(wkflw, allow_complex_types=True)
-    rendered = subworkflows["__root__"]
+    subworkflows["__root__"]
 
 list_2: Fixed[list[int]] = [0, 1, 2, 3]
 
 def test_can_loop_over_fixed_length() -> None:
+    """TODO: Docstring."""
     @workflow()
     def loop_over_lists(list_1: list[int]) -> list[int]:
         result = []
-        for a, b in zip(list_1, list_2):
+        for a, b in zip(list_1, list_2, strict=False):
             result.append(a + b + len(list_2))
         return result
 

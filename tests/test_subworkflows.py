@@ -546,12 +546,14 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
 
 @define
 class PackResult:
+    """TODO: Docstrings."""
     hearts: int
     clubs: int
     spades: int
     diamonds: int
 
 def test_combining_attrs_and_factories():
+    """TODO: Docstrings."""
     Pack = factory(PackResult)
 
     @task()
