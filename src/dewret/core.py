@@ -533,7 +533,7 @@ class IteratedGenerator(Generic[U]):
         """
         count = -1
         for _ in self.__wrapped__.__inner_iter__():
-            ref = self.__wrapped__.__make_reference__(workflow=self.__wrapped__.__workflow__, field=(count := count + 1))
+            ref = self.__wrapped__[(count := count + 1)]
             ref.__iterated__ = True
             yield ref
 

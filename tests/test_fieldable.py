@@ -296,21 +296,21 @@ def test_can_iterate() -> None:
         outputs:
           out:
             label: out
-            outputSource: mod10-1/out
+            outputSource: mod10-2/out
             type: int
         steps:
           mod10-1:
             in:
               num:
-                valueFrom: $(inputs.param[0][0] + inputs.param[0][1] + inputs.param[1][0] + inputs.param[1][1] + self)
-                source: mod10-2/out
+                source: test_list_3-1[0][0]
             out:
             - out
             run: mod10
           mod10-2:
             in:
               num:
-                source: test_list_3-1[0]
+                valueFrom: $(inputs.param[0][0] + inputs.param[0][1] + inputs.param[1][0] + inputs.param[1][1] + self)
+                source: mod10-1/out
             out:
             - out
             run: mod10
