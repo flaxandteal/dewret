@@ -209,38 +209,38 @@ def test_cwl_with_positional_parameter() -> None:
     """)
 
 
-#def test_cwl_without_default() -> None:
-#    """Check whether we can produce CWL without a default value.
-#
-#    Uses a manually created parameter to avoid a default.
-#    """
-#    my_param = param("my_param", typ=int)
-#
-#    result = increment(num=my_param)
-#    workflow = construct(result)
-#    rendered = render(workflow)["__root__"]
-#    hsh = hasher(("increment", ("num", "int|:param:my_param")))
-#
-#    assert rendered == yaml.safe_load(f"""
-#        cwlVersion: 1.2
-#        class: Workflow
-#        inputs:
-#          my_param:
-#            label: my_param
-#            type: int
-#        outputs:
-#          out:
-#            label: out
-#            outputSource: increment-{hsh}/out
-#            type: int
-#        steps:
-#          increment-{hsh}:
-#            run: increment
-#            in:
-#                num:
-#                    source: my_param
-#            out: [out]
-#    """)
+def test_cwl_without_default() -> None:
+    """Check whether we can produce CWL without a default value.
+
+    Uses a manually created parameter to avoid a default.
+    """
+    my_param = param("my_param", typ=int)
+
+    result = increment(num=my_param)
+    workflow = construct(result)
+    rendered = render(workflow)["__root__"]
+    hsh = hasher(("increment", ("num", "int|:param:my_param")))
+
+    assert rendered == yaml.safe_load(f"""
+        cwlVersion: 1.2
+        class: Workflow
+        inputs:
+          my_param:
+            label: my_param
+            type: int
+        outputs:
+          out:
+            label: out
+            outputSource: increment-{hsh}/out
+            type: int
+        steps:
+          increment-{hsh}:
+            run: increment
+            in:
+                num:
+                    source: my_param
+            out: [out]
+    """)
 
 
 def test_cwl_with_subworkflow() -> None:
