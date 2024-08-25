@@ -908,6 +908,8 @@ class FieldableMixin(_Fieldable):
                     f"Tried to index int {field} into type {parent_type} but can only do so if the first type argument "
                     f"is the element type (args: {get_args(parent_type)}"
                 )
+        elif field.startswith("__"):
+            raise AttributeError(f"We do not allow fields with dunder prefix, such as {field}, to reduce risk of clashes.")
         else:
             if is_dataclass(parent_type):
                 try:

@@ -17,7 +17,7 @@
 Lazy-evaluation via `dask.delayed`.
 """
 
-from dask.delayed import delayed, DelayedLeaf
+from dask.delayed import delayed, DelayedLeaf, Graph
 from dask.config import config
 from typing import Protocol, runtime_checkable, Any, cast
 from concurrent.futures import ThreadPoolExecutor
@@ -34,6 +34,11 @@ class Delayed(Protocol):
 
     More info: https://github.com/dask/dask/issues/7779
     """
+
+    @property
+    def __dask_graph__(self) -> Graph:
+        """Retrieve the dask graph."""
+        ...
 
     def compute(self, __workflow__: Workflow | None) -> StepReference[Any]:
         """Evaluate this `dask.delayed`.
@@ -120,7 +125,7 @@ def run(workflow: Workflow | None, task: Lazy | list[Lazy] | tuple[Lazy], thread
     #         f"{task} is not a dask delayed, perhaps you tried to mix backends?"
     #     )
 
-    if isinstance(task, Delayed):
+    if isinstance(task, Delayed) and is_lazy(task):
         computable = task
     else:
         computable = delayed(task)
