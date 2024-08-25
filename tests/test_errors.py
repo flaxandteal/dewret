@@ -4,7 +4,6 @@ import pytest
 from dewret.workflow import Task, Lazy
 from dewret.tasks import construct, task, workflow, TaskException
 from dewret.annotations import AtRender
-from dewret.renderers.cwl import render
 from ._lib.extra import increment, pi, reverse_list  # noqa: F401
 
 
@@ -14,7 +13,7 @@ def add_task(left: int, right: int) -> int:
     return left + right
 
 
-ADD_TASK_LINE_NO: int = 11
+ADD_TASK_LINE_NO: int = 10
 
 
 @workflow()
@@ -35,14 +34,6 @@ class MyStrangeClass:
     def __init__(self, task: Task):
         """Dummy constructor for tests."""
         ...
-
-
-@task()
-def pi() -> float:
-    """Get pi from math package."""
-    import math
-
-    return math.pi
 
 
 @task()
@@ -242,6 +233,7 @@ bad_num = 3
 good_num: int = 4
 
 def test_must_annotate_global() -> None:
+    """TODO: Docstrings."""
     worse_num = 3
 
     @workflow()
@@ -249,7 +241,7 @@ def test_must_annotate_global() -> None:
         return increment(num=bad_num)
 
     with pytest.raises(TaskException) as exc:
-        result = check_annotation()
+        check_annotation()
 
     assert (
         str(exc.value)
@@ -261,7 +253,7 @@ def test_must_annotate_global() -> None:
         return increment(num=worse_num)
 
     with pytest.raises(TaskException) as exc:
-        result = check_annotation_2()
+        check_annotation_2()
 
     assert (
         str(exc.value)

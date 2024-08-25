@@ -1,8 +1,9 @@
+"""Check field management works."""
+
 from __future__ import annotations
 import yaml
 from dataclasses import dataclass
 
-import pytest
 from typing import Unpack, TypedDict
 
 from dewret.tasks import task, construct, workflow, set_configuration
@@ -10,10 +11,11 @@ from dewret.workflow import param
 from dewret.renderers.cwl import render
 from dewret.annotations import Fixed
 
-from ._lib.extra import double, mod10, sum, pi
+from ._lib.extra import mod10, sum, pi
 
 @dataclass
 class Sides:
+    """TODO: Docstring."""
     left: int
     right: int
 
@@ -21,9 +23,11 @@ SIDES: Sides = Sides(3, 6)
 
 @workflow()
 def sum_sides() -> float:
+    """TODO: Docstring."""
     return sum(left=SIDES.left, right=SIDES.right)
 
 def test_fields_of_parameters_usable() -> None:
+    """TODO: Docstring."""
     result = sum_sides()
     wkflw = construct(result, simplify_ids=True)
     rendered = render(wkflw, allow_complex_types=True)["sum_sides-1"]
@@ -69,10 +73,12 @@ def test_fields_of_parameters_usable() -> None:
 
 @dataclass
 class MyDataclass:
+    """TODO: Docstring."""
     left: int
     right: "MyDataclass"
 
 def test_can_get_field_reference_from_parameter():
+    """TODO: Docstring."""
     my_param = param("my_param", typ=MyDataclass)
     result = sum(left=my_param.left, right=sum(left=my_param.right.left, right=my_param))
     wkflw = construct(result, simplify_ids=True)
@@ -116,6 +122,7 @@ def test_can_get_field_reference_from_parameter():
     """)
 
 def test_can_get_field_reference_iff_parent_type_has_field():
+    """TODO: Docstring."""
     @dataclass
     class MyDataclass:
         left: int
@@ -128,6 +135,7 @@ def test_can_get_field_reference_iff_parent_type_has_field():
     assert param_reference.left.__type__ == int
 
 def test_can_get_field_references_from_dataclass():
+    """TODO: Docstring."""
     @dataclass
     class MyDataclass:
         left: int
@@ -149,10 +157,12 @@ def test_can_get_field_references_from_dataclass():
     assert wkflw.result.__type__ == int
 
 class MyDict(TypedDict):
+    """TODO: Docstring."""
     left: int
     right: float
 
 def test_can_get_field_references_from_typed_dict():
+    """TODO: Docstring."""
     @workflow()
     def test_dict(**my_dict: Unpack[MyDict]) -> MyDict:
         result: MyDict = {"left": mod10(num=my_dict["left"]), "right": pi()}
@@ -166,9 +176,11 @@ def test_can_get_field_references_from_typed_dict():
 
 @dataclass
 class MyListWrapper:
+    """TODO: Docstring."""
     my_list: list[int]
 
 def test_can_iterate():
+    """TODO: Docstring."""
     @task()
     def test_task(alpha: int, beta: float, charlie: bool) -> int:
         return int(alpha + beta)
@@ -289,6 +301,7 @@ def test_can_iterate():
     """)
 
 def test_can_use_plain_dict_fields():
+    """TODO: Docstring."""
     @workflow()
     def test_dict(left: int, right: float) -> dict[str, float | int]:
         result: dict[str, float | int] = {"left": mod10(num=left), "right": pi()}
@@ -302,9 +315,11 @@ def test_can_use_plain_dict_fields():
 
 @dataclass
 class IndexTest:
+    """TODO: Docstring."""
     left: Fixed[list[int]]
 
 def test_can_configure_field_separator():
+    """TODO: Docstring."""
     @task()
     def test_sep() -> IndexTest:
         return IndexTest(left=[3])
@@ -312,17 +327,17 @@ def test_can_configure_field_separator():
     with set_configuration(field_index_types="int"):
         result = test_sep().left[0]
         wkflw = construct(result, simplify_ids=True)
-        rendered = render(wkflw, allow_complex_types=True)["__root__"]
+        render(wkflw, allow_complex_types=True)["__root__"]
         assert str(wkflw.result) == "test_sep-1/left[0]"
 
-    #with set_configuration(field_index_types="int,str"):
-    #    result = test_sep().left[0]
-    #    wkflw = construct(result, simplify_ids=True)
-    #    rendered = render(wkflw, allow_complex_types=True)["__root__"]
-    #    assert str(wkflw.result) == "test_sep-1[left][0]"
+    with set_configuration(field_index_types="int,str"):
+        result = test_sep().left[0]
+        wkflw = construct(result, simplify_ids=True)
+        render(wkflw, allow_complex_types=True)["__root__"]
+        assert str(wkflw.result) == "test_sep-1[left][0]"
 
-    #with set_configuration(field_index_types=""):
-    #    result = test_sep().left[0]
-    #    wkflw = construct(result, simplify_ids=True)
-    #    rendered = render(wkflw, allow_complex_types=True)["__root__"]
-    #    assert str(wkflw.result) == "test_sep-1/left/0"
+    with set_configuration(field_index_types=""):
+        result = test_sep().left[0]
+        wkflw = construct(result, simplify_ids=True)
+        render(wkflw, allow_complex_types=True)["__root__"]
+        assert str(wkflw.result) == "test_sep-1/left/0"

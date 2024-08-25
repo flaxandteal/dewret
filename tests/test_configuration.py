@@ -1,14 +1,16 @@
+"""Check configuration is consistent and usable."""
+
 import yaml
 import pytest
-from dewret.tasks import construct, task, factory, workflow, TaskException
+from dewret.tasks import construct, workflow, TaskException
 from dewret.renderers.cwl import render
-from dewret.utils import hasher
 from dewret.tasks import set_configuration
 from dewret.annotations import AtRender
-from ._lib.extra import increment, double, mod10, sum, triple_and_one
+from ._lib.extra import increment
 
 @pytest.fixture
 def configuration():
+    """TODO: Docstring."""
     with set_configuration() as configuration:
         yield configuration.get()
 
@@ -21,6 +23,7 @@ def floor(num: int, expected: AtRender[bool]) -> int:
     return increment(num=num)
 
 def test_cwl_with_parameter(configuration) -> None:
+    """TODO: Docstring."""
     with set_configuration(flatten_all_nested=True):
         result = increment(num=floor(num=3, expected=True))
         workflow = construct(result, simplify_ids=True)
@@ -35,8 +38,9 @@ def test_cwl_with_parameter(configuration) -> None:
         workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)["__root__"]
     num_param = list(workflow.find_parameters())[0]
+    assert num_param
 
-    assert rendered == yaml.safe_load(f"""
+    assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
         inputs:

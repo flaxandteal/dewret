@@ -177,7 +177,7 @@ def test_cwl_with_positional_parameter() -> None:
     Produces CWL for a call with a changeable raw value, that is converted
     to a parameter, if and only if we are calling from outside a subworkflow.
     """
-    with pytest.raises(TaskException) as exc:
+    with pytest.raises(TaskException) as _:
         result = increment(3)
     with set_configuration(allow_positional_args=True):
         result = increment(3)

@@ -1,10 +1,13 @@
+"""Check renderers can be imported live."""
+
 from pathlib import Path
-from dewret.tasks import construct, task, factory
+from dewret.tasks import construct
 from dewret.render import get_render_method
 
-from ._lib.extra import increment, double, mod10, sum, triple_and_one
+from ._lib.extra import increment, triple_and_one
 
 def test_can_load_render_module():
+    """TODO: Docstrings."""
     result = triple_and_one(num=increment(num=3))
     workflow = construct(result, simplify_ids=True)
     workflow._name = "Fred"
