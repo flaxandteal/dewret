@@ -1405,6 +1405,8 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
 
     def __make_reference__(self, **kwargs: Any) -> "ParameterReference[U]":
         """Get a reference for the same parameter."""
+        if "workflow" not in kwargs:
+            kwargs["workflow"] = self.__workflow__
         return self._.parameter.make_reference(**kwargs)
 
 class IterableParameterReference(IterableMixin[U], ParameterReference[U]):
@@ -1588,6 +1590,8 @@ class StepReference(FieldableMixin, Reference[U]):
 
     def __make_reference__(self, **kwargs: Any) -> "StepReference[U]":
         """Create a new reference for the same step."""
+        if "workflow" not in kwargs:
+            kwargs["workflow"] = self.__workflow__
         return self._.step.make_reference(**kwargs)
 
 class IterableStepReference(IterableMixin[U], StepReference[U]):
