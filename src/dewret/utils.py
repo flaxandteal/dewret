@@ -91,11 +91,16 @@ def load_module_or_package(target_name: str, path: Path) -> ModuleType:
             exception = exc
 
     if module is None:
-        spec = importlib.util.spec_from_file_location(target_name, str(path))
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Could not open {path} module") from exception
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        try:
+            spec = importlib.util.spec_from_file_location(target_name, str(path))
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not open {path} module")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        except ImportError as exc:
+            if exception:
+                 raise exc from exception
+            raise exc
 
     return module
 
