@@ -98,7 +98,6 @@ class BaseRenderModule(Protocol):
 @runtime_checkable
 class RawRenderModule(BaseRenderModule, Protocol):
     """Render module that returns raw text."""
-    @abstractmethod
     def render_raw(self, workflow: WorkflowProtocol, **kwargs: RenderConfiguration) -> dict[str, str]:
         """Turn a workflow into flat strings.
 
@@ -109,7 +108,6 @@ class RawRenderModule(BaseRenderModule, Protocol):
 @runtime_checkable
 class StructuredRenderModule(BaseRenderModule, Protocol):
     """Render module that returns JSON/YAML-serializable structures."""
-    @abstractmethod
     def render(self, workflow: WorkflowProtocol, **kwargs: RenderConfiguration) -> dict[str, dict[str, RawType]]:
         """Turn a workflow into a serializable structure.
 
