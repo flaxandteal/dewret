@@ -19,7 +19,6 @@ and WorkflowComponents, that are concretized elsewhere.
 """
 
 from dataclasses import dataclass
-from abc import abstractmethod
 import importlib
 import base64
 from attrs import define
