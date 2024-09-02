@@ -24,11 +24,21 @@ import sys
 import importlib
 from functools import lru_cache
 from types import FunctionType, ModuleType
-from typing import Any, TypeVar, Annotated, Callable, get_origin, get_args, Mapping, get_type_hints
+from typing import (
+    Any,
+    TypeVar,
+    Annotated,
+    Callable,
+    get_origin,
+    get_args,
+    Mapping,
+    get_type_hints,
+)
 
 T = TypeVar("T")
 AtRender = Annotated[T, "AtRender"]
 Fixed = Annotated[T, "Fixed"]
+
 
 class FunctionAnalyser:
     """Convenience class for analysing a function with reduced duplication of effort.
@@ -37,6 +47,7 @@ class FunctionAnalyser:
         _fn: the wrapped callable
         _annotations: stored annotations for the function.
     """
+
     _fn: Callable[..., Any]
     _annotations: dict[str, Any]
 
@@ -79,9 +90,13 @@ class FunctionAnalyser:
         Returns: True if the type has the given annotation, otherwise False.
         """
         if not hasattr(annotation, "__metadata__"):
-           return False
-        if (origin := get_origin(typ)):
-            if origin is Annotated and hasattr(typ, "__metadata__") and typ.__metadata__ == annotation.__metadata__:
+            return False
+        if origin := get_origin(typ):
+            if (
+                origin is Annotated
+                and hasattr(typ, "__metadata__")
+                and typ.__metadata__ == annotation.__metadata__
+            ):
                 return True
         if any(FunctionAnalyser._typ_has(arg, annotation) for arg in get_args(typ)):
             return True
@@ -113,8 +128,11 @@ class FunctionAnalyser:
             if isinstance(node, ast.ImportFrom):
                 for name in node.names:
                     imported_names[name.asname or name.name] = (
-                        importlib.import_module("".join(["."] * node.level) + (node.module or ""), package=mod.__package__),
-                        name.name
+                        importlib.import_module(
+                            "".join(["."] * node.level) + (node.module or ""),
+                            package=mod.__package__,
+                        ),
+                        name.name,
                     )
         return imported_names
 
@@ -122,10 +140,16 @@ class FunctionAnalyser:
     def free_vars(self) -> dict[str, Any]:
         """Get the free variables for this Callable."""
         if self.fn.__code__ and self.fn.__closure__:
-            return dict(zip(self.fn.__code__.co_freevars, (c.cell_contents for c in self.fn.__closure__), strict=False))
+            return dict(
+                zip(
+                    self.fn.__code__.co_freevars,
+                    (c.cell_contents for c in self.fn.__closure__),
+                    strict=False,
+                )
+            )
         return {}
 
-    def get_argument_annotation(self, arg: str, exhaustive: bool=False) -> Any:
+    def get_argument_annotation(self, arg: str, exhaustive: bool = False) -> Any:
         """Retrieve the annotations for this argument.
 
         Args:
@@ -135,22 +159,28 @@ class FunctionAnalyser:
         Returns: annotation if available, else None.
         """
         typ: type | None = None
-        if (typ := self.fn.__annotations__.get(arg)):
+        if typ := self.fn.__annotations__.get(arg):
             if isinstance(typ, str):
                 typ = get_type_hints(self.fn, include_extras=True).get(arg)
         elif exhaustive:
-            if (anns := get_type_hints(sys.modules[self.fn.__module__], include_extras=True)):
-                if (typ := anns.get(arg)):
+            if anns := get_type_hints(
+                sys.modules[self.fn.__module__], include_extras=True
+            ):
+                if typ := anns.get(arg):
                     ...
-                elif (orig_pair := self.get_all_imported_names().get(arg)):
+                elif orig_pair := self.get_all_imported_names().get(arg):
                     orig_module, orig_name = orig_pair
                     typ = orig_module.__annotations__.get(orig_name)
-                elif (value := self.free_vars.get(arg)):
+                elif value := self.free_vars.get(arg):
                     if not inspect.isclass(value) or inspect.isfunction(value):
-                        raise RuntimeError(f"Cannot use free variables - please put {arg} at the global scope")
+                        raise RuntimeError(
+                            f"Cannot use free variables - please put {arg} at the global scope"
+                        )
         return typ
 
-    def argument_has(self, arg: str, annotation: type, exhaustive: bool=False) -> bool:
+    def argument_has(
+        self, arg: str, annotation: type, exhaustive: bool = False
+    ) -> bool:
         """Check if the named argument has the given annotation.
 
         Args:
@@ -163,7 +193,7 @@ class FunctionAnalyser:
         typ = self.get_argument_annotation(arg, exhaustive)
         return bool(typ and self._typ_has(typ, annotation))
 
-    def is_at_construct_arg(self, arg: str, exhaustive: bool=False) -> bool:
+    def is_at_construct_arg(self, arg: str, exhaustive: bool = False) -> bool:
         """Convience function to check for `AtConstruct`, wrapping `FunctionAnalyser.argument_has`."""
         return self.argument_has(arg, AtRender, exhaustive)
 

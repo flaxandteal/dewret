@@ -48,9 +48,7 @@ import copy
 BasicType = str | float | bool | bytes | int | None
 RawType = BasicType | list["RawType"] | dict[str, "RawType"]
 FirmType = RawType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
-ExprType = (
-    FirmType | Basic | list["ExprType"] | dict[str, "ExprType"] | tuple["ExprType", ...]
-)  # type: ignore
+ExprType = (FirmType | Basic | list["ExprType"] | dict[str, "ExprType"] | tuple["ExprType", ...]) # type: ignore
 
 U = TypeVar("U")
 T = TypeVar("T")

@@ -90,14 +90,19 @@ def is_lazy(task: Any) -> bool:
         True if so, False otherwise.
     """
     return isinstance(task, Delayed) or (
-        isinstance(task, tuple | list) and
-        all(is_lazy(elt) for elt in task)
+        isinstance(task, tuple | list) and all(is_lazy(elt) for elt in task)
     )
 
 
 lazy = delayed
 
-def run(workflow: Workflow | None, task: Lazy | list[Lazy] | tuple[Lazy], thread_pool: ThreadPoolExecutor | None=None, **kwargs: Any) -> Any:
+
+def run(
+    workflow: Workflow | None,
+    task: Lazy | list[Lazy] | tuple[Lazy],
+    thread_pool: ThreadPoolExecutor | None = None,
+    **kwargs: Any,
+) -> Any:
     """Execute a task as the output of a workflow.
 
     Runs a task with dask.
