@@ -13,13 +13,16 @@ from ._lib.extra import increment, sum, try_nothing
 ARG1: AtRender[bool] = True
 ARG2: bool = False
 
+
 class MyClass:
     """A mock class to wrap values and mock processing of data."""
+
     def method(self, arg1: bool, arg2: AtRender[int]) -> float:
         """A mock method to simulate the behavior of processing and rendering values."""
         arg3: float = 7.0
         arg4: AtRender[float] = 8.0
         return arg1 + arg2 + arg3 + arg4 + int(ARG1) + int(ARG2)
+
 
 def fn(arg5: int, arg6: AtRender[int]) -> float:
     """A mock function to simulate processing of rendered values with integer inputs."""
@@ -33,13 +36,16 @@ def to_int_bad(num: int, should_double: bool) -> int | float:
     """A mock workflow that casts to an int with a wrong type for handling doubles."""
     return increment(num=num) if should_double else sum(left=num, right=num)
 
+
 @workflow()
 def to_int(num: int, should_double: AtRender[bool]) -> int | float:
     """A mock workflow that casts to an int with a right type for handling doubles."""
     return increment(num=num) if should_double else sum(left=num, right=num)
 
+
 def test_can_analyze_annotations() -> None:
     """Test that annotations can be correctly analyzed within methods and functions.
+
     Verifies that the `FunctionAnalyser` finds which arguments
     and global variables are derived from `dewret.annotations.AtRender`.
     """
@@ -50,7 +56,9 @@ def test_can_analyze_annotations() -> None:
     assert analyser.argument_has("arg3", AtRender, exhaustive=True) is False
     assert analyser.argument_has("ARG2", AtRender, exhaustive=True) is False
     assert analyser.argument_has("arg2", AtRender, exhaustive=True) is True
-    assert analyser.argument_has("arg4", AtRender, exhaustive=True) is False # Not a global/argument
+    assert (
+        analyser.argument_has("arg4", AtRender, exhaustive=True) is False
+    )  # Not a global/argument
     assert analyser.argument_has("ARG1", AtRender, exhaustive=True) is True
     assert analyser.argument_has("ARG1", AtRender) is False
 
@@ -59,9 +67,12 @@ def test_can_analyze_annotations() -> None:
     assert analyser.argument_has("arg7", AtRender, exhaustive=True) is False
     assert analyser.argument_has("ARG2", AtRender, exhaustive=True) is False
     assert analyser.argument_has("arg6", AtRender, exhaustive=True) is True
-    assert analyser.argument_has("arg8", AtRender, exhaustive=True) is False # Not a global/argument
+    assert (
+        analyser.argument_has("arg8", AtRender, exhaustive=True) is False
+    )  # Not a global/argument
     assert analyser.argument_has("ARG1", AtRender, exhaustive=True) is True
     assert analyser.argument_has("ARG1", AtRender) is False
+
 
 def test_at_render() -> None:
     """Test the rendering of workflows with `dewret.annotations.AtRender` and exceptions handling."""
@@ -153,10 +164,13 @@ def test_at_render_between_modules() -> None:
     subworkflows = render(wkflw, allow_complex_types=True)
     subworkflows["__root__"]
 
+
 list_2: Fixed[list[int]] = [0, 1, 2, 3]
+
 
 def test_can_loop_over_fixed_length() -> None:
     """Test looping over a fixed-length list using `dewret.annotations.Fixed`."""
+
     @workflow()
     def loop_over_lists(list_1: list[int]) -> list[int]:
         result = []

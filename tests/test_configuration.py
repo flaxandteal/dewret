@@ -8,13 +8,18 @@ from dewret.core import set_configuration
 from dewret.annotations import AtRender
 from ._lib.extra import increment
 
+
 @workflow()
 def floor(num: int, expected: AtRender[bool]) -> int:
     """Converts int/float to int."""
     from dewret.core import get_configuration
+
     if get_configuration("flatten_all_nested") != expected:
-        raise AssertionError(f"Not expected configuration: {str(get_configuration('flatten_all_nested'))} != {expected}")
+        raise AssertionError(
+            f"Not expected configuration: {str(get_configuration('flatten_all_nested'))} != {expected}"
+        )
     return increment(num=num)
+
 
 def test_cwl_with_parameter() -> None:
     """Test workflows with configuration parameters."""
@@ -22,7 +27,10 @@ def test_cwl_with_parameter() -> None:
         result = increment(num=floor(num=3, expected=True))
         workflow = construct(result, simplify_ids=True)
 
-    with pytest.raises(TaskException) as exc, set_configuration(flatten_all_nested=False):
+    with (
+        pytest.raises(TaskException) as exc,
+        set_configuration(flatten_all_nested=False),
+    ):
         result = increment(num=floor(num=3, expected=True))
         workflow = construct(result, simplify_ids=True)
     assert "AssertionError" in str(exc.getrepr())
