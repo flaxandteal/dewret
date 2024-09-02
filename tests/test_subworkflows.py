@@ -547,14 +547,14 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
 
 @define
 class PackResult:
-    """TODO: Docstrings."""
+    """A class representing the counts of card suits in a deck, including hearts, clubs, spades, and diamonds."""
     hearts: int
     clubs: int
     spades: int
     diamonds: int
 
 def test_combining_attrs_and_factories() -> None:
-    """TODO: Docstrings."""
+    """Check combining attributes from a dataclass with factory-produced instances."""
     Pack = factory(PackResult)
 
     @task()

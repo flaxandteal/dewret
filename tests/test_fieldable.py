@@ -16,7 +16,7 @@ from ._lib.extra import mod10, sum, pi
 
 @dataclass
 class Sides:
-    """TODO: Docstring."""
+    """A dataclass representing the sides with `left` and `right` integers."""
     left: int
     right: int
 
@@ -24,11 +24,11 @@ SIDES: Sides = Sides(3, 6)
 
 @workflow()
 def sum_sides() -> float:
-    """TODO: Docstring."""
+    """Workflow that returns the sum of the `left` and `right` sides."""
     return sum(left=SIDES.left, right=SIDES.right)
 
 def test_fields_of_parameters_usable() -> None:
-    """TODO: Docstring."""
+    """Test that fields of parameters can be used to construct and render a workflow correctly."""
     result = sum_sides()
     wkflw = construct(result, simplify_ids=True)
     rendered = render(wkflw, allow_complex_types=True)["sum_sides-1"]
@@ -74,12 +74,12 @@ def test_fields_of_parameters_usable() -> None:
 
 @dataclass
 class MyDataclass:
-    """TODO: Docstring."""
+    """A dataclass with nested references to itself, containing `left` and `right` fields."""
     left: int
     right: "MyDataclass"
 
 def test_can_get_field_reference_from_parameter() -> None:
-    """TODO: Docstring."""
+    """Test that field references can be retrieved from a parameter when constructing a workflow."""
     my_param = param("my_param", typ=MyDataclass)
     result = sum(left=my_param.left, right=sum(left=my_param.right.left, right=my_param.left))
     wkflw = construct(result, simplify_ids=True)
@@ -122,8 +122,8 @@ def test_can_get_field_reference_from_parameter() -> None:
             run: sum
     """)
 
-def test_can_get_field_reference_iff_parent_type_has_field() -> None:
-    """TODO: Docstring."""
+def test_can_get_field_reference_if_parent_type_has_field() -> None:
+    """Test that a field reference is retrievable if the parent type has that field."""
     @dataclass
     class MyDataclass:
         left: int
@@ -136,7 +136,7 @@ def test_can_get_field_reference_iff_parent_type_has_field() -> None:
     assert param_reference.left.__type__ == int
 
 def test_can_get_go_upwards_from_a_field_reference() -> None:
-    """TODO: Docstring."""
+    """Test that it's possible to move upwards in the hierarchy from a field reference."""
     @dataclass
     class MyDataclass:
         left: int
@@ -150,7 +150,7 @@ def test_can_get_go_upwards_from_a_field_reference() -> None:
     assert back.__type__ == MyDataclass
 
 def test_can_get_field_references_from_dataclass() -> None:
-    """TODO: Docstring."""
+    """Test that field references can be extracted from a dataclass and used in workflows."""
     @dataclass
     class MyDataclass:
         left: int
@@ -173,12 +173,12 @@ def test_can_get_field_references_from_dataclass() -> None:
     assert wkflw.result.__type__ == int
 
 class MyDict(TypedDict):
-    """TODO: Docstring."""
+    """A typed dictionary with `left` as an integer and `right` as a float."""
     left: int
     right: float
 
 def test_can_get_field_references_from_typed_dict() -> None:
-    """TODO: Docstring."""
+    """Test that field references can be extracted from a custom typed dictionary and used in workflows."""
     @workflow()
     def test_dict(**my_dict: Unpack[MyDict]) -> MyDict:
         result: MyDict = {"left": mod10(num=my_dict["left"]), "right": pi()}
@@ -193,21 +193,24 @@ def test_can_get_field_references_from_typed_dict() -> None:
 
 @dataclass
 class MyListWrapper:
-    """TODO: Docstring."""
+    """A dataclass that wraps a list of integers."""
     my_list: list[int]
 
 def test_can_iterate() -> None:
-    """TODO: Docstring."""
+    """Test iteration over a list of tasks and validate positional argument handling."""
     @task()
     def test_task(alpha: int, beta: float, charlie: bool) -> int:
+        """Task that adds `alpha` and `beta` and returns the integer result."""
         return int(alpha + beta)
 
     @task()
     def test_list() -> list[int | float]:
+        """Task that returns a list containing an integer and a float."""
         return [1, 2.]
 
     @workflow()
     def test_iterated() -> int:
+        """Workflow that tests task iteration over a list."""
         # We ignore the type as mypy cannot confirm that the length and types match the args.
         return test_task(*test_list()) # type: ignore
 
@@ -250,10 +253,12 @@ def test_can_iterate() -> None:
 
     @task()
     def test_list_2() -> MyListWrapper:
+        """Task that returns a `MyListWrapper` containing a list of integers."""
         return MyListWrapper(my_list=[1, 2])
 
     @workflow()
     def test_iterated_2(my_wrapper: MyListWrapper) -> int:
+        """Workflow that tests iteration over a list in a `MyListWrapper`."""
         # mypy cannot confirm argument types match.
         return test_task(*my_wrapper.my_list) # type: ignore
 
@@ -263,10 +268,12 @@ def test_can_iterate() -> None:
 
     @task()
     def test_list_3() -> Fixed[list[tuple[int, int]]]:
+        """Task that returns a list of integer tuples wrapped in a `dewret.annotations.Fixed` type."""
         return [(0, 1), (2, 3)]
 
     @workflow()
     def test_iterated_3(param: Fixed[list[tuple[int, int]]]) -> int:
+        """Workflow that iterates over a list of integer tuples and performs operations."""
         # mypy cannot confirm argument types match.
         retval = mod10(*test_list_3()[0]) # type: ignore
         for pair in param:
@@ -322,7 +329,7 @@ def test_can_iterate() -> None:
     """)
 
 def test_can_use_plain_dict_fields() -> None:
-    """TODO: Docstring."""
+    """Test the use of plain dictionary fields in workflows."""
     @workflow()
     def test_dict(left: int, right: float) -> dict[str, float | int]:
         result: dict[str, float | int] = {"left": mod10(num=left), "right": pi()}
@@ -337,11 +344,11 @@ def test_can_use_plain_dict_fields() -> None:
 
 @dataclass
 class IndexTest:
-    """TODO: Docstring."""
+    """A dataclass for testing indexed fields, containing a `left` field that is a list of integers."""
     left: Fixed[list[int]]
 
 def test_can_configure_field_separator() -> None:
-    """TODO: Docstring."""
+    """Test the ability to configure the field separator in workflows."""
     @task()
     def test_sep() -> IndexTest:
         return IndexTest(left=[3])

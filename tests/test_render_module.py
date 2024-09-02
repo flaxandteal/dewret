@@ -7,7 +7,7 @@ from dewret.render import get_render_method
 from ._lib.extra import increment, triple_and_one
 
 def test_can_load_render_module() -> None:
-    """TODO: Docstrings."""
+    """Checks if we can load a render module"""
     result = triple_and_one(num=increment(num=3))
     workflow = construct(result, simplify_ids=True)
     workflow._name = "Fred"
