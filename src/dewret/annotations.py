@@ -46,13 +46,12 @@ class FunctionAnalyser:
         If `fn` is a class, it takes the constructor, and if it is a method, it takes
         the `__func__` attribute.
         """
-        self.fn = (
-            fn.__init__
-            if inspect.isclass(fn) else
-            fn.__func__
-            if inspect.ismethod(fn) else
-            fn
-        )
+        if inspect.isclass(fn):
+            self.fn = fn.__init__
+        elif inspect.ismethod(fn):
+            self.fn = fn.__func__
+        else:
+            self.fn = fn
 
     @property
     def return_type(self) -> Any:

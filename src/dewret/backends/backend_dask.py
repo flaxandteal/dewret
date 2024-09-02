@@ -105,26 +105,10 @@ def run(workflow: Workflow | None, task: Lazy | list[Lazy] | tuple[Lazy], thread
     Args:
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
-        thread_pool: thread pool for executing the workflows, to allow initialization of configuration contextvars.
+        thread_pool: custom thread pool for executing workflows, copies in correct values for contextvars to each thread before they are accessed by a dask worker.
         **kwargs: any configuration arguments for this backend.
     """
-    # def _check_delayed(task: Lazy | list[Lazy] | tuple[Lazy]) -> Delayed:
-    #     # We need isinstance to reassure type-checker.
-    #     if isinstance(task, list) or isinstance(task, tuple):
-    #         lst: list[Delayed] | tuple[Delayed, ...] = [_check_delayed(elt) for elt in task]
-    #         if isinstance(task, tuple):
-    #             lst = tuple(lst)
-    #         return delayed(lst)
-    #     elif not isinstance(task, Delayed) or not is_lazy(task):
-    #         raise RuntimeError(
-    #             f"{task} is not a dask delayed, perhaps you tried to mix backends?"
-    #         )
-    #     return task
-    # computable = _check_delayed(task)
-    # if not is_lazy(task):
-    #     raise RuntimeError(
-    #         f"{task} is not a dask delayed, perhaps you tried to mix backends?"
-    #     )
+    # def _check_delayed was here, but we decided to delegate this to dask
 
     if isinstance(task, Delayed) and is_lazy(task):
         computable = task
