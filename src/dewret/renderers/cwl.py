@@ -21,7 +21,16 @@ current workflow.
 from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstance
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
-from typing import TypedDict, NotRequired, get_origin, get_args, Union, cast, Any, Unpack, Iterable
+from typing import (
+    TypedDict,
+    NotRequired,
+    get_origin,
+    get_args,
+    cast,
+    Any,
+    Unpack,
+    Iterable,
+)
 from types import UnionType
 from inspect import isclass
 from sympy import Basic, Tuple, Dict, jscode, Symbol
@@ -37,15 +46,18 @@ from dewret.workflow import (
     BaseStep,
     StepReference,
     ParameterReference,
-    expr_to_references
+    expr_to_references,
 )
-from dewret.utils import crawl_raw, DataclassProtocol, firm_to_raw, flatten_if_set, Unset
+from dewret.utils import (
+    crawl_raw,
+    DataclassProtocol,
+    firm_to_raw,
+    flatten_if_set,
+    Unset,
+)
 from dewret.render import base_render
-from dewret.core import (
-    Reference,
-    get_render_configuration,
-    set_render_configuration
-)
+from dewret.core import Reference, get_render_configuration, set_render_configuration
+
 
 class CommandInputSchema(TypedDict):
     """Structure for referring to a raw type in CWL.
@@ -67,9 +79,14 @@ class CommandInputSchema(TypedDict):
     default: NotRequired[RawType]
 
 
-InputSchemaType = Union[
-    str, CommandInputSchema, list[str], list["InputSchemaType"], dict[str, "str | InputSchemaType"]
-]
+InputSchemaType = (
+    str
+    | CommandInputSchema
+    | list[str]
+    | list["InputSchemaType"]
+    | dict[str, "str | InputSchemaType"]
+)
+
 
 def render_expression(ref: Any) -> "ReferenceDefinition":
     """Turn a rich (sympy) expression into a CWL JS expression.
@@ -79,6 +96,7 @@ def render_expression(ref: Any) -> "ReferenceDefinition":
 
     Returns: a ReferenceDefinition containing a string representation of the expression in the form `$(...)`.
     """
+
     def _render(ref: Any) -> Basic | RawType:
         if not isinstance(ref, Basic):
             if isinstance(ref, Mapping):
@@ -86,17 +104,24 @@ def render_expression(ref: Any) -> "ReferenceDefinition":
             elif not isinstance(ref, str | bytes) and isinstance(ref, Iterable):
                 ref = Tuple(*(_render(val) for val in ref))
         return ref
+
     expr = _render(ref)
     if isinstance(expr, Basic):
         values = list(expr.free_symbols)
         step_syms = [sym for sym in expr.free_symbols if isinstance(sym, StepReference)]
-        param_syms = [sym for sym in expr.free_symbols if isinstance(sym, ParameterReference)]
+        param_syms = [
+            sym for sym in expr.free_symbols if isinstance(sym, ParameterReference)
+        ]
 
         if set(values) != set(step_syms) | set(param_syms):
-            raise NotImplementedError(f"Can only build expressions for step results and param results: {ref}")
+            raise NotImplementedError(
+                f"Can only build expressions for step results and param results: {ref}"
+            )
 
         if len(step_syms) > 1:
-            raise NotImplementedError(f"Can only create expressions with 1 step reference: {ref}")
+            raise NotImplementedError(
+                f"Can only create expressions with 1 step reference: {ref}"
+            )
         if not (step_syms or param_syms):
             ...
         if values == [ref]:
@@ -117,8 +142,11 @@ def render_expression(ref: Any) -> "ReferenceDefinition":
                 source = f"{ref.__root_name__}{base}"
             else:
                 expr = expr.subs(ref, Symbol(f"inputs.{ref.name}"))
-        return ReferenceDefinition(source=source, value_from=f"$({jscode(_render(expr))})")
+        return ReferenceDefinition(
+            source=source, value_from=f"$({jscode(_render(expr))})"
+        )
     return ReferenceDefinition(source=str(expr), value_from=None)
+
 
 class CWLRendererConfiguration(TypedDict):
     """Configuration for the renderer.
@@ -159,6 +187,7 @@ def with_type(result: Any) -> type | Any:
         return result.__type__
     return type(result)
 
+
 def with_field(result: Any) -> str:
     """Get a string representing any 'field' suffix of a value.
 
@@ -174,6 +203,7 @@ def with_field(result: Any) -> str:
     else:
         return "out"
 
+
 def to_name(result: Reference[Any]) -> str:
     """Take a reference and get a name representing it.
 
@@ -182,7 +212,11 @@ def to_name(result: Reference[Any]) -> str:
 
     Returns: the name of the reference, including any field portion, appending an `"out"` fieldname if none.
     """
-    if hasattr(result, "__field__") and not result.__field__ and isinstance(result, StepReference):
+    if (
+        hasattr(result, "__field__")
+        and not result.__field__
+        and isinstance(result, StepReference)
+    ):
         return f"{result.__name__}/out"
     return result.__name__
 
@@ -278,10 +312,10 @@ class StepDefinition:
             "in": {
                 key: (
                     ref.render()
-                    if isinstance(ref, ReferenceDefinition) else
-                    render_expression(ref).render()
-                    if isinstance(ref, Basic) else
-                    {"default": firm_to_raw(ref.value)}
+                    if isinstance(ref, ReferenceDefinition)
+                    else render_expression(ref).render()
+                    if isinstance(ref, Basic)
+                    else {"default": firm_to_raw(ref.value)}
                     if hasattr(ref, "value")
                     else render_expression(ref).render()
                 )
@@ -319,10 +353,7 @@ def to_cwl_type(label: str, typ: type) -> CommandInputSchema:
     Returns:
         CWL specification type dict.
     """
-    typ_dict: CommandInputSchema = {
-        "label": label,
-        "type": ""
-    }
+    typ_dict: CommandInputSchema = {"label": label, "type": ""}
     base: Any | None = typ
     args = get_args(typ)
     if args:
@@ -343,19 +374,22 @@ def to_cwl_type(label: str, typ: type) -> CommandInputSchema:
     elif base == bytes:
         typ_dict["type"] = "bytes"
     elif isinstance(typ, UnionType):
-        typ_dict.update({"type": tuple(to_cwl_type(label, item)["type"] for item in args)})
+        typ_dict.update(
+            {"type": tuple(to_cwl_type(label, item)["type"] for item in args)}
+        )
     elif isclass(base) and issubclass(base, Iterable):
         try:
             if len(args) > 1:
-                typ_dict.update({
-                    "type": "array",
-                    "items": [to_cwl_type(label, t)["type"] for t in args],
-                })
+                typ_dict.update(
+                    {
+                        "type": "array",
+                        "items": [to_cwl_type(label, t)["type"] for t in args],
+                    }
+                )
             elif len(args) == 1:
-                typ_dict.update({
-                    "type": "array",
-                    "items": to_cwl_type(label, args[0])["type"]
-                })
+                typ_dict.update(
+                    {"type": "array", "items": to_cwl_type(label, args[0])["type"]}
+                )
             else:
                 typ_dict["type"] = "array"
         except IndexError as err:
@@ -446,7 +480,7 @@ def to_output_schema(
         # TODO: this complains because NotRequired keys are never present,
         # but that does not seem like a problem here - likely a better solution.
         output = CommandOutputSchema(
-            **to_cwl_type(label, typ) # type: ignore
+            **to_cwl_type(label, typ)  # type: ignore
         )
     if output_source is not None:
         output["outputSource"] = output_source
@@ -465,7 +499,12 @@ def _raw_to_command_input_schema_internal(
     elif isinstance(value, list):
         typeset = set(get_args(value))
         if not typeset:
-            typeset = {item.__type__ if item is not None and hasattr(item, "__type__") else type(item) for item in value}
+            typeset = {
+                item.__type__
+                if item is not None and hasattr(item, "__type__")
+                else type(item)
+                for item in value
+            }
         if len(typeset) != 1:
             raise RuntimeError(
                 "For CWL, an input array must have a consistent type, "
@@ -513,8 +552,12 @@ class InputsDefinition:
         Returns:
             CWL-like structure representing all workflow outputs.
         """
-        parameters_dedup = {p._.parameter for p in parameters if isinstance(p, ParameterReference)}
-        parameters = list(parameters_dedup) + [p for p in parameters if not isinstance(p, ParameterReference)]
+        parameters_dedup = {
+            p._.parameter for p in parameters if isinstance(p, ParameterReference)
+        }
+        parameters = list(parameters_dedup) + [
+            p for p in parameters if not isinstance(p, ParameterReference)
+        ]
         return cls(
             inputs={
                 input.name: cls.CommandInputParameter(
@@ -556,11 +599,18 @@ class OutputsDefinition:
         outputs: sequence of results from a workflow.
     """
 
-    outputs: dict[str, "CommandOutputSchema"] | list["CommandOutputSchema"] | CommandOutputSchema
+    outputs: (
+        dict[str, "CommandOutputSchema"]
+        | list["CommandOutputSchema"]
+        | CommandOutputSchema
+    )
 
     @classmethod
     def from_results(
-        cls, results: dict[str, StepReference[Any]] | list[StepReference[Any]] | tuple[StepReference[Any], ...]
+        cls,
+        results: dict[str, StepReference[Any]]
+        | list[StepReference[Any]]
+        | tuple[StepReference[Any], ...],
     ) -> "OutputsDefinition":
         """Takes a mapping of results into a CWL structure.
 
@@ -569,39 +619,43 @@ class OutputsDefinition:
         Returns:
             CWL-like structure representing all workflow outputs.
         """
+
         def _build_results(result: Any) -> RawType:
             if isinstance(result, Reference):
                 # TODO: need to work out how to tell mypy that a TypedDict is also dict[str, RawType]
-                return to_output_schema( # type: ignore
+                return to_output_schema(  # type: ignore
                     with_field(result), with_type(result), output_source=to_name(result)
                 )
             results = result
             return (
-                [
-                    _build_results(result) for result in results
-                ] if isinstance(results, list | tuple | Tuple) else {
-                    key: _build_results(result) for key, result in results.items()
-                }
+                [_build_results(result) for result in results]
+                if isinstance(results, list | tuple | Tuple)
+                else {key: _build_results(result) for key, result in results.items()}
             )
+
         try:
             # TODO: sort out this nested type building.
-            return cls(outputs=_build_results(results)) # type: ignore
+            return cls(outputs=_build_results(results))  # type: ignore
         except AttributeError:
             expr, references = expr_to_references(results)
             reference_names = sorted(
                 {
-                    str(ref._.parameter) if isinstance(ref, ParameterReference) else str(ref._.step)
+                    str(ref._.parameter)
+                    if isinstance(ref, ParameterReference)
+                    else str(ref._.step)
                     for ref in references
                 }
             )
-            return cls(outputs={
-                "out": {
-                    "type": "float", # WARNING: we assume any arithmetic expression returns a float.
-                    "label": "out",
-                    "expression": str(expr),
-                    "source": reference_names
+            return cls(
+                outputs={
+                    "out": {
+                        "type": "float",  # WARNING: we assume any arithmetic expression returns a float.
+                        "label": "out",
+                        "expression": str(expr),
+                        "source": reference_names,
+                    }
                 }
-            })
+            )
 
     def render(self) -> dict[str, RawType] | list[RawType]:
         """Render to a dict-like structure.
@@ -610,12 +664,11 @@ class OutputsDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
-        return [
-            crawl_raw(output) for output in self.outputs
-        ] if isinstance(self.outputs, list) else {
-            key: crawl_raw(output)
-            for key, output in self.outputs.items()
-        }
+        return (
+            [crawl_raw(output) for output in self.outputs]
+            if isinstance(self.outputs, list)
+            else {key: crawl_raw(output) for key, output in self.outputs.items()}
+        )
 
 
 @define
@@ -648,7 +701,9 @@ class WorkflowDefinition:
         """
         parameters: list[ParameterReference[Any] | FactoryCall] = list(
             workflow.find_parameters(
-                include_factory_calls=not get_render_configuration("factories_as_params")
+                include_factory_calls=not get_render_configuration(
+                    "factories_as_params"
+                )
             )
         )
         if get_render_configuration("factories_as_params"):
@@ -665,10 +720,10 @@ class WorkflowDefinition:
             inputs=InputsDefinition.from_parameters(parameters),
             outputs=OutputsDefinition.from_results(
                 workflow.result
-                if isinstance(workflow.result, list | tuple | Tuple) else
-                {with_field(workflow.result): workflow.result}
-                if workflow.has_result and workflow.result is not None else
-                {}
+                if isinstance(workflow.result, list | tuple | Tuple)
+                else {with_field(workflow.result): workflow.result}
+                if workflow.has_result and workflow.result is not None
+                else {}
             ),
             name=name,
         )
@@ -703,9 +758,9 @@ def render(
         serialization.
     """
     # TODO: Again, convincing mypy that a TypedDict has RawType values.
-    with set_render_configuration(kwargs): # type: ignore
+    with set_render_configuration(kwargs):  # type: ignore
         rendered = base_render(
             workflow,
-            lambda workflow: WorkflowDefinition.from_workflow(workflow).render()
+            lambda workflow: WorkflowDefinition.from_workflow(workflow).render(),
         )
     return rendered

@@ -405,7 +405,7 @@ from dewret.utils import Raw, BasicType
 from dewret.workflow import Lazy
 from dewret.workflow import Reference, Workflow, Step, Task
 
-RawType = typing.Union[BasicType, list[str], list["RawType"], dict[str, "RawType"]]
+RawType = BasicType | list[str] | list["RawType"] | dict[str, "RawType"]
 ```
 
 ## To run this example: 
