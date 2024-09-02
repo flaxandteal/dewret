@@ -66,19 +66,20 @@ def get_render_method(renderer: Path | RawRenderModule | StructuredRenderModule,
         render_module = cast(BaseRenderModule, module)
     else:
         render_module = renderer
-    if not isinstance(render_module, StructuredRenderModule):
-        if not isinstance(render_module, RawRenderModule):
-            raise NotImplementedError("This render module neither seems to be a structured nor a raw render module.")
+
+    if isinstance(render_module, RawRenderModule):
         return render_module.render_raw
+    elif isinstance(render_module, (StructuredRenderModule)):
+        def _render(workflow: Workflow, render_module: StructuredRenderModule, pretty: bool=False, **kwargs: RenderConfiguration) -> dict[str, str]:
+            rendered = render_module.render(workflow, **kwargs)
+            return {
+                key: structured_to_raw(value, pretty=pretty)
+                for key, value in rendered.items()
+            }
 
-    def _render(workflow: Workflow, render_module: StructuredRenderModule, pretty: bool=False, **kwargs: RenderConfiguration) -> dict[str, str]:
-        rendered = render_module.render(workflow, **kwargs)
-        return {
-            key: structured_to_raw(value, pretty=pretty)
-            for key, value in rendered.items()
-        }
+        return cast(RenderCall, partial(_render, render_module=render_module, pretty=pretty))
 
-    return cast(RenderCall, partial(_render, render_module=render_module, pretty=pretty))
+    raise NotImplementedError("This render module neither seems to be a structured nor a raw render module.")
 
 def base_render(
     workflow: Workflow, build_cb: Callable[[Workflow], T]

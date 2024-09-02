@@ -416,6 +416,3 @@ RawType = BasicType | list[str] | list["RawType"] | dict[str, "RawType"]
 ```shell
 python snakemake_tasks.py
 ```
-
-### Q: Should I add a brief description of dewret in step 1? Should link dewret types/docs etc here?
-### A: Get details on how that happens and probably yes.
