@@ -14,15 +14,15 @@ ARG1: AtRender[bool] = True
 ARG2: bool = False
 
 class MyClass:
-    """TODO: Docstring."""
+    """A mock class to wrap values and mock processing of data."""
     def method(self, arg1: bool, arg2: AtRender[int]) -> float:
-        """TODO: Docstring."""
+        """A mock method to simulate the behavior of processing and rendering values."""
         arg3: float = 7.0
         arg4: AtRender[float] = 8.0
         return arg1 + arg2 + arg3 + arg4 + int(ARG1) + int(ARG2)
 
 def fn(arg5: int, arg6: AtRender[int]) -> float:
-    """TODO: Docstring."""
+    """A mock function to simulate processing of rendered values with integer inputs."""
     arg7: float = 7.0
     arg8: AtRender[float] = 8.0
     return arg5 + arg6 + arg7 + arg8 + int(ARG1) + int(ARG2)
@@ -30,16 +30,19 @@ def fn(arg5: int, arg6: AtRender[int]) -> float:
 
 @workflow()
 def to_int_bad(num: int, should_double: bool) -> int | float:
-    """Cast to an int."""
+    """A mock workflow that casts to an int with a wrong type for handling doubles."""
     return increment(num=num) if should_double else sum(left=num, right=num)
 
 @workflow()
 def to_int(num: int, should_double: AtRender[bool]) -> int | float:
-    """Cast to an int."""
+    """A mock workflow that casts to an int with a right type for handling doubles."""
     return increment(num=num) if should_double else sum(left=num, right=num)
 
 def test_can_analyze_annotations() -> None:
-    """TODO: Docstring."""
+    """Test that annotations can be correctly analyzed within methods and functions.
+    Verifies that the `FunctionAnalyser` finds which arguments
+    and global variables are derived from `dewret.annotations.AtRender`.
+    """
     my_obj = MyClass()
 
     analyser = FunctionAnalyser(my_obj.method)
@@ -61,7 +64,7 @@ def test_can_analyze_annotations() -> None:
     assert analyser.argument_has("ARG1", AtRender) is False
 
 def test_at_render() -> None:
-    """TODO: Docstring."""
+    """Test the rendering of workflows with `dewret.annotations.AtRender` and exceptions handling."""
     with pytest.raises(TaskException) as _:
         result = to_int_bad(num=increment(num=3), should_double=True)
         wkflw = construct(result, simplify_ids=True)
@@ -144,7 +147,7 @@ def test_at_render() -> None:
 
 
 def test_at_render_between_modules() -> None:
-    """TODO: Docstring."""
+    """Test rendering of workflows across different modules using `dewret.annotations.AtRender`."""
     result = try_nothing()
     wkflw = construct(result, simplify_ids=True)
     subworkflows = render(wkflw, allow_complex_types=True)
@@ -153,7 +156,7 @@ def test_at_render_between_modules() -> None:
 list_2: Fixed[list[int]] = [0, 1, 2, 3]
 
 def test_can_loop_over_fixed_length() -> None:
-    """TODO: Docstring."""
+    """Test looping over a fixed-length list using `dewret.annotations.Fixed`."""
     @workflow()
     def loop_over_lists(list_1: list[int]) -> list[int]:
         result = []
