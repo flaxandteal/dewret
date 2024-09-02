@@ -14,18 +14,23 @@ from dewret.annotations import Fixed
 
 from ._lib.extra import mod10, sum, pi
 
+
 @dataclass
 class Sides:
     """A dataclass representing the sides with `left` and `right` integers."""
+
     left: int
     right: int
 
+
 SIDES: Sides = Sides(3, 6)
+
 
 @workflow()
 def sum_sides() -> float:
     """Workflow that returns the sum of the `left` and `right` sides."""
     return sum(left=SIDES.left, right=SIDES.right)
+
 
 def test_fields_of_parameters_usable() -> None:
     """Test that fields of parameters can be used to construct and render a workflow correctly."""
@@ -72,16 +77,21 @@ def test_fields_of_parameters_usable() -> None:
           run: sum
     """)
 
+
 @dataclass
 class MyDataclass:
     """A dataclass with nested references to itself, containing `left` and `right` fields."""
+
     left: int
     right: "MyDataclass"
+
 
 def test_can_get_field_reference_from_parameter() -> None:
     """Test that field references can be retrieved from a parameter when constructing a workflow."""
     my_param = param("my_param", typ=MyDataclass)
-    result = sum(left=my_param.left, right=sum(left=my_param.right.left, right=my_param.left))
+    result = sum(
+        left=my_param.left, right=sum(left=my_param.right.left, right=my_param.left)
+    )
     wkflw = construct(result, simplify_ids=True)
     params = {(str(p), p.__type__) for p in wkflw.find_parameters()}
 
@@ -122,11 +132,14 @@ def test_can_get_field_reference_from_parameter() -> None:
             run: sum
     """)
 
+
 def test_can_get_field_reference_if_parent_type_has_field() -> None:
     """Test that a field reference is retrievable if the parent type has that field."""
+
     @dataclass
     class MyDataclass:
         left: int
+
     my_param = param("my_param", typ=MyDataclass)
     result = sum(left=my_param.left, right=my_param.left)
     wkflw = construct(result, simplify_ids=True)
@@ -135,22 +148,27 @@ def test_can_get_field_reference_if_parent_type_has_field() -> None:
     assert str(param_reference.left) == "my_param/left"
     assert param_reference.left.__type__ == int
 
+
 def test_can_get_go_upwards_from_a_field_reference() -> None:
     """Test that it's possible to move upwards in the hierarchy from a field reference."""
+
     @dataclass
     class MyDataclass:
         left: int
         right: "MyDataclass"
+
     my_param = param("my_param", typ=MyDataclass)
     result = sum(left=my_param.left, right=my_param.left)
     construct(result, simplify_ids=True)
 
-    back = my_param.right.left.__field_up__() # type: ignore
+    back = my_param.right.left.__field_up__()  # type: ignore
     assert str(back) == "my_param/right"
     assert back.__type__ == MyDataclass
 
+
 def test_can_get_field_references_from_dataclass() -> None:
     """Test that field references can be extracted from a dataclass and used in workflows."""
+
     @dataclass
     class MyDataclass:
         left: int
@@ -165,39 +183,49 @@ def test_can_get_field_references_from_dataclass() -> None:
     def get_left(my_dataclass: MyDataclass) -> int:
         return my_dataclass.left
 
-    result = get_left(my_dataclass=test_dataclass(my_dataclass=MyDataclass(left=3, right=4.)))
+    result = get_left(
+        my_dataclass=test_dataclass(my_dataclass=MyDataclass(left=3, right=4.0))
+    )
     wkflw = construct(result, simplify_ids=True)
 
     assert isinstance(wkflw.result, StepReference)
     assert str(wkflw.result) == "get_left-1"
     assert wkflw.result.__type__ == int
 
+
 class MyDict(TypedDict):
     """A typed dictionary with `left` as an integer and `right` as a float."""
+
     left: int
     right: float
 
+
 def test_can_get_field_references_from_typed_dict() -> None:
     """Test that field references can be extracted from a custom typed dictionary and used in workflows."""
+
     @workflow()
     def test_dict(**my_dict: Unpack[MyDict]) -> MyDict:
         result: MyDict = {"left": mod10(num=my_dict["left"]), "right": pi()}
         return result
 
-    result = test_dict(left=3, right=4.)
+    result = test_dict(left=3, right=4.0)
     wkflw = construct(result, simplify_ids=True)
 
     assert isinstance(wkflw.result, StepReference)
     assert str(wkflw.result["left"]) == "test_dict-1/left"
     assert wkflw.result["left"].__type__ == int
 
+
 @dataclass
 class MyListWrapper:
     """A dataclass that wraps a list of integers."""
+
     my_list: list[int]
+
 
 def test_can_iterate() -> None:
     """Test iteration over a list of tasks and validate positional argument handling."""
+
     @task()
     def test_task(alpha: int, beta: float, charlie: bool) -> int:
         """Task that adds `alpha` and `beta` and returns the integer result."""
@@ -206,13 +234,13 @@ def test_can_iterate() -> None:
     @task()
     def test_list() -> list[int | float]:
         """Task that returns a list containing an integer and a float."""
-        return [1, 2.]
+        return [1, 2.0]
 
     @workflow()
     def test_iterated() -> int:
         """Workflow that tests task iteration over a list."""
         # We ignore the type as mypy cannot confirm that the length and types match the args.
-        return test_task(*test_list()) # type: ignore
+        return test_task(*test_list())  # type: ignore
 
     with set_configuration(allow_positional_args=True, flatten_all_nested=True):
         result = test_iterated()
@@ -249,7 +277,11 @@ def test_can_iterate() -> None:
     """)
 
     assert isinstance(wkflw.result, StepReference)
-    assert wkflw.result._.step.positional_args == {"alpha": True, "beta": True, "charlie": True}
+    assert wkflw.result._.step.positional_args == {
+        "alpha": True,
+        "beta": True,
+        "charlie": True,
+    }
 
     @task()
     def test_list_2() -> MyListWrapper:
@@ -260,7 +292,7 @@ def test_can_iterate() -> None:
     def test_iterated_2(my_wrapper: MyListWrapper) -> int:
         """Workflow that tests iteration over a list in a `MyListWrapper`."""
         # mypy cannot confirm argument types match.
-        return test_task(*my_wrapper.my_list) # type: ignore
+        return test_task(*my_wrapper.my_list)  # type: ignore
 
     with set_configuration(allow_positional_args=True, flatten_all_nested=True):
         result = test_iterated_2(my_wrapper=test_list_2())
@@ -275,7 +307,7 @@ def test_can_iterate() -> None:
     def test_iterated_3(param: Fixed[list[tuple[int, int]]]) -> int:
         """Workflow that iterates over a list of integer tuples and performs operations."""
         # mypy cannot confirm argument types match.
-        retval = mod10(*test_list_3()[0]) # type: ignore
+        retval = mod10(*test_list_3()[0])  # type: ignore
         for pair in param:
             a, b = pair
             retval += a + b
@@ -328,27 +360,33 @@ def test_can_iterate() -> None:
             run: test_list_3
     """)
 
+
 def test_can_use_plain_dict_fields() -> None:
     """Test the use of plain dictionary fields in workflows."""
+
     @workflow()
     def test_dict(left: int, right: float) -> dict[str, float | int]:
         result: dict[str, float | int] = {"left": mod10(num=left), "right": pi()}
         return result
 
     with set_configuration(allow_plain_dict_fields=True):
-        result = test_dict(left=3, right=4.)
+        result = test_dict(left=3, right=4.0)
         wkflw = construct(result, simplify_ids=True)
         assert isinstance(wkflw.result, StepReference)
         assert str(wkflw.result["left"]) == "test_dict-1/left"
         assert wkflw.result["left"].__type__ == int | float
 
+
 @dataclass
 class IndexTest:
     """A dataclass for testing indexed fields, containing a `left` field that is a list of integers."""
+
     left: Fixed[list[int]]
+
 
 def test_can_configure_field_separator() -> None:
     """Test the ability to configure the field separator in workflows."""
+
     @task()
     def test_sep() -> IndexTest:
         return IndexTest(left=[3])

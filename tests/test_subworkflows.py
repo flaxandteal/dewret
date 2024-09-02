@@ -49,12 +49,13 @@ def get_global_queue(num: int | float) -> Queue[int]:
     """Add a number to a global queue."""
     return add_and_queue(num=to_int(num=num), queue=GLOBAL_QUEUE)
 
+
 @workflow()
 def get_global_queues(num: int | float) -> list[Queue[int] | int]:
     """Add a number to a global queue."""
     return [
         add_and_queue(num=to_int(num=num), queue=GLOBAL_QUEUE),
-        add_constant(num=num)
+        add_constant(num=num),
     ]
 
 
@@ -63,10 +64,12 @@ def add_constant(num: int | float) -> int:
     """Add a global constant to a number."""
     return to_int(num=sum(left=num, right=CONSTANT))
 
+
 @workflow()
 def add_constants(num: int | float) -> int:
     """Add a global constant to a number."""
     return to_int(num=sum(left=sum(left=num, right=CONSTANT), right=CONSTANT))
+
 
 @workflow()
 def get_values(num: int | float) -> tuple[int | float, int]:
@@ -310,7 +313,9 @@ def test_subworkflows_can_return_lists() -> None:
              run: get_global_queues
     """)
 
-    assert osubworkflows[0] == ("add_constant-1-1", yaml.safe_load("""
+    assert osubworkflows[0] == (
+        "add_constant-1-1",
+        yaml.safe_load("""
         class: Workflow
         cwlVersion: 1.2
         inputs:
@@ -343,9 +348,12 @@ def test_subworkflows_can_return_lists() -> None:
             out:
             - out
             run: to_int
-    """))
+    """),
+    )
 
-    assert osubworkflows[1] == ("get_global_queues-1", yaml.safe_load("""
+    assert osubworkflows[1] == (
+        "get_global_queues-1",
+        yaml.safe_load("""
         class: Workflow
         cwlVersion: 1.2
         inputs:
@@ -392,7 +400,9 @@ def test_subworkflows_can_return_lists() -> None:
             out:
             - out
             run: to_int
-    """))
+    """),
+    )
+
 
 def test_can_merge_workflows() -> None:
     """Check whether we can merge workflows."""
@@ -501,7 +511,9 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
              run: add_constants
     """)
 
-    assert osubworkflows[0] == ("add_constants-1", yaml.safe_load("""
+    assert osubworkflows[0] == (
+        "add_constants-1",
+        yaml.safe_load("""
         class: Workflow
         cwlVersion: 1.2
         inputs:
@@ -543,15 +555,19 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
             out:
             - out
             run: to_int
-    """))
+    """),
+    )
+
 
 @define
 class PackResult:
     """A class representing the counts of card suits in a deck, including hearts, clubs, spades, and diamonds."""
+
     hearts: int
     clubs: int
     spades: int
     diamonds: int
+
 
 def test_combining_attrs_and_factories() -> None:
     """Check combining attributes from a dataclass with factory-produced instances."""
@@ -559,14 +575,12 @@ def test_combining_attrs_and_factories() -> None:
 
     @task()
     def sum(left: int, right: int) -> int:
-       return left + right
+        return left + right
 
     @workflow()
     def black_total(pack: PackResult) -> int:
-        return sum(
-            left=pack.spades,
-            right=pack.clubs
-        )
+        return sum(left=pack.spades, right=pack.clubs)
+
     pack = Pack(hearts=13, spades=13, diamonds=13, clubs=13)
     wkflw = construct(black_total(pack=pack), simplify_ids=True)
     cwl = render(wkflw, allow_complex_types=True, factories_as_params=True)

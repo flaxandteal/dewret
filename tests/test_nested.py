@@ -8,14 +8,15 @@ from dewret.renderers.cwl import render
 
 from ._lib.extra import reverse_list, max_list
 
+
 def test_can_supply_nested_raw() -> None:
     """TODO: The structures are important for future CWL rendering."""
     pi = param("pi", math.pi)
-    result = reverse_list(to_sort=[1., 3., pi])
+    result = reverse_list(to_sort=[1.0, 3.0, pi])
     workflow = construct(max_list(lst=result + result), simplify_ids=True)
-    #assert workflow.find_parameters() == {
+    # assert workflow.find_parameters() == {
     #    pi
-    #}
+    # }
 
     # NB: This is not currently usefully renderable in CWL.
     # However, the structures are important for future CWL rendering.
