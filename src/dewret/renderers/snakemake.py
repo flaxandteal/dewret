@@ -41,9 +41,7 @@ from dewret.render import (
     base_render,
 )
 
-MainTypes = typing.Union[
-    BasicType, list[str], list["MainTypes"], dict[str, "MainTypes"]
-]
+MainTypes = BasicType | list[str] | list["MainTypes"] | dict[str, "MainTypes"]
 
 
 @define
@@ -477,5 +475,5 @@ def render(workflow: Workflow) -> dict[str, typing.Any]:
         workflow,
         lambda workflow: yaml.dump(
             WorkflowDefinition.from_workflow(workflow).render(), indent=4
-        ).translate(trans_table)
+        ).translate(trans_table),
     )
