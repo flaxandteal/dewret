@@ -25,12 +25,20 @@ from typing import TypeVar, Callable, cast
 import yaml
 
 from .workflow import Workflow, NestedStep
-from .core import RawType, RenderCall, BaseRenderModule, RawRenderModule, StructuredRenderModule, RenderConfiguration
+from .core import (
+    RawType,
+    RenderCall,
+    BaseRenderModule,
+    RawRenderModule,
+    StructuredRenderModule,
+    RenderConfiguration,
+)
 from .utils import load_module_or_package
 
 T = TypeVar("T")
 
-def structured_to_raw(rendered: RawType, pretty: bool=False) -> str:
+
+def structured_to_raw(rendered: RawType, pretty: bool = False) -> str:
     """Serialize a serializable structure to a string.
 
     Args:
@@ -45,7 +53,10 @@ def structured_to_raw(rendered: RawType, pretty: bool=False) -> str:
         output = str(rendered)
     return output
 
-def get_render_method(renderer: Path | RawRenderModule | StructuredRenderModule, pretty: bool=False) -> RenderCall:
+
+def get_render_method(
+    renderer: Path | RawRenderModule | StructuredRenderModule, pretty: bool = False
+) -> RenderCall:
     """Create a ready-made callable to render the workflow that is appropriate for the renderer module.
 
     Args:
@@ -70,20 +81,29 @@ def get_render_method(renderer: Path | RawRenderModule | StructuredRenderModule,
     if isinstance(render_module, RawRenderModule):
         return render_module.render_raw
     elif isinstance(render_module, (StructuredRenderModule)):
-        def _render(workflow: Workflow, render_module: StructuredRenderModule, pretty: bool=False, **kwargs: RenderConfiguration) -> dict[str, str]:
+
+        def _render(
+            workflow: Workflow,
+            render_module: StructuredRenderModule,
+            pretty: bool = False,
+            **kwargs: RenderConfiguration,
+        ) -> dict[str, str]:
             rendered = render_module.render(workflow, **kwargs)
             return {
                 key: structured_to_raw(value, pretty=pretty)
                 for key, value in rendered.items()
             }
 
-        return cast(RenderCall, partial(_render, render_module=render_module, pretty=pretty))
+        return cast(
+            RenderCall, partial(_render, render_module=render_module, pretty=pretty)
+        )
 
-    raise NotImplementedError("This render module neither seems to be a structured nor a raw render module.")
+    raise NotImplementedError(
+        "This render module neither seems to be a structured nor a raw render module."
+    )
 
-def base_render(
-    workflow: Workflow, build_cb: Callable[[Workflow], T]
-) -> dict[str, T]:
+
+def base_render(workflow: Workflow, build_cb: Callable[[Workflow], T]) -> dict[str, T]:
     """Render to a dict-like structure.
 
     Args:
