@@ -56,7 +56,12 @@ from dewret.utils import (
     Unset,
 )
 from dewret.render import base_render
-from dewret.core import Reference, get_render_configuration, set_render_configuration
+from dewret.core import (
+    Reference,
+    get_render_configuration,
+    set_render_configuration,
+    StructuredRenderModule,
+)
 
 
 class CommandInputSchema(TypedDict):
@@ -744,23 +749,25 @@ class WorkflowDefinition:
         }
 
 
-def render(
-    workflow: Workflow, **kwargs: Unpack[CWLRendererConfiguration]
-) -> dict[str, dict[str, RawType]]:
-    """Render to a dict-like structure.
+class Renderer(StructuredRenderModule):
+    """Wrapper class implementing StructuredRenderModule protocol."""
+    def render(
+        workflow: Workflow, **kwargs: Unpack[CWLRendererConfiguration]
+    ) -> dict[str, dict[str, RawType]]:
+        """Render to a dict-like structure.
 
-    Args:
-        workflow: workflow to evaluate result.
-        **kwargs: additional configuration arguments - these should match CWLRendererConfiguration.
+        Args:
+            workflow: workflow to evaluate result.
+            **kwargs: additional configuration arguments - these should match CWLRendererConfiguration.
 
-    Returns:
-        Reduced form as a native Python dict structure for
-        serialization.
-    """
-    # TODO: Again, convincing mypy that a TypedDict has RawType values.
-    with set_render_configuration(kwargs):  # type: ignore
-        rendered = base_render(
-            workflow,
-            lambda workflow: WorkflowDefinition.from_workflow(workflow).render(),
-        )
-    return rendered
+        Returns:
+            Reduced form as a native Python dict structure for
+            serialization.
+        """
+        # TODO: Again, convincing mypy that a TypedDict has RawType values.
+        with set_render_configuration(kwargs):  # type: ignore
+            rendered = base_render(
+                workflow,
+                lambda workflow: WorkflowDefinition.from_workflow(workflow).render(),
+            )
+        return rendered

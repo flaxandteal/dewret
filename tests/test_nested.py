@@ -4,7 +4,7 @@ import yaml
 import math
 from dewret.workflow import param
 from dewret.tasks import construct
-from dewret.renderers.cwl import render
+from dewret.renderers.cwl import Renderer
 
 from ._lib.extra import reverse_list, max_list
 
@@ -21,7 +21,7 @@ def test_can_supply_nested_raw() -> None:
     # NB: This is not currently usefully renderable in CWL.
     # However, the structures are important for future CWL rendering.
 
-    rendered = render(workflow)["__root__"]
+    rendered = Renderer.render(workflow)["__root__"]
     assert rendered == yaml.safe_load("""
         class: Workflow
         cwlVersion: 1.2

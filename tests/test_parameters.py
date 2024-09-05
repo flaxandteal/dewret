@@ -3,7 +3,7 @@
 import yaml
 from dewret.tasks import task, construct
 from dewret.workflow import param
-from dewret.renderers.cwl import render
+from dewret.renderers.cwl import Renderer
 
 from ._lib.extra import double, sum
 
@@ -23,7 +23,7 @@ def test_cwl_parameters() -> None:
     """
     result = rotate(num=3)
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)["__root__"]
+    rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -62,7 +62,7 @@ def test_complex_parameters() -> None:
     num = param("numx", 23)
     result = sum(left=double(num=rotate(num=num)), right=rotate(num=rotate(num=23)))
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)["__root__"]
+    rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2

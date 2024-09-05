@@ -5,7 +5,7 @@ from queue import Queue
 import yaml
 from dewret.tasks import construct, workflow, task, factory
 from dewret.core import set_configuration
-from dewret.renderers.cwl import render
+from dewret.renderers.cwl import Renderer
 from dewret.workflow import param
 from attrs import define
 
@@ -87,7 +87,7 @@ def test_cwl_for_pairs() -> None:
     with set_configuration(flatten_all_nested=True):
         result = pair_pi()
         wkflw = construct(result, simplify_ids=True)
-    rendered = render(wkflw)["__root__"]
+    rendered = Renderer.render(wkflw)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -118,7 +118,7 @@ def test_subworkflows_can_use_globals() -> None:
     my_param = param("num", typ=int)
     result = increment(num=add_constant(num=increment(num=my_param)))
     wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw)
+    subworkflows = Renderer.render(wkflw)
     rendered = subworkflows["__root__"]
 
     assert len(subworkflows) == 2
@@ -169,7 +169,7 @@ def test_subworkflows_can_use_factories() -> None:
     my_param = param("num", typ=int)
     result = pop(queue=make_queue(num=increment(num=my_param)))
     wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw, allow_complex_types=True)
+    subworkflows = Renderer.render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
 
     assert len(subworkflows) == 2
@@ -214,7 +214,7 @@ def test_subworkflows_can_use_global_factories() -> None:
     my_param = param("num", typ=int)
     result = pop(queue=get_global_queue(num=increment(num=my_param)))
     wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw, allow_complex_types=True)
+    subworkflows = Renderer.render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
 
     assert len(subworkflows) == 2
@@ -264,7 +264,7 @@ def test_subworkflows_can_return_lists() -> None:
     my_param = param("num", typ=int)
     result = get_global_queues(num=increment(num=my_param))
     wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw, allow_complex_types=True)
+    subworkflows = Renderer.render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     del subworkflows["__root__"]
 
@@ -410,7 +410,7 @@ def test_can_merge_workflows() -> None:
     value = to_int(num=increment(num=my_param))
     result = sum(left=value, right=increment(num=value))
     wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw, allow_complex_types=True)
+    subworkflows = Renderer.render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     del subworkflows["__root__"]
 
@@ -464,7 +464,7 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
     my_param = param("num", typ=int)
     result = increment(num=add_constants(num=increment(num=my_param)))
     wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw)
+    subworkflows = Renderer.render(wkflw)
     rendered = subworkflows["__root__"]
     del subworkflows["__root__"]
 
@@ -583,7 +583,7 @@ def test_combining_attrs_and_factories() -> None:
 
     pack = Pack(hearts=13, spades=13, diamonds=13, clubs=13)
     wkflw = construct(black_total(pack=pack), simplify_ids=True)
-    cwl = render(wkflw, allow_complex_types=True, factories_as_params=True)
+    cwl = Renderer.render(wkflw, allow_complex_types=True, factories_as_params=True)
     assert cwl["__root__"] == yaml.safe_load("""
         class: Workflow
         cwlVersion: 1.2

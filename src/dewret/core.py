@@ -38,7 +38,7 @@ from typing import (
     Annotated,
     Callable,
     cast,
-    runtime_checkable,
+    runtime_checkable
 )
 from contextlib import contextmanager
 from contextvars import ContextVar

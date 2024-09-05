@@ -3,7 +3,7 @@
 import yaml
 import pytest
 from dewret.tasks import construct, workflow, TaskException
-from dewret.renderers.cwl import render
+from dewret.renderers.cwl import Renderer
 from dewret.core import set_configuration
 from dewret.annotations import AtRender
 from ._lib.extra import increment
@@ -38,7 +38,7 @@ def test_cwl_with_parameter() -> None:
     with set_configuration(flatten_all_nested=True):
         result = increment(num=floor(num=3, expected=True))
         workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)["__root__"]
+    rendered = Renderer.render(workflow)["__root__"]
     num_param = list(workflow.find_parameters())[0]
     assert num_param
 

@@ -3,7 +3,7 @@
 import yaml
 from dewret.tasks import workflow, construct
 from dewret.core import set_configuration
-from dewret.renderers.cwl import render
+from dewret.renderers.cwl import Renderer
 from ._lib.extra import double, sum, increase
 
 STARTING_NUMBER: int = 23
@@ -25,7 +25,7 @@ def test_subworkflow() -> None:
     """
     with set_configuration(flatten_all_nested=True):
         workflow = construct(algorithm(), simplify_ids=True)
-        rendered = render(workflow)["__root__"]
+        rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2

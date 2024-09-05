@@ -4,7 +4,7 @@ import pytest
 import yaml
 
 from dewret.tasks import construct, workflow, TaskException
-from dewret.renderers.cwl import render
+from dewret.renderers.cwl import Renderer
 from dewret.annotations import AtRender, FunctionAnalyser, Fixed
 from dewret.core import set_configuration
 
@@ -82,7 +82,7 @@ def test_at_render() -> None:
 
     result = to_int(num=increment(num=3), should_double=True)
     wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw, allow_complex_types=True)
+    subworkflows = Renderer.render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -120,7 +120,7 @@ def test_at_render() -> None:
 
     result = to_int(num=increment(num=3), should_double=False)
     wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw, allow_complex_types=True)
+    subworkflows = Renderer.render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -161,7 +161,7 @@ def test_at_render_between_modules() -> None:
     """Test rendering of workflows across different modules using `dewret.annotations.AtRender`."""
     result = try_nothing()
     wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw, allow_complex_types=True)
+    subworkflows = Renderer.render(wkflw, allow_complex_types=True)
     subworkflows["__root__"]
 
 
@@ -181,7 +181,7 @@ def test_can_loop_over_fixed_length() -> None:
     with set_configuration(flatten_all_nested=True):
         result = loop_over_lists(list_1=[5, 6, 7, 8])
         wkflw = construct(result, simplify_ids=True)
-    subworkflows = render(wkflw, allow_complex_types=True)
+    subworkflows = Renderer.render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     assert rendered == yaml.safe_load("""
         class: Workflow

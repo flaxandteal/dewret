@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable
 from dewret.tasks import task, construct, workflow
 from dewret.core import set_configuration
-from dewret.renderers.cwl import render
+from dewret.renderers.cwl import Renderer
 
 STARTING_NUMBER: int = 23
 
@@ -83,7 +83,7 @@ def test_subworkflow() -> None:
     Produces CWL that has references between multiple steps.
     """
     workflow = construct(split(), simplify_ids=True)
-    rendered = render(workflow)["__root__"]
+    rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -118,7 +118,7 @@ def test_subworkflow() -> None:
 def test_field_of_subworkflow() -> None:
     """Tests whether a directly-output nested task can have fields."""
     workflow = construct(split().first, simplify_ids=True)
-    rendered = render(workflow)["__root__"]
+    rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -146,7 +146,7 @@ def test_field_of_subworkflow() -> None:
 def test_field_of_subworkflow_into_dataclasses() -> None:
     """Tests whether a directly-output nested task can have fields."""
     workflow = construct(split_into_dataclass().first, simplify_ids=True)
-    rendered = render(workflow)["__root__"]
+    rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -175,7 +175,7 @@ def test_complex_field_of_subworkflow() -> None:
     """Tests whether a task can sum complex structures."""
     with set_configuration(flatten_all_nested=True):
         workflow = construct(algorithm(), simplify_ids=True)
-        rendered = render(workflow)["__root__"]
+        rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -213,7 +213,7 @@ def test_complex_field_of_subworkflow_with_dataclasses() -> None:
     with set_configuration(flatten_all_nested=True):
         result = algorithm_with_dataclasses()
         workflow = construct(result, simplify_ids=True)
-        rendered = render(workflow)["__root__"]
+        rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -250,7 +250,7 @@ def test_pair_can_be_returned_from_step() -> None:
     """Tests whether a task can insert result fields into other steps."""
     with set_configuration(flatten_all_nested=True):
         workflow = construct(algorithm_with_pair(), simplify_ids=True)
-        rendered = render(workflow)["__root__"]
+        rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -289,8 +289,10 @@ def test_pair_can_be_returned_from_step() -> None:
 def test_list_can_be_returned_from_step() -> None:
     """Tests whether a task can insert result fields into other steps."""
     with set_configuration(flatten_all_nested=True):
-        workflow = construct(list_cast(iterable=algorithm_with_pair()), simplify_ids=True)
-        rendered = render(workflow)["__root__"]
+        workflow = construct(
+            list_cast(iterable=algorithm_with_pair()), simplify_ids=True
+        )
+        rendered = Renderer.render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow

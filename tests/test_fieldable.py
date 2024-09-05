@@ -9,7 +9,7 @@ from typing import Unpack, TypedDict
 from dewret.tasks import task, construct, workflow
 from dewret.core import set_configuration
 from dewret.workflow import param, StepReference
-from dewret.renderers.cwl import render
+from dewret.renderers.cwl import Renderer
 from dewret.annotations import Fixed
 
 from ._lib.extra import mod10, sum, pi
@@ -36,7 +36,7 @@ def test_fields_of_parameters_usable() -> None:
     """Test that fields of parameters can be used to construct and render a workflow correctly."""
     result = sum_sides()
     wkflw = construct(result, simplify_ids=True)
-    rendered = render(wkflw, allow_complex_types=True)["sum_sides-1"]
+    rendered = Renderer.render(wkflw, allow_complex_types=True)["sum_sides-1"]
 
     assert rendered == yaml.safe_load("""
       class: Workflow
@@ -96,7 +96,7 @@ def test_can_get_field_reference_from_parameter() -> None:
     params = {(str(p), p.__type__) for p in wkflw.find_parameters()}
 
     assert params == {("my_param", MyDataclass)}
-    rendered = render(wkflw, allow_complex_types=True)["__root__"]
+    rendered = Renderer.render(wkflw, allow_complex_types=True)["__root__"]
     assert rendered == yaml.safe_load("""
         class: Workflow
         cwlVersion: 1.2
@@ -246,7 +246,7 @@ def test_can_iterate() -> None:
         result = test_iterated()
         wkflw = construct(result, simplify_ids=True)
 
-    rendered = render(wkflw, allow_complex_types=True)["__root__"]
+    rendered = Renderer.render(wkflw, allow_complex_types=True)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -317,7 +317,7 @@ def test_can_iterate() -> None:
         result = test_iterated_3(param=[(0, 1), (2, 3)])
         wkflw = construct(result, simplify_ids=True)
 
-    rendered = render(wkflw, allow_complex_types=True)["__root__"]
+    rendered = Renderer.render(wkflw, allow_complex_types=True)["__root__"]
 
     assert rendered == yaml.safe_load("""
         class: Workflow
@@ -394,17 +394,17 @@ def test_can_configure_field_separator() -> None:
     with set_configuration(field_index_types="int"):
         result = test_sep().left[0]
         wkflw = construct(result, simplify_ids=True)
-        render(wkflw, allow_complex_types=True)["__root__"]
+        Renderer.render(wkflw, allow_complex_types=True)["__root__"]
         assert str(wkflw.result) == "test_sep-1/left[0]"
 
     with set_configuration(field_index_types="int,str"):
         result = test_sep().left[0]
         wkflw = construct(result, simplify_ids=True)
-        render(wkflw, allow_complex_types=True)["__root__"]
+        Renderer.render(wkflw, allow_complex_types=True)["__root__"]
         assert str(wkflw.result) == "test_sep-1[left][0]"
 
     with set_configuration(field_index_types=""):
         result = test_sep().left[0]
         wkflw = construct(result, simplify_ids=True)
-        render(wkflw, allow_complex_types=True)["__root__"]
+        Renderer.render(wkflw, allow_complex_types=True)["__root__"]
         assert str(wkflw.result) == "test_sep-1/left/0"
