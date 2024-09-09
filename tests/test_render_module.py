@@ -46,7 +46,7 @@ It probably got made with JUMP=1.0
 def test_get_correct_import_error_if_unable_to_load_render_module() -> None:
     """TODO: Docstrings."""
     unfrender_py = Path(__file__).parent / "_lib/unfrender.py"
-    with pytest.raises(ImportError) as exc:
+    with pytest.raises(ModuleNotFoundError) as exc:
       get_render_method(unfrender_py)
 
     entry = exc.traceback[-1]
