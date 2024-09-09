@@ -51,10 +51,10 @@ def test_get_correct_import_error_if_unable_to_load_render_module() -> None:
 
     entry = exc.traceback[-1]
     assert Path(entry.path).resolve() == (
-        Path(__file__).parent / "_lib" / "extra.py"
+        Path(__file__).parent / "_lib" / "unfrender.py"
     ).resolve()
-    assert entry.relline == 2
-    assert "attempted relative import with no known parent package" in str(exc.value)
+    assert entry.relline == 12
+    assert "No module named 'extra'" in str(exc.value)
 
     nonfrender_py = Path(__file__).parent / "_lib/nonfrender.py"
     with pytest.raises(NotImplementedError) as nexc:

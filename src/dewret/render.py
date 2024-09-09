@@ -67,9 +67,6 @@ def get_render_method(
     """
     render_module: BaseRenderModule
     if isinstance(renderer, Path):
-        if (render_dir := str(renderer.parent)) not in sys.path:
-            sys.path.append(render_dir)
-
         # Attempt to load renderer as package, falling back to a single module otherwise.
         # This enables relative imports in renderers and therefore the ability to modularize.
         module = load_module_or_package("__renderer__", renderer)

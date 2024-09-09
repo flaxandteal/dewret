@@ -9,10 +9,7 @@ from dewret.workflow import Workflow
 # This lacking a relative import, while extra itself
 # uses one is what breaks the module. It cannot be both
 # a package and not-a-package. This is importable by
-# adding a . before extra. If instead, you try to avoid
-# relative imports altogether, and change .other -> other
-# in extra, it will also break, as the directory of this
-# file is not in the PATH.
+# adding a . before extra.
 from extra import JUMP # type: ignore
 
 class UnfrenderRendererConfiguration(TypedDict):
