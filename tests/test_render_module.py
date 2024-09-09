@@ -1,5 +1,6 @@
 """Check renderers can be imported live."""
 
+import pytest
 from pathlib import Path
 from dewret.tasks import construct
 from dewret.render import get_render_method
@@ -41,3 +42,16 @@ They are:
 It probably got made with JUMP=1.0
 """,
     }
+
+def test_get_correct_import_error_if_unable_to_load_render_module() -> None:
+    """TODO: Docstrings."""
+    unfrender_py = Path(__file__).parent / "_lib/unfrender.py"
+    with pytest.raises(ImportError) as exc:
+      get_render_method(unfrender_py)
+
+    entry = exc.traceback[-1]
+    assert Path(entry.path).resolve() == (
+        Path(__file__).parent / "_lib" / "extra.py"
+    ).resolve()
+    assert entry.relline == 2
+    assert "attempted relative import with no known parent package" in str(exc.value)
