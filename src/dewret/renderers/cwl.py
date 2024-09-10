@@ -160,7 +160,7 @@ class CWLRendererConfiguration(TypedDict):
     factories_as_params: NotRequired[bool]
 
 
-def default_renderer_config() -> CWLRendererConfiguration:
+def default_config() -> CWLRendererConfiguration:
     """Default configuration for this renderer.
 
     This is a hook-like call to give a configuration dict that this renderer
