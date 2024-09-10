@@ -18,7 +18,6 @@ Lazy-evaluation via `dask.delayed`.
 """
 
 from dask.delayed import delayed, DelayedLeaf
-from dask.typing import Graph
 from dask.config import config
 from typing import Protocol, runtime_checkable, Any, cast
 from concurrent.futures import ThreadPoolExecutor
@@ -37,7 +36,7 @@ class Delayed(Protocol):
     """
 
     @property
-    def __dask_graph__(self) -> Graph:
+    def __dask_graph__(self): # type: ignore
         """Retrieve the dask graph."""
         ...
 
