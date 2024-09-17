@@ -1,5 +1,6 @@
 """Check renderers can be imported live."""
 
+import yaml
 import pytest
 from pathlib import Path
 from dewret.tasks import construct
@@ -43,8 +44,44 @@ It probably got made with JUMP=1.0
 """,
     }
 
+def test_can_load_cwl_render_module() -> None:
+    """Checks if we can load a render module."""
+    result = triple_and_one(num=increment(num=3))
+    workflow = construct(result, simplify_ids=True)
+    workflow._name = "Fred"
+
+    frender_py = Path(__file__).parent.parent / "src/dewret/renderers/cwl.py"
+    render = get_render_method(frender_py)
+    assert yaml.safe_load(render(workflow)["__root__"]) == yaml.safe_load("""
+        cwlVersion: 1.2
+        class: Workflow
+        inputs:
+          increment-1-num:
+            label: num
+            type: int
+            default: 3
+        outputs:
+          out:
+            label: out
+            type: [int, float]
+            outputSource: triple_and_one-1/out
+        steps:
+          increment-1:
+            run: increment
+            in:
+              num:
+                source: increment-1-num
+            out: [out] 
+          triple_and_one-1:
+            run: triple_and_one
+            in:
+              num:
+                source: increment-1/out
+            out: [out]
+    """)
+    
 def test_get_correct_import_error_if_unable_to_load_render_module() -> None:
-    """TODO: Docstrings."""
+    """Check if the correct import error will be logged if unable to load render module."""
     unfrender_py = Path(__file__).parent / "_lib/unfrender.py"
     with pytest.raises(ModuleNotFoundError) as exc:
       get_render_method(unfrender_py)
