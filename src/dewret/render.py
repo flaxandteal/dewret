@@ -21,7 +21,7 @@ renderers to reuse to build up their own functionality.
 import sys
 from pathlib import Path
 from functools import partial
-from typing import TypeVar, Callable, cast
+from typing import TypeVar, Callable, ContextManager, IO, Any, cast
 import yaml
 
 from .workflow import Workflow, NestedStep
@@ -98,6 +98,31 @@ def get_render_method(
     raise NotImplementedError(
         "This render module neither seems to be a structured nor a raw render module."
     )
+
+
+def write_rendered_output(
+    rendered: dict[str, str] | dict[str, RawType],
+    output: str,
+    opener: Callable[[str, str], ContextManager[IO[Any]]],
+) -> None:
+    """Utility function to handle writing rendered output to file or stdout."""
+    if len(rendered) == 1:
+        with opener("", "w") as output_f:
+            output_f.write(rendered["__root__"])
+    elif "%" in output:
+        for key, value in rendered.items():
+            if key == "__root__":
+                key = "ROOT"
+            with opener(key, "w") as output_f:
+                output_f.write(value)
+    else:
+        with opener("ROOT", "w") as output_f:
+            output_f.write(rendered["__root__"])
+        del rendered["__root__"]
+        for key, value in rendered.items():
+            with opener(key, "a") as output_f:
+                output_f.write("\n---\n")
+                output_f.write(value)
 
 
 def base_render(workflow: Workflow, build_cb: Callable[[Workflow], T]) -> dict[str, T]:
