@@ -49,7 +49,63 @@ class WorkflowDefinition:
         }
 ```
 
-## 3. Create a StepDefinition.
+## 3.  Ensuring Our Module is Recognized as a Render Module
+To have our custom renderer identified by Dewret as a valid renderer, we need to implement the `BaseRenderModule` along with one of the two protocols: `RawRenderModule` or `StructuredRenderModule`.
+
+#### Implementing BaseRenderModule
+The `BaseRenderModule` defines the foundation for a custom renderer. To implement this protocol, we need to define the `default_config()` method, which provides default configurations for our renderer.
+
+```python 
+def default_config() -> CWLRendererConfiguration:
+    """Default configuration for this renderer.
+
+    This is a hook-like call to give a configuration dict that this renderer
+    will respect, and sets any necessary default values.
+
+    Returns: a dict with (preferably) raw type structures to enable easy setting
+        from YAML/JSON.
+    """
+    return {
+        "allow_complex_types": False,
+        "factories_as_params": False,
+    }
+```
+
+After implementing `BaseRenderModule`, you need to implement either the `RawRenderModule` or `StructuredRenderModule` protocol, depending on how you want to handle the workflow rendering.
+
+#### Implementing either RawRenderModule or StructuredRenderModule
+The `StructuredRenderModule` is designed for structured workflows that are directly ready to be output in the respective format (e.g., CWL, Snakemake, etc.). The key method to implement is `render`, which converts a workflow into a structured, serializable format.
+```python
+def render(
+        self, workflow: WorkflowProtocol, **kwargs: RenderConfiguration
+    ) -> dict[str, dict[str, RawType]]:
+        """Turn a workflow into a serializable structure.
+
+        Returns: one or more subworkflows with a `__root__` key representing the outermost workflow, at least.
+        """
+        ...
+```
+In this method:
+- You receive a workflow and potentially some optional configurations.
+- You return a dictionary where the `__root__` key holds the primary workflow and any additional subworkflows are nested inside the returned structure.
+
+If you prefer more flexibility and want the structuring to be handled by the user, you can implement the `RawRenderModule` protocol. This requires defining the `render_raw` method, which converts a workflow into raw, flat strings.
+```python
+    def render_raw(
+        self, workflow: WorkflowProtocol, **kwargs: RenderConfiguration
+    ) -> dict[str, str]:
+        """Turn a workflow into flat strings.
+
+        Returns: one or more subworkflows with a `__root__` key representing the outermost workflow, at least.
+        """
+        ...
+```
+In this method:
+
+- The workflow is rendered as raw, unstructured strings.
+- The user is responsible for handling the structuring of the rendered output.
+
+## 4. Create a StepDefinition.
 
 Create a StepsDefinition class create each of the code blocks needed for a rule(step) to be executable in Snakemake.
 When you have defined each block in your target workflow language task from [step 1](#1-understand-the-target-workflow-language),
@@ -128,7 +184,7 @@ class StepDefinition:
         }
 ```
 
-## 4. Create the Separate block definitions.
+## 5. Create the Separate block definitions.
 
 In this step, you'll define classes to handle the rendering of each code block required for a rule (step) to be executable in the target workflow language. Each of these classes will encapsulate the logic for converting parts of a workflow step into the target language format.
 
@@ -335,7 +391,7 @@ class OutputDefinition:
 
 Integrate these block definitions into the StepDefinition class as demonstrated in [Step 3](#3-create-a-stepsdefinition). Each StepDefinition will use these block definitions to render the complete step in the target workflow language.
 
-## 5. Helper methods.
+## 6. Helper methods.
 
 In this step, you'll define helper methods that will assist you in converting workflow components into the target workflow language format. In our case these methods will handle type conversion, extracting method arguments, and computing relative paths.
 
@@ -401,11 +457,11 @@ import inspect
 import typing
 
 from attrs import define
+from dewret.utils import Raw, BasicType
 from dewret.workflow import Lazy
-from dewret.workflow import Reference, Raw, Workflow, Step, Task
-from dewret.utils import BasicType
+from dewret.workflow import Reference, Workflow, Step, Task
 
-RawType = typing.Union[BasicType, list[str], list["RawType"], dict[str, "RawType"]]
+RawType = BasicType | list[str] | list["RawType"] | dict[str, "RawType"]
 ```
 
 ## To run this example: 
@@ -416,6 +472,3 @@ RawType = typing.Union[BasicType, list[str], list["RawType"], dict[str, "RawType
 ```shell
 python snakemake_tasks.py
 ```
-
-### Q: Should I add a brief description of dewret in step 1? Should link dewret types/docs etc here?
-### A: Get details on how that happens and probably yes.

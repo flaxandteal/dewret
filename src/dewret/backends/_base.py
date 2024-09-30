@@ -18,6 +18,7 @@ Definition of a protocol that valid backend modules must fulfil.
 """
 
 from typing import Protocol, Any
+from concurrent.futures import ThreadPoolExecutor
 from dewret.workflow import LazyFactory, Lazy, Workflow, StepReference, Target
 
 class BackendModule(Protocol):
@@ -32,12 +33,13 @@ class BackendModule(Protocol):
     """
     lazy: LazyFactory
 
-    def run(self, workflow: Workflow, task: Lazy) -> StepReference[Any]:
+    def run(self, workflow: Workflow | None, task: Lazy | list[Lazy] | tuple[Lazy], thread_pool: ThreadPoolExecutor | None=None) -> StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]]:
         """Execute a lazy task for this `Workflow`.
 
         Args:
             workflow: `Workflow` that is being executed.
             task: task that forms the output.
+            thread_pool: the thread pool that should be used for this execution.
 
         Returns:
             Reference to the final output step.

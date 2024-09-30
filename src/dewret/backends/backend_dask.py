@@ -18,8 +18,10 @@ Lazy-evaluation via `dask.delayed`.
 """
 
 from dask.delayed import delayed, DelayedLeaf
-from dewret.workflow import Workflow, Lazy, StepReference, Target
+from dask.config import config
 from typing import Protocol, runtime_checkable, Any, cast
+from concurrent.futures import ThreadPoolExecutor
+from dewret.workflow import Workflow, Lazy, StepReference, Target
 
 
 @runtime_checkable
@@ -32,6 +34,11 @@ class Delayed(Protocol):
 
     More info: https://github.com/dask/dask/issues/7779
     """
+
+    @property
+    def __dask_graph__(self): # type: ignore
+        """Retrieve the dask graph."""
+        ...
 
     def compute(self, __workflow__: Workflow | None) -> StepReference[Any]:
         """Evaluate this `dask.delayed`.
@@ -81,13 +88,20 @@ def is_lazy(task: Any) -> bool:
     Returns:
         True if so, False otherwise.
     """
-    return isinstance(task, Delayed)
+    return isinstance(task, Delayed) or (
+        isinstance(task, tuple | list) and all(is_lazy(elt) for elt in task)
+    )
 
 
 lazy = delayed
 
 
-def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
+def run(
+    workflow: Workflow | None,
+    task: Lazy | list[Lazy] | tuple[Lazy],
+    thread_pool: ThreadPoolExecutor | None = None,
+    **kwargs: Any,
+) -> Any:
     """Execute a task as the output of a workflow.
 
     Runs a task with dask.
@@ -95,11 +109,15 @@ def run(workflow: Workflow | None, task: Lazy) -> StepReference[Any]:
     Args:
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
+        thread_pool: custom thread pool for executing workflows, copies in correct values for contextvars to each thread before they are accessed by a dask worker.
+        **kwargs: any configuration arguments for this backend.
     """
-    # We need isinstance to reassure type-checker.
-    if not isinstance(task, Delayed) or not is_lazy(task):
-        raise RuntimeError(
-            f"{task} is not a dask delayed, perhaps you tried to mix backends?"
-        )
-    result = task.compute(__workflow__=workflow)
+    # def _check_delayed was here, but we decided to delegate this to dask
+
+    if isinstance(task, Delayed) and is_lazy(task):
+        computable = task
+    else:
+        computable = delayed(task)
+    config["pool"] = thread_pool
+    result = computable.compute(__workflow__=workflow)
     return result

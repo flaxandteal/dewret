@@ -25,20 +25,23 @@ import inspect
 import typing
 
 from attrs import define
-from dewret.utils import BasicType
 
-from dewret.workflow import (
-    Reference,
+from dewret.core import (
     Raw,
+    BasicType,
+    Reference,
+)
+from dewret.workflow import (
     Workflow,
     Task,
     Lazy,
     BaseStep,
 )
+from dewret.render import (
+    base_render,
+)
 
-MainTypes = typing.Union[
-    BasicType, list[str], list["MainTypes"], dict[str, "MainTypes"]
-]
+MainTypes = BasicType | list[str] | list["MainTypes"] | dict[str, "MainTypes"]
 
 
 @define
@@ -59,7 +62,7 @@ class ReferenceDefinition:
     source: str
 
     @classmethod
-    def from_reference(cls, ref: Reference) -> "ReferenceDefinition":
+    def from_reference(cls, ref: Reference[typing.Any]) -> "ReferenceDefinition":
         """Build from a `Reference`.
 
         Converts a `dewret.workflow.Reference` into a Snakemake-rendering object.
@@ -240,7 +243,7 @@ class OutputDefinition:
         """
         # TODO: Error handling
         # TODO: Better way to handling input/output files
-        output_file = step.arguments["output_file"]
+        output_file = step.arguments.get("output_file", Raw("OUTPUT_FILE"))
         if isinstance(output_file, Raw):
             args = to_snakemake_type(output_file)
 
@@ -448,7 +451,7 @@ def raw_render(workflow: Workflow) -> dict[str, MainTypes]:
     return WorkflowDefinition.from_workflow(workflow).render()
 
 
-def render(workflow: Workflow) -> str:
+def render(workflow: Workflow) -> dict[str, typing.Any]:
     """Render the workflow as a Snakemake (SMK) string.
 
     This function converts a Workflow object into a Snakemake-compatible yaml.
@@ -468,6 +471,9 @@ def render(workflow: Workflow) -> str:
         }
     )
 
-    return yaml.dump(
-        WorkflowDefinition.from_workflow(workflow).render(), indent=4
-    ).translate(trans_table)
+    return base_render(
+        workflow,
+        lambda workflow: yaml.dump(
+            WorkflowDefinition.from_workflow(workflow).render(), indent=4
+        ).translate(trans_table),
+    )

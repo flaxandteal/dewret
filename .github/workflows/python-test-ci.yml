@@ -3,12 +3,16 @@ on: [push, pull_request]
 jobs:
   unit-pip:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python
+
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip "hatchling < 1.22"
@@ -17,11 +21,11 @@ jobs:
       run: |
         pip install pytest pytest-cov
         pip install --no-build-isolation --no-deps --disable-pip-version-check -e .
-        python -m pytest --doctest-modules --ignore=example
+        python -m pytest --doctest-modules --ignore=example --ignore=tests/_lib
         python -m doctest -v docs/*.md
-    # name: Test examples
-    # run: |
-    #   (cd example; examples=$(grep "^\\$ " *.py | sed "s/.*\\$ //g"); while IFS= read -r line; do PYTHONPATH=.:$PYTHONPATH eval $line; done <<< "$examples")
+    name: Test examples
+    run: |
+      (cd example; examples=$(grep "^\\$ " *.py | sed "s/.*\\$ //g"); while IFS= read -r line; do PYTHONPATH=.:$PYTHONPATH eval $line; done <<< "$examples")
   unit-conda:
     runs-on: ubuntu-latest
     steps:
@@ -42,8 +46,8 @@ jobs:
         conda install -c /tmp/output/noarch/*.conda --update-deps --use-local dewret -y
         conda install pytest
         $CONDA/bin/pytest
-        python -m pytest --doctest-modules --ignore=example
+        python -m pytest --doctest-modules --ignore=example --ignore=tests/_lib
         python -m doctest -v docs/*.md
-    # name: Test examples
-    # run: |
-    #   (cd example; examples=$(grep "^\\$ " *.py | sed "s/.*\\$ //g"); while IFS= read -r line; do PYTHONPATH=.:$PYTHONPATH eval $line; done <<< "$examples")
+    name: Test examples
+    run: |
+      (cd example; examples=$(grep "^\\$ " *.py | sed "s/.*\\$ //g"); while IFS= read -r line; do PYTHONPATH=.:$PYTHONPATH eval $line; done <<< "$examples")

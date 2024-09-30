@@ -1,14 +1,15 @@
 """Verify CWL can be made with split up and nested calls."""
 
 import yaml
-from dewret.tasks import nested_task, construct
+from dewret.tasks import workflow, construct
+from dewret.core import set_configuration
 from dewret.renderers.cwl import render
 from ._lib.extra import double, sum, increase
 
 STARTING_NUMBER: int = 23
 
 
-@nested_task()
+@workflow()
 def algorithm() -> int | float:
     """Creates a graph of task calls."""
     left = double(num=increase(num=STARTING_NUMBER))
@@ -17,13 +18,14 @@ def algorithm() -> int | float:
     return sum(left=left, right=right)
 
 
-def test_nested_task() -> None:
+def test_subworkflow() -> None:
     """Check whether we can link between multiple steps and have parameters.
 
     Produces CWL that has references between multiple steps.
     """
-    workflow = construct(algorithm(), simplify_ids=True)
-    rendered = render(workflow)
+    with set_configuration(flatten_all_nested=True):
+        workflow = construct(algorithm(), simplify_ids=True)
+        rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -33,13 +35,9 @@ def test_nested_task() -> None:
             label: JUMP
             type: float
             default: 1.0
-          increase-3-num:
+          STARTING_NUMBER:
             default: 23
-            label: increase-3-num
-            type: int
-          increase-1-num:
-            default: 17
-            label: increase-1-num
+            label: STARTING_NUMBER
             type: int
         outputs:
           out:
@@ -53,7 +51,7 @@ def test_nested_task() -> None:
                 JUMP:
                     source: JUMP
                 num:
-                    source: increase-1-num
+                    source: STARTING_NUMBER
             out: [out]
           increase-2:
             run: increase
@@ -61,7 +59,7 @@ def test_nested_task() -> None:
                 JUMP:
                     source: JUMP
                 num:
-                    source: increase-1/out
+                    source: increase-3/out
             out: [out]
           increase-3:
             run: increase
@@ -69,13 +67,13 @@ def test_nested_task() -> None:
                 JUMP:
                     source: JUMP
                 num:
-                    source: increase-3-num
+                    default: 17
             out: [out]
           double-1:
             run: double
             in:
                 num:
-                    source: increase-3/out
+                    source: increase-1/out
             out: [out]
           sum-1:
             run: sum
