@@ -56,6 +56,7 @@ def test_can_analyze_annotations() -> None:
     assert analyser.argument_has("arg3", AtRender, exhaustive=True) is False
     assert analyser.argument_has("ARG2", AtRender, exhaustive=True) is False
     assert analyser.argument_has("arg2", AtRender, exhaustive=True) is True
+    assert analyser.argument_has("arg2", AtRender, exhaustive=False) is True
     assert (
         analyser.argument_has("arg4", AtRender, exhaustive=True) is False
     )  # Not a global/argument
@@ -67,6 +68,7 @@ def test_can_analyze_annotations() -> None:
     assert analyser.argument_has("arg7", AtRender, exhaustive=True) is False
     assert analyser.argument_has("ARG2", AtRender, exhaustive=True) is False
     assert analyser.argument_has("arg6", AtRender, exhaustive=True) is True
+    assert analyser.argument_has("arg6", AtRender, exhaustive=False) is True
     assert (
         analyser.argument_has("arg8", AtRender, exhaustive=True) is False
     )  # Not a global/argument
