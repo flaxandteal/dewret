@@ -129,6 +129,7 @@ ENV/
 env.bak/
 venv.bak/
 .pixi/
+.vscode/
 
 # Spyder project settings
 .spyderproject
