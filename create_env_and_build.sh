@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# The script expects exactly one argument: the name of the conda environment to be created.
+# Usage example:
+# . ./create_env_and_build.sh <env-name>
+
+
+####################################
+# helper functions
+
 # set -x
 set -e
 
@@ -16,6 +24,10 @@ safe_exit() {
     echo "Script execution stopped."
     exit 1
 }
+
+
+####################################
+# script logic
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <conda-environment-name>"
