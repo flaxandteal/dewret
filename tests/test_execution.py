@@ -1,5 +1,7 @@
+"""Check eager behaviour and execution to evaluate a task/workflow."""
+
 import math
-from sympy import Expr, Symbol as S
+from sympy import Expr
 
 from dewret.tasks import (
     workflow,
