@@ -98,7 +98,7 @@ lazy = delayed
 
 def run(
     workflow: Workflow | None,
-    task: Lazy | list[Lazy] | tuple[Lazy],
+    task: Lazy | list[Lazy] | tuple[Lazy, ...],
     thread_pool: ThreadPoolExecutor | None = None,
     **kwargs: Any,
 ) -> Any:

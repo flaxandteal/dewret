@@ -1,3 +1,4 @@
+from attrs import define
 from dewret.tasks import task, workflow
 
 from .other import nothing
@@ -5,6 +6,15 @@ from .other import nothing
 JUMP: float = 1.0
 test: float = nothing
 
+
+@define
+class PackResult:
+    """A class representing the counts of card suits in a deck, including hearts, clubs, spades, and diamonds."""
+
+    hearts: int
+    clubs: int
+    spades: int
+    diamonds: int
 
 @workflow()
 def try_nothing() -> int:
@@ -72,3 +82,5 @@ def reverse_list(to_sort: list[int | float]) -> list[int | float]:
 @task()
 def max_list(lst: list[int | float]) -> int | float:
     return max(lst)
+
+
