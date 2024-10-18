@@ -46,6 +46,7 @@ from contextlib import contextmanager
 
 from .utils import is_firm, make_traceback, is_expr
 from .workflow import (
+    execute_step,
     expr_to_references,
     unify_workflows,
     UNSET,
@@ -142,7 +143,7 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy], __workflow__: Workflow, thread_pool: ThreadPoolExecutor | None=None, **kwargs: Any) -> Any:
+    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy, ...], __workflow__: Workflow, thread_pool: ThreadPoolExecutor | None=None, **kwargs: Any) -> Any:
         """Evaluate a single task for a known workflow.
 
         Args:
@@ -230,11 +231,28 @@ _manager = TaskManager()
 lazy = _manager.make_lazy
 ensure_lazy = _manager.ensure_lazy
 unwrap = _manager.unwrap
-evaluate = _manager.evaluate
-construct = _manager
+
+def evaluate(task: Any, *args: Any, execute: bool = False, **kwargs: Any) -> Any:
+    """Get a result of a task, either as a value or lazily.
+
+    Args:
+        task: task to evaluate
+        *args: other arguments to the evaluator
+        execute: whether or not to evaluate to obtain the final result
+        **kwargs: other arguments to the evaluator
+
+    Returns:
+        Structure of lazy evaluations if lazy, else actual result.
+    """
+    if execute:
+        return execute_step(task, *args, **kwargs)
+    else:
+        return _manager.evaluate(task, *args, **kwargs)
+
 """An alias pointing to an instance of the TaskManager class.
 Used for constructing a set of tasks into a dewret workflow instance.
 """
+construct = _manager
 
 
 class TaskException(Exception):
@@ -313,7 +331,8 @@ def factory(fn: Callable[..., RetType]) -> Callable[..., RetType]:
     Args:
         fn: a callable to create the entity.
     """
-    return task(is_factory=True)(fn)
+    ret = task(is_factory=True)(fn)
+    return ret
 
 # Workaround for PyCharm
 factory: Callable[[Callable[..., RetType]], Callable[..., RetType]] = factory
@@ -398,6 +417,9 @@ def task(
             __traceback__: TracebackType | None = None,
             **kwargs: Param.kwargs,
         ) -> RetType:
+            if get_configuration("eager"):
+                return fn(*args, **kwargs)
+
             configuration = None
             allow_positional_args = bool(get_configuration("allow_positional_args"))
 
