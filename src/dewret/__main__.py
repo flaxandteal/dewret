@@ -51,6 +51,13 @@ from .tasks import Backend, construct
     help="Pretty-print output where possible.",
 )
 @click.option(
+    "--eager",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Eagerly evaluate tasks at render-time for debugging purposes.",
+)
+@click.option(
     "--backend",
     type=click.Choice(list(Backend.__members__)),
     show_default=True,
@@ -81,6 +88,7 @@ def render(
     task: str,
     arguments: list[str],
     pretty: bool,
+    eager: bool,
     backend: Backend,
     construct_args: str,
     renderer: str,
@@ -153,6 +161,13 @@ def render(
     pkg = "__workflow__"
     workflow = load_module_or_package(pkg, workflow_py)
     task_fn = getattr(workflow, task)
+
+    if eager:
+        construct_kwargs["eager"] = True
+        with set_configuration(**construct_kwargs):
+            output = task_fn(**kwargs)
+        print(output)
+        return
 
     try:
         with (

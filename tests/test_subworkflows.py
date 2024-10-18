@@ -7,9 +7,8 @@ from dewret.tasks import construct, workflow, task, factory
 from dewret.core import set_configuration
 from dewret.renderers.cwl import render
 from dewret.workflow import param
-from attrs import define
 
-from ._lib.extra import increment, sum, pi
+from ._lib.extra import increment, sum, pi, PackResult
 
 CONSTANT: int = 3
 
@@ -557,16 +556,6 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
             run: to_int
     """),
     )
-
-
-@define
-class PackResult:
-    """A class representing the counts of card suits in a deck, including hearts, clubs, spades, and diamonds."""
-
-    hearts: int
-    clubs: int
-    spades: int
-    diamonds: int
 
 
 def test_combining_attrs_and_factories() -> None:
