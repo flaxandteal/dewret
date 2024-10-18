@@ -1294,12 +1294,22 @@ class BaseStep(WorkflowComponent):
 
         return f"{self.task}-{hasher(comp_tup)}"
 
+    def __call__(self, **additional_kwargs: Any) -> Any:
+        """Evaluate this step eagerly.
+
+        Args:
+            **additional_kwargs: any extra/overriding arguments to the step.
+        """
+        raise NotImplementedError("No eager evaluation for this BaseStep type")
+
 
 class NestedStep(BaseStep):
     """Calling out to a subworkflow.
 
     Type of BaseStep to call a subworkflow, which holds a reference to it.
     """
+
+    task: Workflow
 
     def __init__(
         self,
@@ -1350,11 +1360,31 @@ class NestedStep(BaseStep):
             raise RuntimeError("Can only use a subworkflow if the reference exists.")
         return self.__subworkflow__.result_type
 
+    def __call__(self, **additional_kwargs: Any) -> Any:
+        """Evaluate this nested step, by eagerly evaluating the subworkflow result.
+
+        Args:
+            **additional_kwargs: any extra/overriding arguments to the subworkflow result step.
+        """
+        kwargs: dict[str, Any] = dict(self.arguments)
+        kwargs.update(additional_kwargs)
+        return execute_step(self.__subworkflow__.result, **kwargs)
+
 
 class Step(BaseStep):
     """Regular step."""
 
-    ...
+    task: Task
+
+    def __call__(self, **additional_kwargs: Any) -> Any:
+        """Evaluate this step, by eagerly evaluating the result.
+
+        Args:
+            **additional_kwargs: any extra/overriding arguments to the step.
+        """
+        kwargs: dict[str, Any] = dict(self.arguments)
+        kwargs.update(additional_kwargs)
+        return self.task.target(**kwargs)
 
 
 class FactoryCall(Step):
@@ -1770,6 +1800,26 @@ class StepReference(FieldableMixin, Reference[U]):
             kwargs["workflow"] = self.__workflow__
         return self._.step.make_reference(**kwargs)
 
+def execute_step(task: Any, **kwargs: Any) -> Any:
+    """Evaluate a single task for a known workflow.
+
+    Args:
+        task: the task to evaluate.
+        **kwargs: any arguments to pass to the task.
+    """
+    if isinstance(task, list):
+        return [execute_step(t, **kwargs) for t in task]
+    elif isinstance(task, tuple):
+        return tuple(execute_step(t, **kwargs) for t in task)
+
+    if not isinstance(task, StepReference):
+        raise TypeError(
+            f"Attempted to execute a task that is not step-like (Step/Workflow): {type(task)}"
+        )
+
+    result = task._.step()
+
+    return result
 
 class IterableStepReference(IterableMixin[U], StepReference[U]):
     """Iterable form of a step reference."""

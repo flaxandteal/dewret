@@ -187,6 +187,7 @@ class ConstructConfiguration:
     field_separator: str = "/"
     field_index_types: str = "int"
     simplify_ids: bool = False
+    eager: bool = False
 
 
 class ConstructConfigurationTypedDict(TypedDict):
@@ -204,6 +205,7 @@ class ConstructConfigurationTypedDict(TypedDict):
     field_separator: NotRequired[str]
     field_index_types: NotRequired[str]
     simplify_ids: NotRequired[bool]
+    eager: NotRequired[bool]
 
 
 @define
