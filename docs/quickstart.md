@@ -13,13 +13,14 @@ Workflows are a collection of tasks or steps designed to automate complex proces
 ### What Makes Dewret Unique? Why should I use Dewret?
 
 Dewret stands out by providing a unified and simplified interface for workflow management, making it accessible to users with varying levels of experience. Here are some key features that make Dewret unique:
-- Consistency: offers a consistent interface for defining tasks and workflows.
-- Optimization: creating a declarative workflow opens up possibilities for static analysis and refactoring before execution.
-- Customization: dewret offers the ability to create custom renderers for workflows in desired languages. This includes default support for CWL and Snakemake workflow languages. The capability to render a single workflow into multiple declarative languages enables users to experiment with different workflow engines.
-- Git-versionable workflows: while code can be versioned, changes in a dynamic workflow may not clearly correspond to changes in the executed workflow. By defining a static workflow that is rendered from the dynamic or programmatic workflow, we maintain a precise and trackable history.
-- Default Renderers: Snakemake and CWL.
-- Debugging: a number of classes of workflow planning bugs will not appear until late in a simulation run that might take days or weeks. Having a declarative and static workflow definition document post-render provides enhanced possibilities for static analysis, helping to catch these issues before startup.
-- Continuous Integration and Testing: complex dynamic workflows can be rapidly sense-checked in CI without needing all the hardware and internal algorithms present to run them.
+
+- **Consistency**: offers a consistent interface for defining tasks and workflows.
+- **Optimization**: creating a declarative workflow opens up possibilities for static analysis and refactoring before execution.
+- **Customization**: dewret offers the ability to create custom renderers for workflows in desired languages. This includes default support for CWL and Snakemake workflow languages. The capability to render a single workflow into multiple declarative languages enables users to experiment with different workflow engines.
+- **Git-versionable workflows**: while code can be versioned, changes in a dynamic workflow may not clearly correspond to changes in the executed workflow. By defining a static workflow that is rendered from the dynamic or programmatic workflow, we maintain a precise and trackable history.
+- **Default Renderers**: Snakemake and CWL.
+- **Debugging**: a number of classes of workflow planning bugs will not appear until late in a simulation run that might take days or weeks. Having a declarative and static workflow definition document post-render provides enhanced possibilities for static analysis, helping to catch these issues before startup.
+- **Continuous Integration and Testing**: complex dynamic workflows can be rapidly sense-checked in CI without needing all the hardware and internal algorithms present to run them.
 
 ## Installation for pure users
 
