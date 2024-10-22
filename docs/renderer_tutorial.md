@@ -8,6 +8,7 @@ Before writing any code, it is essential to fully understand the target workflow
 ### Example: 
 
 In Snakemake, a workflow task is generally created by:
+
 1. Defining the task. - `rule process_data`
 2. Defining the input required for the rule to run(dependencies). - `input: "data/raw_data.txt"`
 3. Defining the output required for the rule to be considered finished. - `output: "data/processed_data.txt"`
