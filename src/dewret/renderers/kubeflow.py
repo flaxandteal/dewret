@@ -20,6 +20,7 @@ current workflow.
 """
 
 import uuid
+import itertools
 from google.protobuf import json_format
 from kfp.pipeline_spec import pipeline_spec_pb2
 from kfp.compiler import pipeline_spec_builder as builder
@@ -68,8 +69,108 @@ from dewret.utils import (
 from dewret.render import base_render
 from dewret.core import Reference, get_render_configuration, set_render_configuration
 
-PIPELINE: Pipeline = ContextVar("pipeline")
+PIPELINE: ContextVar[Pipeline] = ContextVar("pipeline")
+CHANNELS: ContextVar[dict[Reference[Any], dsl.pipeline_channel.PipelineChannel]] = ContextVar("channels")
 
+def ensure_channels(expression: Any) -> Any:
+    def remap(ref):
+        if isinstance(ref, Reference):
+            if ref not in channels:
+                channels[ref] = dsl.pipeline_channel.create_pipeline_channel(
+                    name=ref.name,
+                    channel_type=to_cwl_type(ref.name, ref.__type__)["type"],  # type: ignore
+                    task_name=ref._.step.name,
+                    is_artifact_list=False,
+                )
+            return channels[ref]
+    channels = CHANNELS.get()
+    expr, to_check = expr_to_references(expression, remap=remap)
+    return expr
+
+class DewretPipelineTask(dsl.pipeline_task.PipelineTask):
+    def __init__(
+        self,
+        component_spec: dsl.structures.ComponentSpec,
+        args: dict[str, Any],
+        execute_locally: bool = False,
+        execution_caching_default: bool = True,
+        output: StepReference[Any] | None = None,
+    ) -> None:
+        """Initilizes a PipelineTask instance."""
+        # import within __init__ to avoid circular import
+        from kfp.dsl.tasks_group import TasksGroup
+        self.state = dsl.pipeline_task.TaskState.FUTURE
+        self.parent_task_group: None | TasksGroup = None
+        args = args or {}
+
+        for input_name, argument_value in args.items():
+            if input_name not in component_spec.inputs:
+                raise ValueError(
+                    f'Component {component_spec.name!r} got an unexpected input:'
+                    f' {input_name!r}.')
+
+            input_spec = component_spec.inputs[input_name]
+
+            type_utils.verify_type_compatibility(
+                given_value=argument_value,
+                expected_spec=input_spec,
+                error_message_prefix=(
+                    f'Incompatible argument passed to the input '
+                    f'{input_name!r} of component {component_spec.name!r}: '),
+            )
+
+        self.component_spec = component_spec
+
+        self._task_spec = dsl.structures.TaskSpec(
+            name=self._register_task_handler(),
+            inputs=dict(args.items()),
+            dependent_tasks=[],
+            component_ref=component_spec.name,
+            enable_caching=execution_caching_default)
+        self._run_after: list[str] = []
+
+        self.importer_spec = None
+        self.container_spec = None
+        self.pipeline_spec = None
+        self._ignore_upstream_failure_tag = False
+        # platform_config for this primitive task; empty if task is for a graph component
+        self.platform_config = {}
+
+        def validate_placeholder_types(
+                component_spec: dsl.structures.ComponentSpec) -> None:
+            inputs_dict = component_spec.inputs or {}
+            outputs_dict = component_spec.outputs or {}
+            for arg in itertools.chain(
+                (component_spec.implementation.container.command or []),
+                (component_spec.implementation.container.args or [])):
+                dsl.pipeline_task.check_primitive_placeholder_is_used_for_correct_io_type(
+                    inputs_dict, outputs_dict, arg)
+
+        if component_spec.implementation.container is not None:
+            validate_placeholder_types(component_spec)
+            self.container_spec = self._extract_container_spec_and_convert_placeholders(
+                component_spec=component_spec)
+        elif component_spec.implementation.importer is not None:
+            self.importer_spec = component_spec.implementation.importer
+            self.importer_spec.artifact_uri = args['uri']
+        else:
+            self.pipeline_spec = self.component_spec.implementation.graph
+
+        self._outputs = {output.name: ensure_channels(output)}
+
+        args = {arg.name: ensure_channels(arg) for arg in args}
+        self._inputs = args
+
+        self._channel_inputs = [
+            value for _, value in args.items()
+            if isinstance(value, dsl.pipeline_channel.PipelineChannel)
+        ] + dsl.pipeline_channel.extract_pipeline_channels_from_any([
+            value for _, value in args.items()
+            if not isinstance(value, dsl.pipeline_channel.PipelineChannel)
+        ])
+
+        if execute_locally:
+            self._execute_locally(args=args)
 
 def register_task_handler(
     task: dsl.pipeline_task.PipelineTask,
@@ -100,12 +201,14 @@ class BuilderPipeline(Pipeline):
         Pipeline._default_pipeline = self
 
         PIPELINE.set(self)
+        CHANNELS.set({})
 
         return self
 
     def __exit__(self, *_: Any) -> None:
         """Reset the pipeline for new tasks to None."""
         PIPELINE.set(None)
+        CHANNELS.set({})
         Pipeline._default_pipeline = None
 
 
@@ -347,18 +450,22 @@ class StepDefinition:
             command=["python"],
             args=[],
         )
+
+        rettyp = to_output_schema(dsl.component_factory.SINGLE_OUTPUT_NAME, step.return_type)
+        outputs = {}
+        outputs[dsl.component_factory.SINGLE_OUTPUT_NAME] = rettyp
         component_spec = dsl.structures.ComponentSpec(
             name=step.name,
             description=f"{step.name} via dewret",
             inputs=inputs,
             # outputs=to_output_schema("out", step.return_type)["fields"], # make_output_spec(return_ann)
-            outputs={},  # make_output_spec(return_ann)
+            outputs=outputs,  # make_output_spec(return_ann)
             implementation=dsl.structures.Implementation(container),
         )
         python_cmpt = dsl.python_component.PythonComponent(
             component_spec=component_spec, python_func=step.task.target
         )
-        task_spec = dsl.pipeline_task.PipelineTask(python_cmpt.component_spec, {})
+        task_spec = DewretPipelineTask(python_cmpt.component_spec, {}, output=step.make_reference(workflow=step.__workflow__))
         component_spec.implementation = dsl.structures.Implementation(
             container=dsl.structures.ContainerSpecImplementation(
                 image="IMAGE",
@@ -371,6 +478,7 @@ class StepDefinition:
                 ],
             )
         )
+        return task_spec
 
     def render(self) -> dict[str, RawType]:
         """Render to a dict-like structure.
@@ -434,17 +542,17 @@ def to_cwl_type(label: str, typ: type) -> CommandInputSchema:
     if base == type(None):
         typ_dict["type"] = "null"
     elif base == int:
-        typ_dict["type"] = "int"
+        typ_dict["type"] = "Integer"
     elif base == bool:
-        typ_dict["type"] = "boolean"
+        typ_dict["type"] = "Boolean"
     elif base == dict or (isinstance(base, type) and attrs_has(base)):
-        typ_dict["type"] = "record"
+        typ_dict["type"] = "Dict"
     elif base == float:
-        typ_dict["type"] = "float"
+        typ_dict["type"] = "Float"
     elif base == str:
-        typ_dict["type"] = "string"
+        typ_dict["type"] = "String"
     elif base == bytes:
-        typ_dict["type"] = "bytes"
+        raise RuntimeError("KFP cannot currently handle bytes as a annotation type.")
     elif isinstance(typ, UnionType):
         typ_dict.update(
             {"type": tuple(to_cwl_type(label, item)["type"] for item in args)}
@@ -513,7 +621,7 @@ def to_output_schema(
     label: str,
     typ: type[RawType | AttrsInstance | DataclassProtocol],
     output_source: str | None = None,
-) -> CommandOutputSchema:
+) -> dsl.structures.OutputSpec:
     """Turn a step's output into an output schema.
 
     Takes a source, type and label and provides a description for CWL.
@@ -530,32 +638,31 @@ def to_output_schema(
     if attrs_has(typ):
         fields = {
             str(field.name): cast(
-                CommandInputSchema, to_output_schema(field.name, field.type)
+                dsl.structures.OutputSpec, to_output_schema(field.name, field.type)
             )
             for field in attrs_fields(typ)
         }
     elif is_dataclass(typ):
         fields = {
             str(field.name): cast(
-                CommandInputSchema, to_output_schema(field.name, field.type)
+                dsl.structures.OutputSpec, to_output_schema(field.name, field.type)
             )
             for field in dataclass_fields(typ)
         }
 
     if fields:
-        output = CommandOutputSchema(
-            type="record",
-            label=label,
-            fields=fields,
+        output = dsl.structures.OutputSpec(
+            type=fields,
         )
     else:
         # TODO: this complains because NotRequired keys are never present,
         # but that does not seem like a problem here - likely a better solution.
-        output = CommandOutputSchema(
-            **to_cwl_type(label, typ)  # type: ignore
+        print(to_cwl_type(label, typ)["type"])
+        output = dsl.structures.OutputSpec(
+            type=to_cwl_type(label, typ)["type"]  # type: ignore
         )
-    if output_source is not None:
-        output["outputSource"] = output_source
+    # if output_source is not None:
+    #     output["outputSource"] = output_source
     return output
 
 
@@ -742,8 +849,7 @@ class OutputsDefinition:
             else {key: crawl_raw(output) for key, output in self.outputs.items()}
         )
 
-
-class WorkflowDefinition(dsl.base_component.BaseComponent):
+class DewretGraphComponent(dsl.base_component.BaseComponent):
     """CWL-renderable workflow.
 
     Coerces the dewret structure of a workflow into that
@@ -756,7 +862,7 @@ class WorkflowDefinition(dsl.base_component.BaseComponent):
     @classmethod
     def from_workflow(
         cls, workflow: Workflow, name: None | str = None
-    ) -> "WorkflowDefinition":
+    ) -> "DewretGraphComponent":
         """Build from a `Workflow`.
 
         Converts a `dewret.workflow.Workflow` into a CWL-rendering object.
@@ -772,9 +878,11 @@ class WorkflowDefinition(dsl.base_component.BaseComponent):
                 )
             )
         )
+
         if get_render_configuration("factories_as_params"):
             parameters += list(workflow.find_factories().values())
 
+        step_outputs = {}
         with BuilderPipeline(name or "myname") as dsl_pipeline:
             for step in workflow.indexed_steps.values():
                 if isinstance(step, FactoryCall) and get_render_configuration(
@@ -782,27 +890,53 @@ class WorkflowDefinition(dsl.base_component.BaseComponent):
                 ):
                     continue
                 StepDefinition.from_step(step)
+            pipeline_outputs = {dsl.component_factory.SINGLE_OUTPUT_NAME: ensure_channels(workflow.result)}
+
+        inputs = {}
+        for param in parameters:
+            typ = with_type(param)
+            typ = type_utils._annotation_to_type_struct(typ)
+            input_output_spec_args = {"type": typ, "is_artifact_list": False}
+            inputs[param.name] = dsl.structures.InputSpec(
+                **input_output_spec_args,
+            )
+
+        rettyp = to_output_schema(dsl.component_factory.SINGLE_OUTPUT_NAME, workflow.result.__type__)
+        outputs = {}
+        outputs[dsl.component_factory.SINGLE_OUTPUT_NAME] = rettyp
+        print(dsl.component_factory.SINGLE_OUTPUT_NAME)
 
         description = "DESCRIPTION"
         component_name = "NAME"
         component_spec = dsl.structures.ComponentSpec(
             name=component_name,
             description=description,
-            inputs={},
-            outputs={},
+            inputs=inputs,
+            outputs=outputs,
             implementation=dsl.structures.Implementation(),
         )
+
+        args_list = []
+        for parameter in parameters:
+            input_spec = component_spec.inputs[parameter.name]
+            args_list.append(
+                dsl.pipeline_channel.create_pipeline_channel(
+                    name=parameter.name,
+                    channel_type=input_spec.type,
+                    is_artifact_list=input_spec.is_artifact_list,
+            ))
+
         graph_component = cls(component_spec=component_spec)
         pipeline_group = dsl_pipeline.groups[0]
         pipeline_group.name = uuid.uuid4().hex
 
+        print(outputs, pipeline_outputs)
         pipeline_spec, platform_spec = builder.create_pipeline_spec(
             pipeline=dsl_pipeline,
             component_spec=graph_component.component_spec,
-            pipeline_outputs={},
+            pipeline_outputs=pipeline_outputs,
             pipeline_config={},
         )
-
         # pipeline_root = getattr(pipeline_func, 'pipeline_root', None)
         # if pipeline_root is not None:
         #     pipeline_spec.default_pipeline_root = pipeline_root
@@ -858,6 +992,6 @@ def render(
     with set_render_configuration(kwargs):  # type: ignore
         rendered = base_render(
             workflow,
-            lambda workflow: WorkflowDefinition.from_workflow(workflow).render(),
+            lambda workflow: DewretGraphComponent.from_workflow(workflow).render(),
         )
     return rendered
