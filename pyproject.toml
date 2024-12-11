@@ -55,7 +55,7 @@ allow-direct-references = true
 [project.optional-dependencies]
 test = ["pytest", "coverage", "ruff", "mypy"]
 docs = [
-  "portray @ git+https://github.com/flaxandteal/portray.git#v1.8.0-fat"
+  "tmp_fat_portray >= v1.8.0"
 ]
 
 [tool.pixi.project]
