@@ -133,7 +133,7 @@ def render(
     if output == "-":
 
         @contextmanager
-        def _opener(key: str, _: str) -> Generator[IO[Any], None, None]:
+        def _opener(key: str, mode: str) -> Generator[IO[Any], None, None]:
             print(" ------ ", key, " ------ ")
             yield sys.stdout
             print()
