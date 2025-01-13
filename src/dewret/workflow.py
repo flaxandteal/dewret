@@ -928,7 +928,11 @@ class FieldableMixin(_Fieldable):
                     type_hints = get_type_hints(parent_type, localns={parent_type.__name__: parent_type}, include_extras=True)
                     field_type = type_hints.get(field)
                     if field_type is None:
-                        field_type = next(iter(filter(lambda fld: fld.name == field, dataclass_fields(parent_type)))).type
+                        dataclass_field_type = next(iter(filter(lambda fld: fld.name == field, dataclass_fields(parent_type)))).type
+                        if isinstance(dataclass_field_type, str):
+                            # TODO: we could ask Python to resolve the str expression for us
+                            raise TypeError("Dataclass fields must be provided as types directly, not str")
+                        field_type = dataclass_field_type
                 except StopIteration:
                     raise AttributeError(f"Dataclass {parent_type} does not have field {field}") from None
             elif attr_has(parent_type):

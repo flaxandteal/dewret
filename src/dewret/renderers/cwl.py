@@ -284,12 +284,15 @@ class StepDefinition:
         Args:
             step: step to convert.
         """
+        out: list[str] | dict[str, "CommandInputSchema"]
+        if attrs_has(step.return_type) or (is_dataclass(step.return_type) and isclass(step.return_type)):
+            out = to_output_schema("out", step.return_type)["fields"]
+        else:
+            out = ["out"]
         return cls(
             name=step.name,
             run=step.task.name,
-            out=(to_output_schema("out", step.return_type)["fields"])
-            if attrs_has(step.return_type) or is_dataclass(step.return_type)
-            else ["out"],
+            out=out,
             in_={
                 key: (
                     ReferenceDefinition.from_reference(param)
@@ -463,13 +466,14 @@ def to_output_schema(
             for field in attrs_fields(typ)
         }
     elif is_dataclass(typ):
-        fields = {
-            str(field.name): cast(
-                CommandInputSchema, to_output_schema(field.name, field.type)
-            )
-            for field in dataclass_fields(typ)
-        }
-
+        fields = {}
+        for field in dataclass_fields(typ):
+            if isinstance(field.type, type) and issubclass(field.type, RawType | AttrsInstance | DataclassProtocol):
+                fields[str(field.name)] = cast(
+                    CommandInputSchema, to_output_schema(field.name, field.type)
+                )
+            else:
+                raise TypeError("Types of fields in results must also be valid result-types themselves (string-defined types not currently allowed)")
     if fields:
         output = CommandOutputSchema(
             type="record",
