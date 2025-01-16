@@ -48,6 +48,6 @@ jobs:
         $CONDA/bin/pytest
         python -m pytest --doctest-modules --ignore=example --ignore=tests/_lib
         python -m doctest -v docs/*.md
-    name: Test examples
-    run: |
-      (cd example; examples=$(grep "^\\$ " *.py | sed "s/.*\\$ //g"); while IFS= read -r line; do PYTHONPATH=.:$PYTHONPATH eval $line; done <<< "$examples")
+    - name: Test examples
+      run: |
+        (cd example; examples=$(grep "^\\$ " *.py | sed "s/.*\\$ //g"); while IFS= read -r line; do PYTHONPATH=.:$PYTHONPATH eval $line; done <<< "$examples")
