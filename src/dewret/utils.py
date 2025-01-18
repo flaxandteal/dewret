@@ -23,7 +23,19 @@ import sys
 import importlib
 import importlib.util
 from types import FrameType, TracebackType, UnionType, ModuleType
-from typing import Any, cast, Protocol, ClassVar, Callable, Iterable, get_args, Hashable
+from typing import (
+    Any,
+    cast,
+    Protocol,
+    ClassVar,
+    Callable,
+    Iterable,
+    get_args,
+    Hashable,
+    Annotated,
+    get_origin,
+    get_args
+)
 from pathlib import Path
 from collections.abc import Sequence, Mapping
 from dataclasses import asdict, is_dataclass
@@ -99,6 +111,7 @@ def load_module_or_package(target_name: str, path: Path) -> ModuleType:
             if spec is None or spec.loader is None:
                 raise ImportError(f"Could not open {path} module")
             module = importlib.util.module_from_spec(spec)
+            sys.modules[target_name] = module
             spec.loader.exec_module(module)
         except ImportError as exc:
             if exception:

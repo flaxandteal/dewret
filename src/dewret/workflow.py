@@ -59,6 +59,7 @@ from .core import (
     ExprType,
 )
 from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
+from .data import Dataset
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -307,6 +308,22 @@ class Parameter(Generic[T], Symbol):
         """
         return getattr(self.make_reference(workflow=None), attr)
 
+class DatasetParameter(Parameter[T]):
+    def make_reference(self, **kwargs: Any) -> "DatasetParameterReference[T]":
+        """Creates a new reference for the parameter.
+
+        The kwargs will be passed to the constructor, but the 
+
+        Args:
+            typ: type of the new reference's target.
+            **kwargs: arguments to pass to the constructor.
+
+        Returns: checks if `typ` is loopable and gives an IterableParameterReference if so,
+            otherwise a normal ParameterReference.
+        """
+        kwargs["parameter"] = self
+        kwargs.setdefault("typ", self.__type__)
+        return DatasetParameterReference(**kwargs)
 
 def param(
     name: str,
@@ -314,6 +331,7 @@ def param(
     tethered: Literal[False] | None | Step | Workflow = False,
     typ: type[T] | Unset = UNSET,
     autoname: bool = False,
+    parameter_cls: type[Parameter[T]] = Parameter[T]
 ) -> T:
     """Create a parameter.
 
@@ -328,7 +346,7 @@ def param(
         default = UnsetType[T](typ)
     return cast(
         T,
-        Parameter(name, default=default, tethered=tethered, autoname=autoname, typ=typ),
+        parameter_cls(name, default=default, tethered=tethered, autoname=autoname, typ=typ),
     )
 
 
@@ -1006,7 +1024,13 @@ class FieldableMixin(_Fieldable):
                 raise AttributeError(
                     f"Tried to index int {field} into a non-sequence type {parent_type} (base: {base})"
                 )
-            if not (field_type := get_args(parent_type)[0]):
+            args = get_args(parent_type)
+            if isinstance(base, type) and issubclass(base, tuple) and len(args) > field:
+                # This is the case of e.g. X = tuple[int, str], where x[1] should have type str, not int.
+                field_type = args[field]
+            elif args[0]:
+                field_type = args[0]
+            else:
                 raise AttributeError(
                     f"Tried to index int {field} into type {parent_type} but can only do so if the first type argument "
                     f"is the element type (args: {get_args(parent_type)}"
@@ -1140,11 +1164,13 @@ class BaseStep(WorkflowComponent):
                 or is_expr(value)
                 or is_dataclass(value)
                 or attr_has(value)
+                or isinstance(value, Dataset)
             ):
                 # Avoid recursive type issues
                 if (
                     not isinstance(value, Reference)
                     and not isinstance(value, FactoryCall)
+                    and not isinstance(value, Dataset)
                     and not isinstance(value, Raw)
                     and is_raw(value)
                 ):
@@ -1578,6 +1604,10 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
         return self._.parameter.make_reference(**kwargs)
 
 
+class DatasetParameterReference(ParameterReference[U]):
+    ...
+
+
 class IterableParameterReference(IterableMixin[U], ParameterReference[U]):
     """Iterable form of parameter references."""
 
@@ -1781,7 +1811,10 @@ class IterableStepReference(IterableMixin[U], StepReference[U]):
         for zipping with a fixed length iterator, or simply prepping fieldnames for serialization.
         """
         # We cast this so that we can treat a step iterator as if it really loops over results.
-        yield cast(Reference[U], IteratedGenerator(self))
+        if self.__fixed_len__ is None:
+            yield cast(Reference[U], IteratedGenerator(self))
+        else:
+            yield from super().__iter__()
 
 
 def is_task(task: Lazy) -> bool:

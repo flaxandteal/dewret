@@ -1,0 +1,43 @@
+components:
+  comp-pipeline-1:
+    executorLabel: exec-pipeline-1
+    outputDefinitions:
+      artifacts:
+        pipeline_1:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-pipeline-1:
+      container:
+        command:
+        - python
+        image: python:3.9
+pipelineInfo:
+  description: DESCRIPTION
+  name: myname
+root:
+  dag:
+    outputs:
+      artifacts:
+        Output:
+          artifactSelectors:
+          - outputArtifactKey: pipeline_1
+            producerSubtask: pipeline-1
+    tasks:
+      pipeline-1:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-pipeline-1
+        taskInfo:
+          name: pipeline-1
+  outputDefinitions:
+    artifacts:
+      Output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.10.1

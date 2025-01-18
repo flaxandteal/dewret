@@ -55,6 +55,11 @@ U = TypeVar("U")
 T = TypeVar("T")
 
 
+# In many cases, get_type_hints built-in functionality for this means it
+# is not necessary. However, outside of a type-hinted function, this is
+# the cleanest way.
+# Note that we only consolidated Annotateds before hitting the next generic,
+# i.e. Annotated[Annotated[Map[Annotated[str, "A"], str], "B"], "C"] -> (Map[Annotated[str, "A"], str], {"B", "C"})
 def strip_annotations(parent_type: type) -> tuple[type, tuple[str]]:
     """Discovers and removes annotations from a parent type.
 
@@ -187,6 +192,7 @@ class ConstructConfiguration:
     field_separator: str = "/"
     field_index_types: str = "int"
     simplify_ids: bool = False
+    strict: bool = True
 
 
 class ConstructConfigurationTypedDict(TypedDict):
@@ -204,6 +210,7 @@ class ConstructConfigurationTypedDict(TypedDict):
     field_separator: NotRequired[str]
     field_index_types: NotRequired[str]
     simplify_ids: NotRequired[bool]
+    strict: NotRequired[bool]
 
 
 @define
@@ -289,7 +296,8 @@ def default_renderer_config() -> RenderConfiguration:
         default_config: Callable[[], RenderConfiguration] = render_module.default_config
     except ImportError:
         return {}
-    return default_config()
+    dc = default_config()
+    return dc
 
 
 @lru_cache
@@ -308,6 +316,7 @@ def default_construct_config() -> ConstructConfiguration:
         allow_plain_dict_fields=False,
         field_separator="/",
         field_index_types="int",
+        strict=True,
     )
 
 
@@ -342,9 +351,11 @@ def get_render_configuration(key: str) -> RawType:
     Returns: (preferably) a JSON/YAML-serializable construct.
     """
     try:
-        return CONFIGURATION.get().render.get(key)
+        if (render := CONFIGURATION.get().render):
+            return render.get(key)
     except LookupError:
-        return default_renderer_config().get(key)
+        ...
+    return default_renderer_config().get(key)
 
 
 class WorkflowComponent:
@@ -612,6 +623,11 @@ class Raw:
     """
 
     value: RawType
+
+    @property
+    def __type__(self) -> type:
+        """Provide a hash that is unique to the `value` member."""
+        return type(self.value)
 
     def __hash__(self) -> int:
         """Provide a hash that is unique to the `value` member."""
