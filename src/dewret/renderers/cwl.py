@@ -30,6 +30,8 @@ from typing import (
     Any,
     Unpack,
     Iterable,
+    Type,
+    TypeVar,
 )
 from types import UnionType
 from inspect import isclass
@@ -78,6 +80,8 @@ class CommandInputSchema(TypedDict):
     items: NotRequired["InputSchemaType"]
     default: NotRequired[RawType]
 
+
+T = TypeVar("T")
 
 InputSchemaType = (
     str
@@ -285,7 +289,9 @@ class StepDefinition:
             step: step to convert.
         """
         out: list[str] | dict[str, "CommandInputSchema"]
-        if attrs_has(step.return_type) or (is_dataclass(step.return_type) and isclass(step.return_type)):
+        if attrs_has(step.return_type) or (
+            is_dataclass(step.return_type) and isclass(step.return_type)
+        ):
             out = to_output_schema("out", step.return_type)["fields"]
         else:
             out = ["out"]
@@ -346,7 +352,7 @@ def cwl_type_from_value(label: str, val: RawType | Unset) -> CommandInputSchema:
     return to_cwl_type(label, raw_type)
 
 
-def to_cwl_type(label: str, typ: type) -> CommandInputSchema:
+def to_cwl_type(label: str, typ: Type[T]) -> CommandInputSchema:
     """Map Python types to CWL types.
 
     Args:
@@ -468,12 +474,15 @@ def to_output_schema(
     elif is_dataclass(typ):
         fields = {}
         for field in dataclass_fields(typ):
-            if isinstance(field.type, type) and issubclass(field.type, RawType | AttrsInstance | DataclassProtocol):
-                fields[str(field.name)] = cast(
-                    CommandInputSchema, to_output_schema(field.name, field.type)
-                )
-            else:
-                raise TypeError("Types of fields in results must also be valid result-types themselves (string-defined types not currently allowed)")
+            # Ideally would raise a type error if the dataclass fields are not valid
+            # for to_output_schema, but given that we have no simple, 3.11-compatible
+            # way of accepting things like generics and forward references, this turns
+            # out to be non-trivial.
+            #  raise TypeError("Types of fields in results must also be valid result-types themselves (string-defined types not currently allowed)")
+            fields[str(field.name)] = cast(
+                CommandInputSchema,
+                to_output_schema(field.name, field.type),  # type: ignore
+            )
     if fields:
         output = CommandOutputSchema(
             type="record",
