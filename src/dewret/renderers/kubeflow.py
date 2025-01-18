@@ -26,7 +26,6 @@ from google.protobuf import json_format
 from kfp.pipeline_spec import pipeline_spec_pb2
 from kfp.compiler import pipeline_spec_builder as builder
 from kfp import dsl
-from kfp.dsl.types import type_utils
 from kfp.dsl.pipeline_context import Pipeline
 from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstance
 from dataclasses import is_dataclass, fields as dataclass_fields
@@ -44,13 +43,12 @@ from typing import (
     Any,
     Unpack,
     Iterable,
-    Callable,
     Optional,
     List,
 )
 from types import UnionType
 import inspect
-from inspect import isclass, getsourcefile, getsource
+from inspect import isclass, getsourcefile
 from pathlib import Path
 from sympy import Basic, Tuple, Dict, jscode, Symbol
 from contextvars import ContextVar
@@ -59,7 +57,6 @@ from dewret.data import Dataset, DatasetPath
 from dewret.core import (
     Raw,
     RawType,
-    FirmType,
 )
 from dewret.workflow import (
     FactoryCall,
@@ -76,11 +73,14 @@ from dewret.utils import (
     crawl_raw,
     DataclassProtocol,
     firm_to_raw,
-    flatten_if_set,
-    Unset,
 )
 from dewret.render import base_render
-from dewret.core import Reference, get_render_configuration, set_render_configuration, strip_annotations
+from dewret.core import (
+    Reference,
+    get_render_configuration,
+    set_render_configuration,
+    strip_annotations,
+)
 
 T = TypeVar("T")
 PIPELINE: ContextVar[Pipeline] = ContextVar("pipeline")
@@ -89,15 +89,6 @@ CHANNELS: ContextVar[dict[Reference[Any], dsl.pipeline_channel.PipelineChannel]]
 )
 KFPDataset = Annotated[T, "KFPDataset"]
 
-def extend_signature(func, inputs, return_ann):
-    import inspect
-    from collections import OrderedDict
-    sig = inspect.signature(func)
-    parameters = OrderedDict()
-    for missing_input in inputs - set(sig.parameters):
-        parameters[missing_input] = inspect.Parameter(missing_input, inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=dsl.Input[dsl.Artifact]) # Check
-    parameters["Output"] = inspect.Parameter(return_ann, inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=dsl.Output[dsl.Artifact])
-    return parameters
 
 # pipelines/sdk/python/kfp/dsl/component_factory.py
 def create_component_from_step(
@@ -105,12 +96,12 @@ def create_component_from_step(
     component_spec: dsl.structures.ComponentSpec,
     base_image: Optional[str] = None,
     target_image: Optional[str] = None,
-    packages_to_install: List[str] = None,
-    pip_index_urls: Optional[List[str]] = None,
+    packages_to_install: list[str] | None = None,
+    pip_index_urls: Optional[list[str]] = None,
     output_component_file: Optional[str] = None,
     install_kfp_package: bool = True,
     kfp_package_path: Optional[str] = None,
-    pip_trusted_hosts: Optional[List[str]] = None,
+    pip_trusted_hosts: Optional[list[str]] = None,
     use_venv: bool = False,
 ) -> dsl.python_component.PythonComponent:
     """Implementation for the @component decorator.
@@ -118,15 +109,16 @@ def create_component_from_step(
     The decorator is defined under component_decorator.py. See the
     decorator for the canonical documentation for this function.
     """
-
-    packages_to_install_command = dsl.component_factory._get_packages_to_install_command(
-        install_kfp_package=install_kfp_package,
-        target_image=target_image,
-        kfp_package_path=kfp_package_path,
-        packages_to_install=packages_to_install,
-        pip_index_urls=pip_index_urls,
-        pip_trusted_hosts=pip_trusted_hosts,
-        use_venv=use_venv,
+    packages_to_install_command = (
+        dsl.component_factory._get_packages_to_install_command(
+            install_kfp_package=install_kfp_package,
+            target_image=target_image,
+            kfp_package_path=kfp_package_path,
+            packages_to_install=packages_to_install,
+            pip_index_urls=pip_index_urls,
+            pip_trusted_hosts=pip_trusted_hosts,
+            use_venv=use_venv,
+        )
     )
 
     command = []
@@ -134,7 +126,8 @@ def create_component_from_step(
     if base_image is None:
         base_image = dsl.component_factory._DEFAULT_BASE_IMAGE
         warnings.warn(
-            ("The default base_image used by the @dsl.component decorator will switch from 'python:3.9' to 'python:3.10' on Oct 1, 2025. To ensure your existing components work with versions of the KFP SDK released after that date, you should provide an explicit base_image argument and ensure your component works as intended on Python 3.10."
+            (
+                "The default base_image used by the @dsl.component decorator will switch from 'python:3.9' to 'python:3.10' on Oct 1, 2025. To ensure your existing components work with versions of the KFP SDK released after that date, you should provide an explicit base_image argument and ensure your component works as intended on Python 3.10."
             ),
             FutureWarning,
             stacklevel=2,
@@ -145,31 +138,43 @@ def create_component_from_step(
 
     if target_image:
         component_image = target_image
-        command, args = dsl.component_factory._get_command_and_args_for_containerized_component(
-            function_name=func.__name__,)
+        command, args = (
+            dsl.component_factory._get_command_and_args_for_containerized_component(
+                function_name=func.__name__,
+            )
+        )
     else:
-        command, args = dsl.component_factory._get_command_and_args_for_lightweight_component(
-            func=func)
-        # RMV - globals!?
-        # Need to strip signature of annotations for original function as not guaranteed to be imported.
+        command, args = (
+            dsl.component_factory._get_command_and_args_for_lightweight_component(
+                func=func
+            )
+        )
+
         sig = inspect.signature(func)
-        return_tuple = False
-        output_name = py_name(step.name)
-        def to_repr(typ):
-            nonlocal return_tuple
-            return_ann, artifacts = to_kfp_type(output_name, typ)
+        output_name = py_name(step.name) or step.name
+
+        def to_repr(typ: type[Any]) -> tuple[str, None | list[tuple[str, str]]]:
+            return_tuple: None | list[tuple[str, str]] = None
+            return_schema, artifacts = to_kfp_type(output_name, typ)
+            return_ann: str | tuple[Any, ...]
             if artifacts:
                 return_ann = artifacts[output_name].__qualname__
             else:
-                return_type = return_ann["type"]
-                if hasattr(return_type, "_fields"):
-                    annotations = [(key, to_repr(return_type.__annotations__[key])) for key in return_type._fields]
-                    return_tuple = annotations # what if nested?
-                    annotations = ", ".join(f"('{k}', {v})" for k, v in annotations)
-                    command[-1] += f"{return_type.__name__} = NamedTuple('{return_type.__name__}', ({annotations}))\n"
-                return_ann = return_type.__name__
-            return return_ann
-        return_ann = to_repr(step.return_type)
+                return_ann = return_schema["type"]
+                if hasattr(return_ann, "_fields"):
+                    return_tuple = [
+                        (key, to_repr(return_ann.__annotations__[key])[0])
+                        for key in return_ann._fields
+                    ]
+                    annotations = ", ".join(f"('{k}', {v})" for k, v in return_tuple)
+                    return_ann = getattr(return_ann, "__name__", "UndefinedTuple")
+                    command[-1] += (
+                        f"{return_ann} = NamedTuple('{return_ann}', ({annotations}))\n"
+                    )
+                return_ann = return_ann.__name__
+            return return_ann, return_tuple
+
+        return_ann, return_tuple = to_repr(step.return_type)
         signature = []
         in_paths = []
         for param in sig.parameters:
@@ -178,9 +183,10 @@ def create_component_from_step(
                 signature.append((param, f"Input[{artifacts[param].__qualname__}]"))
                 in_paths.append(param)
             else:
-                signature.append((param, f"{sig.parameters[param].annotation.__qualname__}"))
-        output_datasets = {}
-        wrapper_str = ', '.join(f'{n}: {t}' for n, t in signature)
+                signature.append(
+                    (param, sig.parameters[param].annotation.__qualname__)
+                )
+        wrapper_str = ", ".join(f"{n}: {t}" for n, t in signature)
         print(step.return_type)
         command[-1] += """
 from kfp.dsl.types.artifact_types import *
@@ -191,12 +197,15 @@ import shutil
 from tempfile import mkstemp
 from pathlib import Path
 """
-        dataset_parameters = []
         if return_tuple:
-            output_param = ", ".join(f"{key}: dsl.Output[{ann}]" for key, ann in return_tuple)
+            output_param = ", ".join(
+                f"{key}: dsl.Output[{ann}]" for key, ann in return_tuple
+            )
         else:
             output_param = f"{output_name}: dsl.Output[{return_ann}]"
-        command[-1] += f"def {func.__name__}_({wrapper_str}, {output_param}):\n    paths = {{}}\n    unpaths = {{}}\n"
+        command[-1] += (
+            f"def {func.__name__}_({wrapper_str}, {output_param}):\n    paths = {{}}\n    unpaths = {{}}\n"
+        )
         for p in in_paths:
             command[-1] += f"    {p} = {p}.path\n"
         dataset_parameters = []
@@ -206,13 +215,21 @@ from pathlib import Path
                 command[-1] += f"    paths['{key}'] = Path({key})\n"
                 command[-1] += f"    unpaths[Path({key})] = 0\n"
                 dataset_parameters.append((key, arg))
-        command[-1] += f"    globals().update(paths)\n    final_output = {func.__name__}({', '.join(f'{a}={a}' for a in sig.parameters)})\n"
+        command[-1] += (
+            f"    globals().update(paths)\n    final_output = {func.__name__}({', '.join(f'{a}={a}' for a in sig.parameters)})\n"
+        )
         if return_tuple:
-            command[-1] += f"    {output_name} = ({', '.join(key for key, _ in return_tuple)})\n"
-            command[-1] += f"    for p, q in zip(final_output, {output_name}): shutil.move(p, q.path)\n"
+            command[-1] += (
+                f"    {output_name} = ({', '.join(key for key, _ in return_tuple)})\n"
+            )
+            command[-1] += (
+                f"    for p, q in zip(final_output, {output_name}): shutil.move(p, q.path)\n"
+            )
         else:
             command[-1] += f"    shutil.move(final_output, {output_name}.path)\n"
-        command[-1] += "    for p in unpaths: shutil.rmtree(str(p), ignore_errors=True)\n"
+        command[-1] += (
+            "    for p in unpaths: shutil.rmtree(str(p), ignore_errors=True)\n"
+        )
         # we could use unpaths[final_output] to update metadata here.
         args[-1] += "_"
 
@@ -221,12 +238,19 @@ from pathlib import Path
             image=component_image,
             command=packages_to_install_command + command,
             args=args,
-        ))
+        )
+    )
 
-    module_path = Path(getsourcefile(func))
-    module_path.resolve()
+    source_file = getsourcefile(func)
+    if source_file:
+        module_path = Path(source_file)
+        module_path.resolve()
+    else:
+        module_path = None
 
-    component_name = dsl.component_factory._python_function_name_to_component_name(func.__name__)
+    component_name = dsl.component_factory._python_function_name_to_component_name(
+        func.__name__
+    )
     component_info = dsl.component_factory.ComponentInfo(
         name=component_name,
         function_name=func.__name__,
@@ -238,7 +262,8 @@ from pathlib import Path
         base_image=base_image,
         packages_to_install=packages_to_install,
         pip_index_urls=pip_index_urls,
-        pip_trusted_hosts=pip_trusted_hosts)
+        pip_trusted_hosts=pip_trusted_hosts,
+    )
 
     if dsl.component_factory.REGISTERED_MODULES is not None:
         dsl.component_factory.REGISTERED_MODULES[component_name] = component_info
@@ -247,39 +272,30 @@ from pathlib import Path
         component_spec.save_to_component_yaml(output_component_file)
 
     return dsl.python_component.PythonComponent(
-        component_spec=component_spec, python_func=func)
+        component_spec=component_spec, python_func=func
+    )
 
-def get_name_to_specs(func_params, return_ann, step_name: str, containerized: bool = False):
+
+def get_name_to_specs(
+    func_params: list[tuple[str, str]], return_ann: type[Any], step_name: str, containerized: bool = False
+) -> tuple[dict[str, dsl.structures.InputSpec], dict[str, dsl.structures.OutputSpec]]:
     name_to_input_specs = {}
     name_to_output_specs = {}
-    # in_artifacts = {}
 
     for key, func_param in func_params:
         func_param, ann = strip_annotations(func_param)
         typ, _ = to_kfp_type(key, func_param)
-        if dsl.types.type_annotations.OutputAnnotation in ann:
-            # Trying to remove this on the basis that having a single output,
-            # while a strong constraint, is not a hard limitation (tuples are possible)
-            # and it lets us create an idiomatic graph.
-            ...
-            # name_to_output_specs[key] = dsl.structures.OutputSpec(
-            #     **typ,
-            # )
-        else:
+        if dsl.types.type_annotations.OutputAnnotation not in ann:
             name_to_input_specs[key] = dsl.structures.InputSpec(
                 **typ,
             )
-        # if set(in_artifacts) & set(input_artifacts):
-        #     raise TypeError(f"Clashing naming keys for input artifacts: {in_artifacts} -- {input_artifacts}")
-        # in_artifacts.update(input_artifacts)
-    # if containerized:
-    #     if return_ann not in [
-    #             inspect.Parameter.empty,
-    #             structures.ContainerSpec,
-    #     ]:
-    #         raise TypeError(
-    #             'Return annotation should be either ContainerSpec or omitted for container components.'
-    #         )
+        # Trying to remove this on the basis that having a single output,
+        # while a strong constraint, is not a hard limitation (tuples are possible)
+        # and it lets us create an idiomatic graph.
+        # else:
+        #     name_to_output_specs[key] = dsl.structures.OutputSpec(
+        #         **typ,
+        #     )
     # ignore omitted returns
     if return_ann is None:
         pass
@@ -288,52 +304,33 @@ def get_name_to_specs(func_params, return_ann, step_name: str, containerized: bo
     return_type = return_type["type"]
     # is NamedTuple
     if hasattr(return_type, "_fields"):
-        output_specs, _ = make_output_spec(prefix, return_ann)
-        # if set(out_artifacts) & set(return_artifacts):
-        #     raise TypeError(f"Clashing artifact names: {out_artifacts} -- {return_artifacts}")
-        # name_to_output_specs.update(return_artifacts)
+        output_specs = make_output_spec(prefix, return_ann)
         for name, output_spec in output_specs.items():
             if output_spec is not None:
                 name_to_output_specs[name] = output_spec
     else:
-        rettyp, _ = make_output_spec(
+        rettyp = make_output_spec(
             dsl.component_factory.SINGLE_OUTPUT_NAME, return_ann
         )
-        # name_to_output_specs.update(return_artifacts)
         if rettyp is not None:
             name_to_output_specs[prefix] = rettyp
-    # if set(name_to_input_specs) & set(in_artifacts):
-    #     raise TypeError(f"Clashing artifact names with parameters: {in_artifacts} -- {name_to_input_specs}")
-    # name_to_input_specs.update({
-    #     key: dsl.structures.InputSpec(
-    #         **dsl.component_factory.make_input_output_spec_args(art)
-    #     )
-    #     for key, art in in_artifacts.items()
-    # })
     return name_to_input_specs, name_to_output_specs
 
+
 def ensure_channels(expression: Any, task_name: str | None) -> Any:
-    def remap(ref):
-        if isinstance(ref, Reference) and not isinstance(ref, DatasetParameterReference):
-            # RMV: is this OK re. artifacts?
+    def remap(ref: Any) -> Any:
+        if isinstance(ref, Reference) and not isinstance(
+            ref, DatasetParameterReference
+        ):
             if ref not in channels:
                 kfp_type, artifacts = to_kfp_type(ref.name, with_type(ref))
-                # if kfp_type["type"] != "Artifact":
+                channel_type = kfp_type["type"]
                 channels[ref] = dsl.pipeline_channel.create_pipeline_channel(
                     name=py_name(ref.name),
-                    channel_type=kfp_type["type"],  # type: ignore
+                    channel_type=channel_type,
                     task_name=k8s_name(ref._.step.name),
-                    is_artifact_list=False,
+                    is_artifact_list=kfp_type["is_artifact_list"],
                 )
-                # for key, art in artifacts.items():
-                #     if key not in channels:
-                #         spec_args = dsl.component_factory.make_input_output_spec_args(art)
-                #         channels[key] = dsl.pipeline_channel.create_pipeline_channel(
-                #             name=k8s_name(key),
-                #             channel_type=spec_args["type"],  # type: ignore
-                #             task_name=k8s_name(key),
-                #             is_artifact_list=spec_args["is_artifact_list"],
-                #         )
             return channels[ref]
         elif isinstance(ref, Raw):
             return ref.value
@@ -360,27 +357,6 @@ class DewretPipelineTask(dsl.pipeline_task.PipelineTask):
         self.parent_task_group: None | TasksGroup = None
         args = args or {}
 
-        if component_spec.inputs:
-            for input_name, argument_value in args.items():
-                if input_name not in component_spec.inputs:
-                    raise ValueError(
-                        f"Component {component_spec.name!r} got an unexpected input:"
-                        f" {input_name!r}."
-                    )
-
-                input_spec = component_spec.inputs[input_name]
-
-                # TODO: we cannot use this as-is, since the value->type
-                # map is not the same as dewret.
-                # type_utils.verify_type_compatibility(
-                #     given_value=argument_value,
-                #     expected_spec=input_spec,
-                #     error_message_prefix=(
-                #         f"Incompatible argument passed to the input "
-                #         f"{input_name!r} of component {component_spec.name!r}: "
-                #     ),
-                # )
-
         self.component_spec = component_spec
 
         self._task_spec = dsl.structures.TaskSpec(
@@ -396,7 +372,6 @@ class DewretPipelineTask(dsl.pipeline_task.PipelineTask):
         self.container_spec = None
         self.pipeline_spec = None
         self._ignore_upstream_failure_tag = False
-        # platform_config for this primitive task; empty if task is for a graph component
         self.platform_config = {}
 
         def validate_placeholder_types(
@@ -423,9 +398,10 @@ class DewretPipelineTask(dsl.pipeline_task.PipelineTask):
         else:
             self.pipeline_spec = self.component_spec.implementation.graph
 
-        self._outputs = {output.name: ensure_channels(output, component_spec.name)}
 
-        # args = {arg: ensure_channels(arg) for arg in args}
+        if output is not None:
+            self._outputs = {output.name: ensure_channels(output, component_spec.name)}
+
         self._inputs = args
 
         self._channel_inputs = [
@@ -498,17 +474,10 @@ class CommandInputSchema(TypedDict):
 
     Attributes:
         type: CWL type of this input.
-        label: name to show for this input.
-        fields: (for `record`) individual fields in a dict-like structure.
-        items: (for `array`) type that each field will have.
     """
 
-    type: "InputSchemaType"
-    label: str
-    fields: NotRequired[dict[str, "CommandInputSchema"]]
-    items: NotRequired["InputSchemaType"]
-    default: NotRequired[RawType]
-    artifacts: NotRequired[list[type[DatasetPath]]]
+    type: str | tuple[Any, ...]
+    is_artifact_list: NotRequired[bool]
 
 
 InputSchemaType = (
@@ -583,6 +552,11 @@ def render_expression(ref: Any) -> "ReferenceDefinition":
 
 class ExecutorConfiguration(TypedDict):
     packages: list[str]
+    image: NotRequired[str]
+    pip_index_urls: NotRequired[list[str]]
+    kfp_package_path: NotRequired[str]
+    pip_trusted_hosts: NotRequired[list[str]]
+
 
 class KubeflowRendererConfiguration(TypedDict):
     """Configuration for the renderer.
@@ -690,7 +664,6 @@ class ReferenceDefinition:
         return representation
 
 
-@define
 class StepDefinition:
     """CWL-renderable step.
 
@@ -702,11 +675,6 @@ class StepDefinition:
         run: task to execute for this step.
         in_: inputs from values or other steps.
     """
-
-    name: str
-    run: str
-    out: dict[str, "CommandInputSchema"] | list[str]
-    in_: Mapping[str, ReferenceDefinition | Raw]
 
     @classmethod
     def from_step(cls, step: BaseStep) -> "StepDefinition":
@@ -721,9 +689,16 @@ class StepDefinition:
         # equivalent to KFP's Output[Artifact] annotation.
         # Ignore dataset parameter references when constructing the function.
         # They will be _actual_ globals when it runs.
-        param_types = [(key, with_type(value)) for key, value in step.arguments.items() if not isinstance(value, DatasetParameterReference)]
-        inputs, outputs = get_name_to_specs(param_types, step.return_type, step_name=k8s_name(step.name))
-        executor_config = get_render_configuration("executor")["default"]
+        param_types = [
+            (key, with_type(value))
+            for key, value in step.arguments.items()
+            if not isinstance(value, DatasetParameterReference)
+        ]
+        inputs, outputs = get_name_to_specs(
+            param_types, step.return_type, step_name=k8s_name(step.name) or step.name
+        )
+        executor_configs = cast(dict[str, ExecutorConfiguration], get_render_configuration("executor"))
+        executor_config = executor_configs["default"]
 
         default_image = executor_config.get("image", "python:3.9")
         default_packages = executor_config.get("packages")
@@ -732,7 +707,7 @@ class StepDefinition:
         default_pip_trusted_hosts = executor_config.get("pip_trusted_hosts")
         container = dsl.structures.ContainerSpecImplementation(
             image="python:3.9",
-            command=["python"], # RMV
+            command=["python"],  # RMV
             args=[],
         )
         component_spec = dsl.structures.ComponentSpec(
@@ -741,14 +716,14 @@ class StepDefinition:
             inputs=inputs,
             # outputs=make_output_spec("out", step.return_type)["fields"], # make_output_spec(return_ann)
             outputs=outputs,  # make_output_spec(return_ann)
-            implementation=dsl.structures.Implementation(container)
+            implementation=dsl.structures.Implementation(container),
         )
 
         if isinstance(step, NestedStep):
-            cmpt = dsl.container_component_class.ContainerComponent(component_spec, step.task)
+            cmpt = dsl.container_component_class.ContainerComponent(
+                component_spec, step.task
+            )
         else:
-            def fn(*args, **kwargs):
-                ...
             cmpt = create_component_from_step(
                 base_image=default_image,
                 component_spec=component_spec,
@@ -756,14 +731,12 @@ class StepDefinition:
                 pip_index_urls=default_pip_index_urls,
                 kfp_package_path=default_kfp_package_path,
                 pip_trusted_hosts=default_pip_trusted_hosts,
-                step=step
+                step=step,
             )
 
         task_inputs = {
-            key: ensure_channels(
-                arg,
-                step.name
-            ) for key, arg in step.arguments.items()
+            key: ensure_channels(arg, step.name)
+            for key, arg in step.arguments.items()
             if not isinstance(arg, DatasetParameterReference)
         }
         task_spec = DewretPipelineTask(
@@ -785,40 +758,18 @@ class StepDefinition:
         )
         return task_spec
 
-    def render(self) -> dict[str, RawType]:
-        """Render to a dict-like structure.
 
-        Returns:
-            Reduced form as a native Python dict structure for
-            serialization.
-        """
-        return {
-            "run": self.run,
-            "in": {
-                key: (
-                    ref.render()
-                    if isinstance(ref, ReferenceDefinition)
-                    else render_expression(ref).render()
-                    if isinstance(ref, Basic)
-                    else {"default": firm_to_raw(ref.value)}
-                    if hasattr(ref, "value")
-                    else render_expression(ref).render()
-                )
-                for key, ref in self.in_.items()
-            },
-            "out": crawl_raw(self.out),
-        }
-
-
-def dataset_path_to_artifact(typ):
-    typ, annotateds = strip_annotations(typ)
+def dataset_path_to_artifact(typ: type[Any]) -> type[dsl.types.artifact_types.Artifact]:
+    _, annotateds = strip_annotations(typ)
+    typ = dsl.types.artifact_types.Artifact
     if "KFPDataset" in annotateds:
         typ = dsl.types.artifact_types.Dataset
-    else:
-        typ = dsl.types.artifact_types.Artifact
     return typ
 
-def to_kfp_type(label: str, full_typ: type) -> tuple[CommandInputSchema, dict[str, type[dsl.types.artifact_types.Artifact]]]:
+
+def to_kfp_type(
+    label: str, full_typ: type
+) -> tuple[CommandInputSchema, dict[str, type[dsl.types.artifact_types.Artifact]]]:
     """Map Python types to CWL types.
 
     Args:
@@ -830,8 +781,8 @@ def to_kfp_type(label: str, full_typ: type) -> tuple[CommandInputSchema, dict[st
     """
     typ, annotateds = strip_annotations(full_typ)
     typ_dict: CommandInputSchema = {"type": ""}
+    artifacts: dict[str, type[dsl.types.artifact_types.Artifact]]= {}
     base: Any | None = typ
-    artifacts = {}
     args = get_args(typ)
     if args:
         base = get_origin(typ)
@@ -852,37 +803,32 @@ def to_kfp_type(label: str, full_typ: type) -> tuple[CommandInputSchema, dict[st
         raise RuntimeError("KFP cannot currently handle bytes as a annotation type.")
     elif isinstance(typ, UnionType):
         raise RuntimeError("KFP cannot currently handle unions as a annotation type.")
-        #typ_dict.update(
-        #    {"type": NamedTuple(label, ((f"item{n}", item) for n, item in enumerate(args)))}
-        #)
-        #typ_dict["type"].__annotations__ = {f"item{n}": item for n, item in enumerate(args)}
     elif isclass(base) and issubclass(base, Iterable):
         try:
             if len(args) > 1:
                 # This is only true for a pipeline - components can output only one artifact.
-                # artifact_args = [arg for arg in args if issubclass(strip_annotateds(arg)[0], DatasetPath)]
-                # if artifact_args:
-                #     if len(args) != len(artifact_args):
-                #         raise TypeError(f"Tuple return must be all artifacts or no artifacts: {args} -- {artifact_args}")
-                #     if len({type(arg) for arg in args}) != 1:
-                #         raise TypeError(f"Can only have one artifact type in a tuple: {arg}")
-                #     print(artifact_args, label)
-                #     typ_dict.update(dsl.component_factory.make_input_output_spec_args(list[dataset_path_to_artifact(artifact_args[0])]))
-                # else:
                 tuple_label = label.replace("-", "_")
                 typ_dict.update(
                     {
-                        "type": NamedTuple(tuple_label, ((f"{tuple_label}__{n}", item) for n, item in enumerate(args)))
+                        "type": NamedTuple(
+                            tuple_label,
+                            (
+                                (f"{tuple_label}__{n}", item)
+                                for n, item in enumerate(args)
+                            ),
+                        )
                     }
                 )
-                typ_dict["type"].__annotations__ = {f"{tuple_label}__{n}": item for n, item in enumerate(args)}
+                typ_dict["type"].__annotations__ = {
+                    f"{tuple_label}__{n}": item for n, item in enumerate(args)
+                }
             elif len(args) == 1:
                 interior_typ, interior_artifacts = to_kfp_type(label, args[0])
-                typ_dict.update(
-                    {"type": f"List[{interior_typ["type"]}"}
-                )
+                typ_dict.update({"type": f"List[{interior_typ["type"]}"})
                 if set(artifacts.keys()) & set(interior_artifacts.keys()):
-                    raise TypeError(f"Artifacts have overlapping keys: {artifacts} -- {interior_artifacts}")
+                    raise TypeError(
+                        f"Artifacts have overlapping keys: {artifacts} -- {interior_artifacts}"
+                    )
                 artifacts.update(interior_artifacts)
             else:
                 typ_dict["type"] = "array"
@@ -894,9 +840,13 @@ def to_kfp_type(label: str, full_typ: type) -> tuple[CommandInputSchema, dict[st
         typ_dict["type"] = typ if isinstance(typ, str) else typ.__name__
     elif isinstance(typ, type) and issubclass(typ, Dataset):
         artifacts[label] = dataset_path_to_artifact(full_typ)
-        typ_dict.update(dsl.component_factory.make_input_output_spec_args(artifacts[label]))
+        typ_dict.update(
+            dsl.component_factory.make_input_output_spec_args(artifacts[label])
+        )
     elif typ:
-        raise TypeError(f"Cannot render type ({typ}) to CWL for {label}; base: {base}; args: {args}")
+        raise TypeError(
+            f"Cannot render type ({typ}) to CWL for {label}; base: {base}; args: {args}"
+        )
     return typ_dict, artifacts
 
 
@@ -919,7 +869,7 @@ def make_output_spec(
     label: str,
     typ: type[RawType | AttrsInstance | DataclassProtocol],
     output_source: str | None = None,
-) -> tuple[dsl.structures.OutputSpec, dict[str, type[DatasetPath]]]:
+) -> dsl.structures.OutputSpec:
     """Turn a step's output into an output schema.
 
     Takes a source, type and label and provides a description for CWL.
@@ -933,40 +883,26 @@ def make_output_spec(
         CWL CommandOutputSchema-like structure for embedding into an `outputs` block
     """
     fields = None
-    artifacts = {}
     if attrs_has(typ):
         fields = {}
         for field in attrs_fields(typ):
-            output_spec, field_artifacts = make_output_spec(field.name, field.type)
-            fields[str(field.name)] = cast(
-                dsl.structures.OutputSpec, output_spec
-            )
-            if set(artifacts) & set(field_artifacts):
-                raise TypeError(f"Clashing key names: {artifacts} -- {field_artifacts}")
-            artifacts.update(field_artifacts)
+            output_spec = make_output_spec(field.name, field.type)
+            fields[str(field.name)] = cast(dsl.structures.OutputSpec, output_spec)
     elif is_dataclass(typ):
         fields = {}
         for field in dataclass_fields(typ):
-            output_spec, field_artifacts = make_output_spec(field.name, field.type)
-            fields[str(field.name)] = cast(
-                dsl.structures.OutputSpec, output_spec
-            )
-            if set(artifacts) & set(field_artifacts):
-                raise TypeError(f"Clashing key names: {artifacts} -- {field_artifacts}")
-            artifacts.update(field_artifacts)
+            output_spec = make_output_spec(field.name, field.type)
+            fields[str(field.name)] = cast(dsl.structures.OutputSpec, output_spec)
     else:
         kfp_type, _ = to_kfp_type(label, typ)
-        kfp_type = kfp_type["type"]
-        if hasattr(kfp_type, "_fields"):
+        kfp_ann = kfp_type["type"]
+        if hasattr(kfp_ann, "_fields"):
             fields = {}
-            for name in kfp_type._fields:
-                output_spec, field_artifacts = make_output_spec(name, kfp_type.__annotations__[name])
-                fields[name] = cast(
-                    dsl.structures.OutputSpec, output_spec
+            for name in kfp_ann._fields:
+                output_spec = make_output_spec(
+                    name, kfp_ann.__annotations__[name]
                 )
-                if set(artifacts) & set(field_artifacts):
-                    raise TypeError(f"Clashing key names: {artifacts} -- {field_artifacts}")
-                artifacts.update(field_artifacts)
+                fields[name] = cast(dsl.structures.OutputSpec, output_spec)
 
     if fields:
         output = fields
@@ -974,106 +910,19 @@ def make_output_spec(
         # TODO: this complains because NotRequired keys are never present,
         # but that does not seem like a problem here - likely a better solution.
         kfp_type, inner_artifacts = to_kfp_type(label, typ)
-        if set(artifacts) & set(inner_artifacts):
-            raise TypeError(f"Clashing key names: {artifacts} -- {inner_artifacts}")
-        artifacts.update({
-            key: dsl.structures.OutputSpec(
-                **dsl.component_factory.make_input_output_spec_args(art)
-            ) for key, art in inner_artifacts.items()
-        })
         output = dsl.structures.OutputSpec(**kfp_type)
     # if output_source is not None:
     #     output["outputSource"] = output_source
-    return output, artifacts
-
-
-@define
-class OutputsDefinition:
-    """CWL-renderable set of workflow outputs.
-
-    Turns dewret results into a CWL output block.
-
-    Attributes:
-        outputs: sequence of results from a workflow.
-    """
-
-    outputs: (
-        dict[str, "CommandOutputSchema"]
-        | list["CommandOutputSchema"]
-        | CommandOutputSchema
-    )
-
-    @classmethod
-    def from_results(
-        cls,
-        results: dict[str, StepReference[Any]]
-        | list[StepReference[Any]]
-        | tuple[StepReference[Any], ...],
-    ) -> "OutputsDefinition":
-        """Takes a mapping of results into a CWL structure.
-
-        Pulls the result type from the signature, ultimately, if possible.
-
-        Returns:
-            CWL-like structure representing all workflow outputs.
-        """
-
-        def _build_results(result: Any) -> RawType:
-            if isinstance(result, Reference):
-                # TODO: need to work out how to tell mypy that a TypedDict is also dict[str, RawType]
-                return make_output_spec(  # type: ignore
-                    with_field(result), with_type(result), output_source=to_name(result)
-                )
-            results = result
-            return (
-                [_build_results(result) for result in results]
-                if isinstance(results, list | tuple | Tuple)
-                else {key: _build_results(result) for key, result in results.items()}
-            )
-
-        try:
-            # TODO: sort out this nested type building.
-            return cls(outputs=_build_results(results))  # type: ignore
-        except AttributeError:
-            expr, references = expr_to_references(results)
-            reference_names = sorted(
-                {
-                    str(ref._.parameter)
-                    if isinstance(ref, ParameterReference)
-                    else str(ref._.step)
-                    for ref in references
-                }
-            )
-            return cls(
-                outputs={
-                    "out": {
-                        "type": "float",  # WARNING: we assume any arithmetic expression returns a float.
-                        "label": "out",
-                        "expression": str(expr),
-                        "source": reference_names,
-                    }
-                }
-            )
-
-    def render(self) -> dict[str, RawType] | list[RawType]:
-        """Render to a dict-like structure.
-
-        Returns:
-            Reduced form as a native Python dict structure for
-            serialization.
-        """
-        return (
-            [crawl_raw(output) for output in self.outputs]
-            if isinstance(self.outputs, list)
-            else {key: crawl_raw(output) for key, output in self.outputs.items()}
-        )
+    return output
 
 
 def py_name(name: str | None) -> str | None:
     return name and name.replace("-", "_").replace("[", "__").replace("]", "")
 
+
 def k8s_name(name: str | None) -> str | None:
     return name and name.replace("_", "-").replace("[", "--").replace("]", "")
+
 
 class DewretGraphComponent(dsl.base_component.BaseComponent):
     """CWL-renderable workflow.
@@ -1086,22 +935,32 @@ class DewretGraphComponent(dsl.base_component.BaseComponent):
     """
 
     @classmethod
-    def from_workflow(
-        cls, workflow: Workflow, name: None | str = None, execute: bool = True
-    ) -> "DewretGraphComponent":
-        """Build from a `Workflow`.
+    def _make_pipeline(
+        cls, workflow: Workflow, name: str
+    ) -> tuple[Pipeline, dict[str, Any]]:
+        pipeline_outputs = {}
+        with BuilderPipeline(name) as dsl_pipeline:
+            for step in workflow.indexed_steps.values():
+                if isinstance(step, FactoryCall) and get_render_configuration(
+                    "factories_as_params"
+                ):
+                    continue
+                StepDefinition.from_step(step)
+            pipeline_outputs = {
+                dsl.component_factory.SINGLE_OUTPUT_NAME: ensure_channels(
+                    workflow.result, name
+                )
+            }
+        return dsl_pipeline, pipeline_outputs
 
-        Converts a `dewret.workflow.Workflow` into a CWL-rendering object.
 
-        Args:
-            workflow: workflow to convert.
-            name: name of this workflow, if it should have one.
-        """
-        display_name = name
-        name = k8s_name(name)
+    @classmethod
+    def _make_component_spec(
+        cls, workflow: Workflow, name: str | None
+    ) -> dsl.structures.ComponentSpec:
         parameters: list[ParameterReference[Any] | FactoryCall] = [
-            param for param in
-            workflow.find_parameters(
+            param
+            for param in workflow.find_parameters(
                 include_factory_calls=not get_render_configuration(
                     "factories_as_params"
                 )
@@ -1112,29 +971,16 @@ class DewretGraphComponent(dsl.base_component.BaseComponent):
         if get_render_configuration("factories_as_params"):
             parameters += list(workflow.find_factories().values())
 
-        pipeline_outputs = {}
-        with BuilderPipeline(name or "myname") as dsl_pipeline:
-            for step in workflow.indexed_steps.values():
-                if isinstance(step, FactoryCall) and get_render_configuration(
-                    "factories_as_params"
-                ):
-                    continue
-                StepDefinition.from_step(step)
-            pipeline_outputs = {
-                dsl.component_factory.SINGLE_OUTPUT_NAME: ensure_channels(
-                    workflow.result,
-                    name
-                )
-            }
-
-        inputs, outputs = get_name_to_specs([
-            (param.name, with_type(param))
-            for param in parameters
-        ], with_type(workflow.result), step_name=name)
+        inputs, outputs = get_name_to_specs(
+            [(param.name, with_type(param)) for param in parameters],
+            with_type(workflow.result),
+            step_name=name or "undefined_step",
+        )
+        print(outputs, "OO")
 
         description = "DESCRIPTION"
         component_name = "NAME"
-        component_spec = dsl.structures.ComponentSpec(
+        return dsl.structures.ComponentSpec(
             name=component_name,
             description=description,
             inputs=inputs,
@@ -1142,16 +988,22 @@ class DewretGraphComponent(dsl.base_component.BaseComponent):
             implementation=dsl.structures.Implementation(),
         )
 
-        args_list = []
-        for parameter in parameters:
-            input_spec = component_spec.inputs[parameter.name]
-            args_list.append(
-                dsl.pipeline_channel.create_pipeline_channel(
-                    name=parameter.name,
-                    channel_type=input_spec.type,
-                    is_artifact_list=input_spec.is_artifact_list,
-                )
-            )
+
+    @classmethod
+    def from_workflow(
+        cls, workflow: Workflow, display_name: None | str = None, execute: bool = True
+    ) -> "DewretGraphComponent":
+        """Build from a `Workflow`.
+
+        Converts a `dewret.workflow.Workflow` into a CWL-rendering object.
+
+        Args:
+            workflow: workflow to convert.
+            name: name of this workflow, if it should have one.
+        """
+        name = k8s_name(display_name) or "unnamed-pipeline"
+        dsl_pipeline, pipeline_outputs = cls._make_pipeline(workflow, name)
+        component_spec = cls._make_component_spec(workflow, name)
 
         graph_component = cls(component_spec=component_spec)
         pipeline_group = dsl_pipeline.groups[0]
@@ -1163,9 +1015,6 @@ class DewretGraphComponent(dsl.base_component.BaseComponent):
             pipeline_outputs=pipeline_outputs,
             pipeline_config={},
         )
-        # pipeline_root = getattr(pipeline_func, 'pipeline_root', None)
-        # if pipeline_root is not None:
-        #     pipeline_spec.default_pipeline_root = pipeline_root
         if display_name is not None:
             pipeline_spec.pipeline_info.display_name = display_name
         if component_spec.description is not None:
@@ -1190,15 +1039,7 @@ class DewretGraphComponent(dsl.base_component.BaseComponent):
             Reduced form as a native Python dict structure for
             serialization.
         """
-        pipeline_spec_dict = json_format.MessageToDict(self.pipeline_spec)
-        # yaml_comments = extract_comments_from_pipeline_spec(pipeline_spec_dict,
-        #                                                     self.description)
-        # has_platform_specific_features = len(self.platform_spec.platforms) > 0
-
-        # documents = [pipeline_spec_dict]
-        # if has_platform_specific_features:
-        #     documents.append(json_format.MessageToDict(self.platform_spec))
-        return yaml.safe_dump(pipeline_spec_dict, sort_keys=True)
+        return json_format.MessageToDict(self.pipeline_spec) # type: ignore
 
 
 def render(

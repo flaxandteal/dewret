@@ -308,11 +308,12 @@ class Parameter(Generic[T], Symbol):
         """
         return getattr(self.make_reference(workflow=None), attr)
 
+
 class DatasetParameter(Parameter[T]):
     def make_reference(self, **kwargs: Any) -> "DatasetParameterReference[T]":
         """Creates a new reference for the parameter.
 
-        The kwargs will be passed to the constructor, but the 
+        The kwargs will be passed to the constructor, but the
 
         Args:
             typ: type of the new reference's target.
@@ -325,13 +326,14 @@ class DatasetParameter(Parameter[T]):
         kwargs.setdefault("typ", self.__type__)
         return DatasetParameterReference(**kwargs)
 
+
 def param(
     name: str,
     default: T | UnsetType[T] | Unset = UNSET,
     tethered: Literal[False] | None | Step | Workflow = False,
     typ: type[T] | Unset = UNSET,
     autoname: bool = False,
-    parameter_cls: type[Parameter[T]] = Parameter[T]
+    parameter_cls: type[Parameter[T]] = Parameter[T],
 ) -> T:
     """Create a parameter.
 
@@ -346,7 +348,9 @@ def param(
         default = UnsetType[T](typ)
     return cast(
         T,
-        parameter_cls(name, default=default, tethered=tethered, autoname=autoname, typ=typ),
+        parameter_cls(
+            name, default=default, tethered=tethered, autoname=autoname, typ=typ
+        ),
     )
 
 
@@ -1604,8 +1608,8 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
         return self._.parameter.make_reference(**kwargs)
 
 
-class DatasetParameterReference(ParameterReference[U]):
-    ...
+class DatasetParameterReference(ParameterReference[U]): ...
+
 
 
 class IterableParameterReference(IterableMixin[U], ParameterReference[U]):

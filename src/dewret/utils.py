@@ -23,19 +23,7 @@ import sys
 import importlib
 import importlib.util
 from types import FrameType, TracebackType, UnionType, ModuleType
-from typing import (
-    Any,
-    cast,
-    Protocol,
-    ClassVar,
-    Callable,
-    Iterable,
-    get_args,
-    Hashable,
-    Annotated,
-    get_origin,
-    get_args
-)
+from typing import Any, cast, Protocol, ClassVar, Callable, Iterable, Hashable, get_args
 from pathlib import Path
 from collections.abc import Sequence, Mapping
 from dataclasses import asdict, is_dataclass

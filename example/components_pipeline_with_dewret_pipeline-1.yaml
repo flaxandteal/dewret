@@ -400,12 +400,12 @@ deploymentSpec:
           \ dsl.Output[Dataset]):\n    paths = {}\n    unpaths = {}\n    input_df\
           \ = input_df.path\n    f, X_train_artifact = mkstemp(); os.close(f)\n  \
           \  paths['X_train_artifact'] = Path(X_train_artifact)\n    unpaths[Path(X_train_artifact)]\
-          \ = 0\n    f, X_test_artifact = mkstemp(); os.close(f)\n    paths['X_test_artifact']\
-          \ = Path(X_test_artifact)\n    unpaths[Path(X_test_artifact)] = 0\n    f,\
-          \ y_train_artifact = mkstemp(); os.close(f)\n    paths['y_train_artifact']\
+          \ = 0\n    f, y_train_artifact = mkstemp(); os.close(f)\n    paths['y_train_artifact']\
           \ = Path(y_train_artifact)\n    unpaths[Path(y_train_artifact)] = 0\n  \
           \  f, y_test_artifact = mkstemp(); os.close(f)\n    paths['y_test_artifact']\
-          \ = Path(y_test_artifact)\n    unpaths[Path(y_test_artifact)] = 0\n    globals().update(paths)\n\
+          \ = Path(y_test_artifact)\n    unpaths[Path(y_test_artifact)] = 0\n    f,\
+          \ X_test_artifact = mkstemp(); os.close(f)\n    paths['X_test_artifact']\
+          \ = Path(X_test_artifact)\n    unpaths[Path(X_test_artifact)] = 0\n    globals().update(paths)\n\
           \    final_output = train_test_split(input_df=input_df)\n    train_test_split_1_1\
           \ = (train_test_split_1_1__0, train_test_split_1_1__1, train_test_split_1_1__2,\
           \ train_test_split_1_1__3)\n    for p, q in zip(final_output, train_test_split_1_1):\

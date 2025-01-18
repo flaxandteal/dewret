@@ -1,15 +1,17 @@
-from typing import IO, Generator, cast
+from typing import IO, cast
 from pathlib import Path
 from os import PathLike
-from contextlib import contextmanager
-from tempfile import NamedTemporaryFile
 
-class Dataset:
-    ...
+
+class Dataset: ...
+
 
 class DatasetPath(Dataset, Path):
     def __truediv__(self, other: PathLike[str] | str) -> Path:
-        return cast(Path, super().__truediv__(other)) # Cast this up to make sure mypy flags abuse of this
+        return cast(
+            Path, super().__truediv__(other)
+        )  # Cast this up to make sure mypy flags abuse of this
+
 
 class DataManager:
     def path(self, mode: str = "r") -> DatasetPath:

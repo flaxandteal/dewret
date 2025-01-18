@@ -49,7 +49,9 @@ BasicType = str | float | bool | bytes | int | None
 RawType = BasicType | list["RawType"] | dict[str, "RawType"]
 FirmType = RawType | list["FirmType"] | dict[str, "FirmType"] | tuple["FirmType", ...]
 # Basic is from Sympy, which does not have type annotations, so ExprType cannot pass mypy
-ExprType = (FirmType | Basic | list["ExprType"] | dict[str, "ExprType"] | tuple["ExprType", ...])  # type: ignore # fmt: skip
+ExprType = (
+    FirmType | Basic | list["ExprType"] | dict[str, "ExprType"] | tuple["ExprType", ...]  # type: ignore
+)
 
 U = TypeVar("U")
 T = TypeVar("T")
@@ -351,7 +353,7 @@ def get_render_configuration(key: str) -> RawType:
     Returns: (preferably) a JSON/YAML-serializable construct.
     """
     try:
-        if (render := CONFIGURATION.get().render):
+        if render := CONFIGURATION.get().render:
             return render.get(key)
     except LookupError:
         ...
