@@ -22,6 +22,7 @@ import inspect
 import ast
 import sys
 import importlib
+from ._cpython_mod import getclosurevars
 from functools import lru_cache
 from types import FunctionType, ModuleType
 from typing import (
@@ -201,7 +202,7 @@ class FunctionAnalyser:
     def globals(self) -> Mapping[str, Any]:
         """Get the globals for this Callable."""
         try:
-            fn_tuple = inspect.getclosurevars(self.fn)
+            fn_tuple = getclosurevars(self.fn)
             fn_globals = dict(fn_tuple.globals)
             fn_globals.update(fn_tuple.nonlocals)
         # This covers the case of wrapping, rather than decorating.
