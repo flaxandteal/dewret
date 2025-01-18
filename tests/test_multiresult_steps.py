@@ -289,7 +289,9 @@ def test_pair_can_be_returned_from_step() -> None:
 def test_list_can_be_returned_from_step() -> None:
     """Tests whether a task can insert result fields into other steps."""
     with set_configuration(flatten_all_nested=True):
-        workflow = construct(list_cast(iterable=algorithm_with_pair()), simplify_ids=True)
+        workflow = construct(
+            list_cast(iterable=algorithm_with_pair()), simplify_ids=True
+        )
         rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""

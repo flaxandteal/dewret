@@ -13,13 +13,14 @@ from dewret.render import base_render
 
 from .extra import JUMP
 
+
 class FrenderRendererConfiguration(TypedDict):
     allow_complex_types: bool
 
+
 def default_config() -> FrenderRendererConfiguration:
-    return FrenderRendererConfiguration({
-        "allow_complex_types": True
-    })
+    return FrenderRendererConfiguration({"allow_complex_types": True})
+
 
 @dataclass
 class NestedStepDefinition:
@@ -28,17 +29,14 @@ class NestedStepDefinition:
 
     @classmethod
     def from_nested_step(cls, nested_step: NestedStep) -> "NestedStepDefinition":
-        return cls(
-            name=nested_step.name,
-            subworkflow_name=nested_step.subworkflow.name
-        )
+        return cls(name=nested_step.name, subworkflow_name=nested_step.subworkflow.name)
 
     def render(self) -> str:
-        return \
-f"""
+        return f"""
 A portal called {self.name} to another workflow,
 whose name is {self.subworkflow_name}
 """
+
 
 @dataclass
 class StepDefinition:
@@ -46,13 +44,10 @@ class StepDefinition:
 
     @classmethod
     def from_step(cls, step: Step) -> "StepDefinition":
-        return cls(
-            name=step.name
-        )
+        return cls(name=step.name)
 
     def render(self) -> str:
-        return \
-f"""
+        return f"""
 Something called {self.name}
 """
 
@@ -80,15 +75,15 @@ class WorkflowDefinition:
         return cls(name=name, steps=steps)
 
     def render(self) -> str:
-        steps = "\n".join('* ' + indent(step.render(), '  ')[3:] for step in self.steps)
-        return \
-f"""
+        steps = "\n".join("* " + indent(step.render(), "  ")[3:] for step in self.steps)
+        return f"""
 I found a workflow called {self.name}.
 It has {len(self.steps)} steps!
 They are:
 {steps}
 It probably got made with JUMP={JUMP}
 """
+
 
 def render_raw(
     workflow: Workflow, **kwargs: Unpack[FrenderRendererConfiguration]
@@ -104,8 +99,7 @@ def render_raw(
         serialization.
     """
     # TODO: work out how to handle these hints correctly.
-    set_render_configuration(kwargs) # type: ignore
+    set_render_configuration(kwargs)  # type: ignore
     return base_render(
-        workflow,
-        lambda workflow: WorkflowDefinition.from_workflow(workflow).render()
+        workflow, lambda workflow: WorkflowDefinition.from_workflow(workflow).render()
     )

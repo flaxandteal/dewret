@@ -19,6 +19,7 @@ from ._lib.extra import (
     tuple_float_return,
 )
 
+
 @task()
 def floor(num: int | float) -> int:
     """Converts int/float to int."""
@@ -77,7 +78,9 @@ def test_input_factories() -> None:
     now = factory(get_now)()
     result = days_in_future(now=now, num=3)
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow, allow_complex_types=True, factories_as_params=True)["__root__"]
+    rendered = render(workflow, allow_complex_types=True, factories_as_params=True)[
+        "__root__"
+    ]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -170,6 +173,7 @@ def test_cwl_with_parameter() -> None:
                     source: increment-{hsh}-num
             out: [out]
     """)
+
 
 def test_cwl_with_positional_parameter() -> None:
     """Check whether we can move raw input to parameters.

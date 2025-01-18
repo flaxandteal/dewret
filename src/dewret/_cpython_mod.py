@@ -41,12 +41,30 @@ def getclosurevars(func: Callable[..., Any]) -> ClosureVars:
     unbound_names = set()
     global_names = set()
     stackm1 = None
+    imports: dict[str, str] = {}
     for instruction in dis.get_instructions(code):
         opname = instruction.opname
         name = instruction.argval
-        if opname == "LOAD_ATTR":
-            unbound_names.add(f"{stackm1}.{name}")
+        # TODO: this does not cover the possibility of a subsequent
+        # variable shadowing an inline import
+        if opname == "LOAD_ATTR" and stackm1 and (fullname := imports.get(stackm1)):
+            unbound_names.add(f"{stackm1}.{name}:{fullname}.{name}")
             stackm1 = None
+        elif opname == "IMPORT_NAME":
+            # TODO: deal with STACK[-2]
+            # Strictly, these only enter the namespace with a
+            # subsequent STORE_FAST, present in normal circumstances.
+            if stackm1 is not None:
+                fullname = f"{stackm1}.{name}"
+            else:
+                fullname = name
+            imports[name] = fullname
+            stackm1 = name
+        elif opname == "IMPORT_FROM":
+            fullname = f"{stackm1}.{name}"
+            unbound_names.add(f"{name}:{fullname}")
+            imports[name] = fullname
+            stackm1 = name
         elif opname == "LOAD_FAST":
             stackm1 = name
         elif opname == "LOAD_GLOBAL":

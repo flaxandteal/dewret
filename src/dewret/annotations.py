@@ -210,6 +210,19 @@ class FunctionAnalyser:
             fn_globals = {}
         return fn_globals
 
+    @property
+    def unbound(self) -> dict[str, str | None]:
+        """Get the globals for this Callable."""
+        fn_tuple = getclosurevars(self.fn)
+        unbound: dict[str, str | None] = {}
+        for var in fn_tuple.unbound:
+            if ":" in var:
+                ref, impt = var.split(":")
+                unbound[ref] = impt
+            else:
+                unbound[ref] = None
+        return unbound
+
     def with_new_globals(self, new_globals: dict[str, Any]) -> Callable[..., Any]:
         """Create a Callable that will run the current Callable with new globals."""
         code = self.fn.__code__

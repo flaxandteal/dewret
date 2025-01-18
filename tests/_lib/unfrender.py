@@ -10,15 +10,16 @@ from dewret.workflow import Workflow
 # uses one is what breaks the module. It cannot be both
 # a package and not-a-package. This is importable by
 # adding a . before extra.
-from extra import JUMP # type: ignore
+from extra import JUMP  # type: ignore
+
 
 class UnfrenderRendererConfiguration(TypedDict):
     allow_complex_types: bool
 
+
 def default_config() -> UnfrenderRendererConfiguration:
-    return {
-        "allow_complex_types": True
-    }
+    return {"allow_complex_types": True}
+
 
 def render_raw(
     workflow: Workflow, **kwargs: Unpack[UnfrenderRendererConfiguration]

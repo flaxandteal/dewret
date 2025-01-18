@@ -13,6 +13,7 @@ def try_nothing() -> int:
         return increment(num=1)
     return increment(num=0)
 
+
 @task()
 def increase(num: int | float) -> float:
     """Add 1 to a number."""
@@ -62,9 +63,11 @@ def tuple_float_return() -> tuple[float, float]:
     """Return a tuple of floats."""
     return 48.856667, 2.351667
 
+
 @task()
 def reverse_list(to_sort: list[int | float]) -> list[int | float]:
     return to_sort[::-1]
+
 
 @task()
 def max_list(lst: list[int | float]) -> int | float:

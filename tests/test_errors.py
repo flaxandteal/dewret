@@ -174,6 +174,16 @@ def test_nesting_does_not_identify_imports_as_nesting() -> None:
     The hidden-by-math examples are also wrong - by inspect module alone, we are not sure if `math` is an import
     and (even if it's not _too_ hard to work that out) whether the variable pi actually comes from it.
 
+    UPDATE (2025/01/18): The visible version strictly succeeded by a mischaracterization
+    of getclosurevars, where an imported symbol was conflated with a global that shared its name.
+    Unfortunately, addressing that (as 3.12.8 does) makes it harder to spot incorrect task use from modules,
+    but we do not wish to execute an inline import to confirm either way, not knowing if the module is
+    available or would otherwise be imported during the rendering. A potential improvement would at least
+    check whether the module has been loaded and look, and the logic required to link an imported symbol
+    to the full module path (in most circumstances) is now in FunctionAnalyser.unbound. The next step
+    would be to assess the reliability of matching those modules to existing imports, and the footgun of
+    false negatives when the module has never been imported outside a task (or before hitting that definition).
+
     One direction to go with this would be to see how mypy follows this during inspection and see if we could
     take the same approach.
     """
@@ -181,10 +191,11 @@ def test_nesting_does_not_identify_imports_as_nesting() -> None:
         pi,
         pi_exported_from_math,
         pi_with_invisible_module_task,
+        pi_with_visible_module_task,
         pi_hidden_by_math,
         pi_hidden_by_math_2,
     ]
-    bad = [try_recursive, pi_with_visible_module_task]
+    bad = [try_recursive]
     for tsk in bad:
         with pytest.raises(TaskException) as exc:
             tsk()
@@ -229,8 +240,10 @@ def test_subworkflows_must_return_a_task() -> None:
     result = unacceptable_nested_return(int_not_global=False)
     construct(result)
 
+
 bad_num = 3
 good_num: int = 4
+
 
 def test_must_annotate_global() -> None:
     """TODO: Docstrings."""

@@ -36,7 +36,7 @@ class Delayed(Protocol):
     """
 
     @property
-    def __dask_graph__(self): # type: ignore
+    def __dask_graph__(self):  # type: ignore
         """Retrieve the dask graph."""
         ...
 

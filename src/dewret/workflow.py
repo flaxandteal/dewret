@@ -23,7 +23,23 @@ from collections.abc import Mapping, MutableMapping, Callable
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter, OrderedDict
-from typing import Protocol, Any, TypeVar, Generic, cast, Literal, Iterable, get_origin, get_args, Generator, Sized, Sequence, get_type_hints, TYPE_CHECKING, Hashable
+from typing import (
+    Protocol,
+    Any,
+    TypeVar,
+    Generic,
+    cast,
+    Literal,
+    Iterable,
+    get_origin,
+    get_args,
+    Generator,
+    Sized,
+    Sequence,
+    get_type_hints,
+    TYPE_CHECKING,
+    Hashable,
+)
 from uuid import uuid4
 import logging
 
@@ -31,7 +47,17 @@ from sympy import Symbol, Expr, Basic, Tuple
 
 logger = logging.getLogger(__name__)
 
-from .core import IterableMixin, Reference, get_configuration, Raw, IteratedGenerator, strip_annotations, WorkflowProtocol, WorkflowComponent, ExprType
+from .core import (
+    IterableMixin,
+    Reference,
+    get_configuration,
+    Raw,
+    IteratedGenerator,
+    strip_annotations,
+    WorkflowProtocol,
+    WorkflowComponent,
+    ExprType,
+)
 from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
 
 T = TypeVar("T")
@@ -39,10 +65,7 @@ U = TypeVar("U")
 RetType = TypeVar("RetType")
 
 CHECK_IDS = False
-AVAILABLE_TYPES = {
-    "int": int,
-    "str": str
-}
+AVAILABLE_TYPES = {"int": int, "str": str}
 
 
 class Lazy(Protocol):
@@ -108,7 +131,6 @@ class UnsetType(Unset, Generic[T]):
 UNSET = Unset()
 
 
-
 class Parameter(Generic[T], Symbol):
     """Global parameter.
 
@@ -136,7 +158,7 @@ class Parameter(Generic[T], Symbol):
         default: T | UnsetType[T],
         tethered: Literal[False] | None | Step | Workflow = None,
         autoname: bool = False,
-        typ: type[T] | Unset = UNSET
+        typ: type[T] | Unset = UNSET,
     ):
         """Construct a parameter.
 
@@ -177,7 +199,11 @@ class Parameter(Generic[T], Symbol):
         """
         base = strip_annotations(typ)[0]
         base = get_origin(base) or base
-        return inspect.isclass(base) and issubclass(base, Iterable) and not issubclass(base, str | bytes)
+        return (
+            inspect.isclass(base)
+            and issubclass(base, Iterable)
+            and not issubclass(base, str | bytes)
+        )
 
     @property
     def __type__(self) -> type | Unset:
@@ -226,7 +252,7 @@ class Parameter(Generic[T], Symbol):
     def make_reference(self, **kwargs: Any) -> "ParameterReference[T]":
         """Creates a new reference for the parameter.
 
-        The kwargs will be passed to the constructor, but the 
+        The kwargs will be passed to the constructor, but the
 
         Args:
             typ: type of the new reference's target.
@@ -301,7 +327,8 @@ def param(
             raise ValueError("Must provide a default or a type")
         default = UnsetType[T](typ)
     return cast(
-        T, Parameter(name, default=default, tethered=tethered, autoname=autoname, typ=typ)
+        T,
+        Parameter(name, default=default, tethered=tethered, autoname=autoname, typ=typ),
     )
 
 
@@ -374,7 +401,12 @@ class Workflow:
 
     _steps: list["BaseStep"]
     tasks: MutableMapping[str, "Task"]
-    result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any], ...] | None
+    result: (
+        StepReference[Any]
+        | list[StepReference[Any]]
+        | tuple[StepReference[Any], ...]
+        | None
+    )
     _remapping: dict[str, str] | None
     _name: str | None
 
@@ -421,7 +453,6 @@ class Workflow:
         comp_tup = tuple(sorted(s.id for s in self.steps))
         return f"workflow-{hasher(comp_tup)}"
 
-
     def __eq__(self, other: object) -> bool:
         """Is this the same workflow?
 
@@ -446,7 +477,10 @@ class Workflow:
 
         Returns: True if the workflow has a result, False otherwise.
         """
-        return not(self.result is None or (isinstance(self.result, list | tuple) and not self.result))
+        return not (
+            self.result is None
+            or (isinstance(self.result, list | tuple) and not self.result)
+        )
 
     @property
     def name(self) -> str:
@@ -461,7 +495,11 @@ class Workflow:
 
     def find_factories(self) -> dict[str, FactoryCall]:
         """Steps that are factory calls."""
-        return {step_id: step for step_id, step in self.indexed_steps.items() if isinstance(step, FactoryCall)}
+        return {
+            step_id: step
+            for step_id, step in self.indexed_steps.items()
+            if isinstance(step, FactoryCall)
+        }
 
     def find_parameters(
         self, include_factory_calls: bool = True
@@ -475,9 +513,13 @@ class Workflow:
             Set of all references to parameters across the steps.
         """
         _, references = expr_to_references(
-            step.arguments for step in self.steps if (include_factory_calls or not isinstance(step, FactoryCall))
+            step.arguments
+            for step in self.steps
+            if (include_factory_calls or not isinstance(step, FactoryCall))
         )
-        return {ref._.parameter for ref in references if isinstance(ref, ParameterReference)}
+        return {
+            ref._.parameter for ref in references if isinstance(ref, ParameterReference)
+        }
 
     @property
     def indexed_steps(self) -> dict[str, BaseStep]:
@@ -490,7 +532,9 @@ class Workflow:
         Returns:
             Mapping of steps by ID.
         """
-        return OrderedDict(sorted(((step.id, step) for step in self.steps), key=lambda x: x[0]))
+        return OrderedDict(
+            sorted(((step.id, step) for step in self.steps), key=lambda x: x[0])
+        )
 
     @classmethod
     def assimilate(cls, *workflow_args: Workflow) -> "Workflow":
@@ -516,12 +560,15 @@ class Workflow:
         names = sorted({w._name for w in workflows if w._name})
         base._name = base._name or (names and names[0]) or None
 
-        #left_steps = left._indexed_steps
-        #right_steps = right._indexed_steps
-        all_steps = sorted(sum((list(w.indexed_steps.items()) for w in workflows), []), key=lambda s: s[0])
+        # left_steps = left._indexed_steps
+        # right_steps = right._indexed_steps
+        all_steps = sorted(
+            sum((list(w.indexed_steps.items()) for w in workflows), []),
+            key=lambda s: s[0],
+        )
 
         for _, step in all_steps:
-        #for step in list(left_steps.values()) + list(right_steps.values()):
+            # for step in list(left_steps.values()) + list(right_steps.values()):
             step.set_workflow(base)
 
         indexed_steps: dict[str, BaseStep] = {}
@@ -537,7 +584,9 @@ class Workflow:
         for task_id, task in all_tasks:
             indexed_tasks.setdefault(task_id, task)
             if task != indexed_tasks[task_id]:
-                raise RuntimeError(f"Two tasks have same name {task_id} but do not match")
+                raise RuntimeError(
+                    f"Two tasks have same name {task_id} but do not match"
+                )
 
         base._steps = sorted(indexed_steps.values(), key=lambda s: s.id)
         base.tasks = indexed_tasks
@@ -545,23 +594,31 @@ class Workflow:
         for step in base.steps:
             step.set_workflow(base, with_arguments=True)
 
-        hashable_workflows: list[Workflow] = [w for w in workflows if isinstance(w.result, Hashable)]
+        hashable_workflows: list[Workflow] = [
+            w for w in workflows if isinstance(w.result, Hashable)
+        ]
         if len(hashable_workflows) != len(workflows):
             raise NotImplementedError("Some results are not hashable.")
 
-        def _get_order(result: None | StepReference[Any] | Iterable[StepReference[Any]]) -> str:
+        def _get_order(
+            result: None | StepReference[Any] | Iterable[StepReference[Any]],
+        ) -> str:
             if result is None:
                 return ""
             if isinstance(result, StepReference):
                 return result.id
             return "|".join(r for r in result)
 
-
-        results = sorted(set({w.result for w in hashable_workflows if w.has_result}), key=lambda r: _get_order(r))
+        results = sorted(
+            set({w.result for w in hashable_workflows if w.has_result}),
+            key=lambda r: _get_order(r),
+        )
         if len(results) == 1:
             result = results[0]
         else:
-            list_results = [r if isinstance(r, tuple | list | Tuple) else (r,) for r in results]
+            list_results = [
+                r if isinstance(r, tuple | list | Tuple) else (r,) for r in results
+            ]
             result = sum(map(list, list_results), [])
 
         if result is not None and result != []:
@@ -632,7 +689,12 @@ class Workflow:
         return task
 
     def add_nested_step(
-        self, name: str, subworkflow: Workflow, return_type: type | None, kwargs: dict[str, Any], positional_args: dict[str, bool] | None = None
+        self,
+        name: str,
+        subworkflow: Workflow,
+        return_type: type | None,
+        kwargs: dict[str, Any],
+        positional_args: dict[str, bool] | None = None,
     ) -> StepReference[Any]:
         """Append a nested step.
 
@@ -662,7 +724,7 @@ class Workflow:
         kwargs: dict[str, Raw | Reference[Any]],
         raw_as_parameter: bool = False,
         is_factory: bool = False,
-        positional_args: dict[str, bool] | None = None
+        positional_args: dict[str, bool] | None = None,
     ) -> StepReference[Any]:
         """Append a step.
 
@@ -693,7 +755,11 @@ class Workflow:
 
     @staticmethod
     def from_result(
-        result: StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any], ...], simplify_ids: bool = False, nested: bool = True
+        result: StepReference[Any]
+        | list[StepReference[Any]]
+        | tuple[StepReference[Any], ...],
+        simplify_ids: bool = False,
+        nested: bool = True,
     ) -> Workflow:
         """Create from a desired result.
 
@@ -711,7 +777,9 @@ class Workflow:
         # Ensure that we have exactly one workflow, even if multiple results.
         for entry in refs[1:]:
             if entry.__workflow__ != workflow:
-                raise RuntimeError("If multiple results, they must share a single workflow")
+                raise RuntimeError(
+                    "If multiple results, they must share a single workflow"
+                )
         workflow.set_result(expr)
         if simplify_ids:
             workflow.simplify_ids()
@@ -771,6 +839,7 @@ class FieldableProtocol(Protocol):
     Attributes:
         __field__: tuple representing the named fields, either strings or integers.
     """
+
     __field__: tuple[str | int, ...]
 
     @property
@@ -807,6 +876,7 @@ class FieldableProtocol(Protocol):
         """Create a reference with constructor arguments, usually to a subfield."""
         ...
 
+
 # This required so that Mixins can trust that
 # superclasss attributes will be available for mypy,
 # but do not confuse the MRO.
@@ -815,11 +885,17 @@ if TYPE_CHECKING:
 else:
     _Fieldable = object
 
+
 # Subclass Reference so that we know Reference methods/attrs are available.
 class FieldableMixin(_Fieldable):
     """Tooling for enhancing a type with referenceable fields."""
 
-    def __init__(self: FieldableProtocol, *args: Any, field: str | int | tuple[str | int, ...] | None = None, **kwargs: Any):
+    def __init__(
+        self: FieldableProtocol,
+        *args: Any,
+        field: str | int | tuple[str | int, ...] | None = None,
+        **kwargs: Any,
+    ):
         """Extract the requested field, if any, from the initializer arguments.
 
         Args:
@@ -827,7 +903,11 @@ class FieldableMixin(_Fieldable):
             *args: arguments to pass to the other initializers.
             **kwargs: arguments to pass to the other initializers.
         """
-        self.__field__: tuple[str, ...] = (field if isinstance(field, tuple) else (field,)) if field is not None else ()
+        self.__field__: tuple[str, ...] = (
+            (field if isinstance(field, tuple) else (field,))
+            if field is not None
+            else ()
+        )
         super().__init__(*args, **kwargs)
 
     @property
@@ -838,7 +918,9 @@ class FieldableMixin(_Fieldable):
         """
         sep = get_configuration("field_separator")
         if not isinstance(sep, str):
-            raise TypeError(f"The `field_separator` configuration argument must be a string not {type(sep)}")
+            raise TypeError(
+                f"The `field_separator` configuration argument must be a string not {type(sep)}"
+            )
         return sep
 
     @property
@@ -849,13 +931,15 @@ class FieldableMixin(_Fieldable):
         """
         types = get_configuration("field_index_types")
         if not isinstance(types, str):
-            raise TypeError(f"The `field_index_types` configuration argument should be a comma-separated string of types from: {', '.join(AVAILABLE_TYPES.keys())}")
+            raise TypeError(
+                f"The `field_index_types` configuration argument should be a comma-separated string of types from: {', '.join(AVAILABLE_TYPES.keys())}"
+            )
         tup_all = tuple(AVAILABLE_TYPES.get(typ) for typ in types.split(",") if typ)
         tup = tuple(t for t in tup_all if t is not None)
         if tup_all != tup:
             raise ValueError(
-                "Setting for fixed index types contains unavailable type: " +
-                f"{str(get_configuration('field_index_types'))} vs {tup}"
+                "Setting for fixed index types contains unavailable type: "
+                + f"{str(get_configuration('field_index_types'))} vs {tup}"
             )
         return tup
 
@@ -896,7 +980,12 @@ class FieldableMixin(_Fieldable):
         """
         return super().__name__ + self.__field_suffix__
 
-    def find_field(self: FieldableProtocol, field: str | int, fallback_type: type | None = None, **init_kwargs: Any) -> Reference[Any]:
+    def find_field(
+        self: FieldableProtocol,
+        field: str | int,
+        fallback_type: type | None = None,
+        **init_kwargs: Any,
+    ) -> Reference[Any]:
         """Field within the reference, if possible.
 
         Args:
@@ -914,45 +1003,79 @@ class FieldableMixin(_Fieldable):
 
         if isinstance(field, int):
             if not inspect.isclass(base) or not issubclass(base, Sequence):
-                raise AttributeError(f"Tried to index int {field} into a non-sequence type {parent_type} (base: {base})")
+                raise AttributeError(
+                    f"Tried to index int {field} into a non-sequence type {parent_type} (base: {base})"
+                )
             if not (field_type := get_args(parent_type)[0]):
                 raise AttributeError(
                     f"Tried to index int {field} into type {parent_type} but can only do so if the first type argument "
                     f"is the element type (args: {get_args(parent_type)}"
                 )
         elif field.startswith("__"):
-            raise AttributeError(f"We do not allow fields with dunder prefix, such as {field}, to reduce risk of clashes.")
+            raise AttributeError(
+                f"We do not allow fields with dunder prefix, such as {field}, to reduce risk of clashes."
+            )
         else:
             if is_dataclass(parent_type):
                 try:
-                    type_hints = get_type_hints(parent_type, localns={parent_type.__name__: parent_type}, include_extras=True)
+                    type_hints = get_type_hints(
+                        parent_type,
+                        localns={parent_type.__name__: parent_type},
+                        include_extras=True,
+                    )
                     field_type = type_hints.get(field)
                     if field_type is None:
-                        dataclass_field_type = next(iter(filter(lambda fld: fld.name == field, dataclass_fields(parent_type)))).type
+                        dataclass_field_type = next(
+                            iter(
+                                filter(
+                                    lambda fld: fld.name == field,
+                                    dataclass_fields(parent_type),
+                                )
+                            )
+                        ).type
                         if isinstance(dataclass_field_type, str):
                             # TODO: we could ask Python to resolve the str expression for us
-                            raise TypeError("Dataclass fields must be provided as types directly, not str")
+                            raise TypeError(
+                                "Dataclass fields must be provided as types directly, not str"
+                            )
                         field_type = dataclass_field_type
                 except StopIteration:
-                    raise AttributeError(f"Dataclass {parent_type} does not have field {field}") from None
+                    raise AttributeError(
+                        f"Dataclass {parent_type} does not have field {field}"
+                    ) from None
             elif attr_has(parent_type):
                 resolve_types(parent_type)
                 try:
                     field_type = getattr(attrs_fields(parent_type), field).type
                 except AttributeError as exc:
-                    raise AttributeError(f"attrs-class {parent_type} does not have field {field}") from exc
+                    raise AttributeError(
+                        f"attrs-class {parent_type} does not have field {field}"
+                    ) from exc
             # TypedDict
-            elif inspect.isclass(parent_type) and issubclass(parent_type, dict) and hasattr(parent_type, "__annotations__"):
+            elif (
+                inspect.isclass(parent_type)
+                and issubclass(parent_type, dict)
+                and hasattr(parent_type, "__annotations__")
+            ):
                 try:
                     field_type = get_type_hints(parent_type, include_extras=True)[field]
                 except KeyError as exc:
-                    raise AttributeError(f"TypedDict {parent_type} does not have field {field}") from exc
-            if not field_type and get_configuration("allow_plain_dict_fields") and inspect.isclass(base) and issubclass(base, dict):
+                    raise AttributeError(
+                        f"TypedDict {parent_type} does not have field {field}"
+                    ) from exc
+            if (
+                not field_type
+                and get_configuration("allow_plain_dict_fields")
+                and inspect.isclass(base)
+                and issubclass(base, dict)
+            ):
                 args = get_args(parent_type)
                 if len(args) == 2 and args[0] is str:
                     field_type = args[1]
                 else:
-                    raise AttributeError("Can only get fields for plain dicts if annotated dict[str, TYPE]")
+                    raise AttributeError(
+                        "Can only get fields for plain dicts if annotated dict[str, TYPE]"
+                    )
 
         if field_type:
             if not issubclass(self.__class__, Reference):
@@ -964,11 +1087,14 @@ class FieldableMixin(_Fieldable):
             else:
                 new_field = field
 
-            return self.__make_reference__(typ=field_type, field=new_field, **init_kwargs)
+            return self.__make_reference__(
+                typ=field_type, field=new_field, **init_kwargs
+            )
 
         raise AttributeError(
             f"Could not determine the type for field {field} in type {parent_type} (type of parent type is {type(parent_type)})"
         )
+
 
 class BaseStep(WorkflowComponent):
     """Lazy-evaluated function call.
@@ -1024,7 +1150,9 @@ class BaseStep(WorkflowComponent):
                 ):
                     if raw_as_parameter:
                         # We use param for convenience but note that it is a reference in disguise.
-                        value = cast(Parameter[Any], param(key, value, tethered=None)).make_reference(workflow=workflow)
+                        value = cast(
+                            Parameter[Any], param(key, value, tethered=None)
+                        ).make_reference(workflow=workflow)
                     else:
                         value = Raw(value)
 
@@ -1032,6 +1160,7 @@ class BaseStep(WorkflowComponent):
                     if isinstance(value, Parameter):
                         return value.make_reference(workflow=workflow)
                     return None
+
                 expression, refs = expr_to_references(value, remap=_to_param_ref)
 
                 for ref in refs:
@@ -1073,7 +1202,11 @@ class BaseStep(WorkflowComponent):
         typ = kwargs["typ"]
         base = strip_annotations(typ)[0]
         base = get_origin(base) or base
-        if inspect.isclass(base) and issubclass(base, Iterable) and not issubclass(base, str | bytes):
+        if (
+            inspect.isclass(base)
+            and issubclass(base, Iterable)
+            and not issubclass(base, str | bytes)
+        ):
             return IterableStepReference(**kwargs)
         return StepReference(**kwargs)
 
@@ -1117,7 +1250,9 @@ class BaseStep(WorkflowComponent):
                 )
         if isinstance(self.task.target, type):
             return self.task.target
-        ann = get_type_hints(inspect.unwrap(self.task.target), include_extras=True)["return"]
+        ann = get_type_hints(inspect.unwrap(self.task.target), include_extras=True)[
+            "return"
+        ]
         return ann
 
     @property
@@ -1151,7 +1286,9 @@ class BaseStep(WorkflowComponent):
         for key, param in self.arguments.items():
             components.append((key, repr(param)))
 
-        comp_tup: tuple[str | tuple[str, str], ...] = tuple(sorted(components, key=lambda pair: pair[0]))
+        comp_tup: tuple[str | tuple[str, str], ...] = tuple(
+            sorted(components, key=lambda pair: pair[0])
+        )
 
         return f"{self.task}-{hasher(comp_tup)}"
 
@@ -1180,7 +1317,9 @@ class NestedStep(BaseStep):
             raw_as_parameter: whether raw-type arguments should be made (outer) workflow parameters.
         """
         self.__subworkflow__ = subworkflow
-        base_arguments: dict[str, Basic | Reference[Any] | Raw] = {p.name: p for p in subworkflow.find_parameters()}
+        base_arguments: dict[str, Basic | Reference[Any] | Raw] = {
+            p.name: p for p in subworkflow.find_parameters()
+        }
         base_arguments.update(arguments)
         super().__init__(
             workflow=workflow,
@@ -1245,7 +1384,12 @@ class FactoryCall(Step):
                 raise RuntimeError(
                     f"Factories must be constructed with raw types in {arg_name} {type(arg)}"
                 )
-        super().__init__(workflow=workflow, task=task, arguments=arguments, raw_as_parameter=raw_as_parameter)
+        super().__init__(
+            workflow=workflow,
+            task=task,
+            arguments=arguments,
+            raw_as_parameter=raw_as_parameter,
+        )
 
     @property
     def __name__(self) -> str:
@@ -1284,9 +1428,10 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
         Attributes:
             parameter: the parameter to which this reference refers.
         """
+
         parameter: Parameter[T]
 
-        def __init__(self, parameter: Parameter[T], typ: type[U] | Unset=UNSET):
+        def __init__(self, parameter: Parameter[T], typ: type[U] | Unset = UNSET):
             """Initialize the reference.
 
             Args:
@@ -1332,7 +1477,13 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
         """
         return self._.parameter.name
 
-    def __init__(self, parameter: Parameter[U], *args: Any, typ: type[U] | None=None, **kwargs: Any):
+    def __init__(
+        self,
+        parameter: Parameter[U],
+        *args: Any,
+        typ: type[U] | None = None,
+        **kwargs: Any,
+    ):
         """Extract the parameter and type for setup.
 
         Args:
@@ -1356,16 +1507,15 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
         """
         try:
             return self.find_field(
-                field=attr,
-                workflow=self.__workflow__,
-                parameter=self._.parameter
+                field=attr, workflow=self.__workflow__, parameter=self._.parameter
             )
         except AttributeError as exc:
             raise KeyError(
-                f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}" +
-                (
+                f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}"
+                + (
                     ". This could be because you are trying to iterate/index a reference whose type is not definitely iterable - double check your typehints."
-                    if isinstance(attr, int) else ""
+                    if isinstance(attr, int)
+                    else ""
                 )
             ) from exc
 
@@ -1416,7 +1566,9 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
         """
         # We are equal to a parameter if we are a direct, fieldless, reference to it.
         return (
-            (isinstance(other, ParameterReference) and self._.parameter == other._.parameter and self.__field__ == other.__field__)
+            isinstance(other, ParameterReference)
+            and self._.parameter == other._.parameter
+            and self.__field__ == other.__field__
         )
 
     def __make_reference__(self, **kwargs: Any) -> "ParameterReference[U]":
@@ -1425,8 +1577,10 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
             kwargs["workflow"] = self.__workflow__
         return self._.parameter.make_reference(**kwargs)
 
+
 class IterableParameterReference(IterableMixin[U], ParameterReference[U]):
     """Iterable form of parameter references."""
+
     def __iter__(self) -> Generator[Reference[U], None, None]:
         """Iterate over this parameter.
 
@@ -1434,7 +1588,11 @@ class IterableParameterReference(IterableMixin[U], ParameterReference[U]):
             Get values back for this parameter, normally references of the appropriate type.
         """
         inner, metadata = strip_annotations(self.__type__)
-        if metadata and "AtRender" in metadata and isinstance(self.__default__, Iterable):
+        if (
+            metadata
+            and "AtRender" in metadata
+            and isinstance(self.__default__, Iterable)
+        ):
             yield from self.__default__
         else:
             yield from super().__iter__()
@@ -1463,6 +1621,7 @@ class IterableParameterReference(IterableMixin[U], ParameterReference[U]):
             return len(self.__default__)
         return super().__len__()
 
+
 class StepReference(FieldableMixin, Reference[U]):
     """Reference to an individual `Step`.
 
@@ -1483,9 +1642,7 @@ class StepReference(FieldableMixin, Reference[U]):
             _typ: the type to return, if overriding the step's own type, or None.
         """
 
-        def __init__(
-            self, step: BaseStep, typ: type[U] | None = None
-        ):
+        def __init__(self, step: BaseStep, typ: type[U] | None = None):
             """Initialize the reference.
 
             Args:
@@ -1555,10 +1712,11 @@ class StepReference(FieldableMixin, Reference[U]):
             )
         except AttributeError as exc:
             raise KeyError(
-                f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}" +
-                (
+                f"Key not found in {self.__root_name__} ({type(self)}:{self.__type__}): {attr}"
+                + (
                     ". This could be because you are trying to iterate/index a reference whose type is not definitely iterable - double check your typehints."
-                    if isinstance(attr, int) else ""
+                    if isinstance(attr, int)
+                    else ""
                 )
             ) from exc
 
@@ -1610,8 +1768,10 @@ class StepReference(FieldableMixin, Reference[U]):
             kwargs["workflow"] = self.__workflow__
         return self._.step.make_reference(**kwargs)
 
+
 class IterableStepReference(IterableMixin[U], StepReference[U]):
     """Iterable form of a step reference."""
+
     def __iter__(self) -> Generator[Reference[U], None, None]:
         """Gets a sentinel value for iterating over this step's results.
 
@@ -1622,6 +1782,7 @@ class IterableStepReference(IterableMixin[U], StepReference[U]):
         """
         # We cast this so that we can treat a step iterator as if it really loops over results.
         yield cast(Reference[U], IteratedGenerator(self))
+
 
 def is_task(task: Lazy) -> bool:
     """Decide whether this is a task.
@@ -1638,7 +1799,10 @@ def is_task(task: Lazy) -> bool:
     """
     return isinstance(task, LazyEvaluation)
 
-def expr_to_references(expression: Any, remap: Callable[[Any], Any] | None = None) -> tuple[ExprType, list[Reference[Any] | Parameter[Any]]]:
+
+def expr_to_references(
+    expression: Any, remap: Callable[[Any], Any] | None = None
+) -> tuple[ExprType, list[Reference[Any] | Parameter[Any]]]:
     """Pull out any references, or other free symbols, from an expression.
 
     Args:
@@ -1648,6 +1812,7 @@ def expr_to_references(expression: Any, remap: Callable[[Any], Any] | None = Non
     Returns: a pair of the expression with any applied simplifications/standardizations, and the list of References/Parameters found.
     """
     to_check: list[Reference[Any] | Parameter[Any]] = []
+
     def _to_expr(value: Any) -> ExprType:
         if remap and (res := remap(value)) is not None:
             return _to_expr(res)
@@ -1674,7 +1839,9 @@ def expr_to_references(expression: Any, remap: Callable[[Any], Any] | None = Non
             else:
                 fields = list({field for field in attrs_fields(value)})
             for field in fields:
-                if hasattr(value, field.name) and isinstance((val := getattr(value, field.name)), Reference):
+                if hasattr(value, field.name) and isinstance(
+                    (val := getattr(value, field.name)), Reference
+                ):
                     setattr(value, field.name, _to_expr(val))
             return value
 
@@ -1691,9 +1858,11 @@ def expr_to_references(expression: Any, remap: Callable[[Any], Any] | None = Non
             # We try to reinstantiate this, but there will be an error otherwise.
             # TODO: we could check this with a protocol, but some care would be needed to ensure all valid
             # cases are covered.
-            return value.__class__(dct) # type: ignore
+            return value.__class__(dct)  # type: ignore
         elif not isinstance(value, str | bytes) and isinstance(value, Iterable):
-            lst = (tuple if isinstance(value, tuple) else list)(_to_expr(v) for v in value)
+            lst = (tuple if isinstance(value, tuple) else list)(
+                _to_expr(v) for v in value
+            )
             if lst == value:
                 return retval
             return lst
@@ -1701,12 +1870,15 @@ def expr_to_references(expression: Any, remap: Callable[[Any], Any] | None = Non
 
     expression = _to_expr(expression)
 
-    #if {sym for sym in symbols if not is_raw(sym)} != set(to_check):
+    # if {sym for sym in symbols if not is_raw(sym)} != set(to_check):
     #    print(symbols, to_check, [type(r) for r in symbols])
     #    raise RuntimeError("The only symbols allowed are references (to e.g. step or parameter)")
     return expression, to_check
 
-def unify_workflows(expression: Any, base_workflow: Workflow | None, set_only: bool = False) -> tuple[Basic | None, Workflow | None]:
+
+def unify_workflows(
+    expression: Any, base_workflow: Workflow | None, set_only: bool = False
+) -> tuple[Basic | None, Workflow | None]:
     """Takes an expression and ensures all of its references exist in the same workflow.
 
     Args:
@@ -1729,9 +1901,17 @@ def unify_workflows(expression: Any, base_workflow: Workflow | None, set_only: b
         for step_result in to_check:
             new_workflow = step_result.__workflow__
             if not isinstance(new_workflow, Workflow):
-                raise NotImplementedError("Can only unify workflows on the same type: Workflow")
-            if collected_workflow != new_workflow and collected_workflow and new_workflow:
-                collected_workflow = Workflow.assimilate(collected_workflow, new_workflow)
+                raise NotImplementedError(
+                    "Can only unify workflows on the same type: Workflow"
+                )
+            if (
+                collected_workflow != new_workflow
+                and collected_workflow
+                and new_workflow
+            ):
+                collected_workflow = Workflow.assimilate(
+                    collected_workflow, new_workflow
+                )
 
     # Make sure all the results share it
     for step_result in to_check:

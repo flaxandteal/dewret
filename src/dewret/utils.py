@@ -62,6 +62,7 @@ def make_traceback(skip: int = 2) -> TracebackType | None:
         frame = frame.f_back
     return tb
 
+
 def load_module_or_package(target_name: str, path: Path) -> ModuleType:
     """Convenience loader for modules.
 
@@ -80,7 +81,9 @@ def load_module_or_package(target_name: str, path: Path) -> ModuleType:
     # Try to import the module as a package, if possible, to allow relative imports.
     if package_init.exists():
         try:
-            spec = importlib.util.spec_from_file_location(target_name, str(package_init))
+            spec = importlib.util.spec_from_file_location(
+                target_name, str(package_init)
+            )
             if spec is None or spec.loader is None:
                 raise ImportError(f"Could not open {path.parent} package")
             package = importlib.util.module_from_spec(spec)
@@ -99,10 +102,11 @@ def load_module_or_package(target_name: str, path: Path) -> ModuleType:
             spec.loader.exec_module(module)
         except ImportError as exc:
             if exception:
-                 raise exc from exception
+                raise exc from exception
             raise exc
 
     return module
+
 
 def flatten_if_set(value: Any) -> RawType | Unset:
     """Takes a Raw-like structure and makes it RawType or Unset.
@@ -116,6 +120,7 @@ def flatten_if_set(value: Any) -> RawType | Unset:
     if isinstance(value, Unset):
         return value
     return crawl_raw(value)
+
 
 def crawl_raw(value: Any, action: Callable[[Any], Any] | None = None) -> RawType:
     """Takes a Raw-like structure and makes it RawType.
@@ -147,6 +152,7 @@ def crawl_raw(value: Any, action: Callable[[Any], Any] | None = None) -> RawType
         return raw
     raise RuntimeError(f"Could not flatten: {value}")
 
+
 def firm_to_raw(value: FirmType) -> RawType:
     """Convenience wrapper for firm structures.
 
@@ -158,9 +164,12 @@ def firm_to_raw(value: FirmType) -> RawType:
 
     Returns: a raw structure.
     """
-    return crawl_raw(value, lambda entry: list(entry) if isinstance(entry, tuple) else entry)
+    return crawl_raw(
+        value, lambda entry: list(entry) if isinstance(entry, tuple) else entry
+    )
 
-def is_expr(value: Any, permitted_references: type=Reference) -> bool:
+
+def is_expr(value: Any, permitted_references: type = Reference) -> bool:
     """Confirms whether a structure has only raw or expression types.
 
     Args:
@@ -169,7 +178,14 @@ def is_expr(value: Any, permitted_references: type=Reference) -> bool:
 
     Returns: True if valid, otherwise False.
     """
-    return is_raw(value, lambda x: isinstance(x, Basic) or isinstance(x, tuple) or isinstance(x, permitted_references) or isinstance(x, Raw))
+    return is_raw(
+        value,
+        lambda x: isinstance(x, Basic)
+        or isinstance(x, tuple)
+        or isinstance(x, permitted_references)
+        or isinstance(x, Raw),
+    )
+
 
 def is_raw_type(typ: type) -> bool:
     """Check if a type counts as "raw"."""
@@ -191,6 +207,7 @@ def is_firm(value: Any, check: Callable[[Any], bool] | None = None) -> bool:
     """
     return is_raw(value, lambda x: isinstance(x, tuple) and (check is None or check(x)))
 
+
 def is_raw(value: Any, check: Callable[[Any], bool] | None = None) -> bool:
     """Check if a variable counts as "raw".
 
@@ -201,7 +218,9 @@ def is_raw(value: Any, check: Callable[[Any], bool] | None = None) -> bool:
     # Ideally this would be:
     # isinstance(value, RawType | list[RawType] | dict[str, RawType])
     # but recursive types are problematic.
-    if isinstance(value, str | float | bool | bytes | int | None | Integer | Float | Rational):
+    if isinstance(
+        value, str | float | bool | bytes | int | None | Integer | Float | Rational
+    ):
         return True
 
     if check is not None and check(value):
@@ -209,16 +228,15 @@ def is_raw(value: Any, check: Callable[[Any], bool] | None = None) -> bool:
 
     if isinstance(value, Mapping):
         return (
-            (isinstance(value, dict) or (check is not None and check(value))) and
-            all(is_raw(key, check) for key in value.keys()) and
-            all(is_raw(val, check) for val in value.values())
+            (isinstance(value, dict) or (check is not None and check(value)))
+            and all(is_raw(key, check) for key in value.keys())
+            and all(is_raw(val, check) for val in value.values())
         )
 
     if isinstance(value, Iterable):
         return (
-            (isinstance(value, list) or (check is not None and check(value))) and
-            all(is_raw(key, check) for key in value)
-        )
+            isinstance(value, list) or (check is not None and check(value))
+        ) and all(is_raw(key, check) for key in value)
 
     return False
 
@@ -248,11 +266,14 @@ def hasher(construct: FirmType) -> str:
         Hash string that should be unique to the construct. The limits of this uniqueness
         have not yet been explicitly calculated.
     """
+
     def _make_hashable(construct: FirmType) -> Hashable:
         hashed_construct: tuple[Hashable, ...]
         if isinstance(construct, Sequence) and not isinstance(construct, bytes | str):
             if isinstance(construct, Mapping):
-                hashed_construct = tuple((k, hasher(v)) for k, v in sorted(construct.items()))
+                hashed_construct = tuple(
+                    (k, hasher(v)) for k, v in sorted(construct.items())
+                )
             else:
                 # Cast to workaround recursive type
                 hashed_construct = tuple(_make_hashable(v) for v in construct)
@@ -260,6 +281,7 @@ def hasher(construct: FirmType) -> str:
         if not isinstance(construct, Hashable):
             raise TypeError("Could not hash arguments")
         return construct
+
     if isinstance(construct, Hashable):
         hashed_construct = construct
     else:

@@ -67,7 +67,7 @@ from .core import (
     set_configuration,
     IteratedGenerator,
     ConstructConfigurationTypedDict,
-    Reference
+    Reference,
 )
 
 Param = ParamSpec("Param")
@@ -142,7 +142,13 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy], __workflow__: Workflow, thread_pool: ThreadPoolExecutor | None=None, **kwargs: Any) -> Any:
+    def evaluate(
+        self,
+        task: Lazy | list[Lazy] | tuple[Lazy],
+        __workflow__: Workflow,
+        thread_pool: ThreadPoolExecutor | None = None,
+        **kwargs: Any,
+    ) -> Any:
         """Evaluate a single task for a known workflow.
 
         Args:
@@ -216,9 +222,11 @@ class TaskManager:
 
         with set_configuration(**kwargs):
             context = copy_context().items()
+
             def _initializer() -> None:
                 for var, value in context:
                     var.set(value)
+
             thread_pool = ThreadPoolExecutor(initializer=_initializer)
 
             result = self.evaluate(task, workflow, thread_pool=thread_pool, **kwargs)
@@ -417,7 +425,9 @@ def task(
                 positional_args = {key: False for key in kwargs}
                 for arg, (key, _) in zip(args, sig.parameters.items(), strict=False):
                     if isinstance(arg, IteratedGenerator):
-                        for inner_arg, (key, _) in zip(arg, sig.parameters.items(), strict=False):
+                        for inner_arg, (key, _) in zip(
+                            arg, sig.parameters.items(), strict=False
+                        ):
                             if key in positional_args:
                                 continue
                             kwargs[key] = inner_arg
@@ -461,9 +471,13 @@ def task(
                             # We leave this reference dangling for a consumer to pick up ("tethered"), unless
                             # we are in a nested task, that does not have any existence of its own.
                             tethered: Literal[False] | None = (
-                                False if nested and (
-                                    flatten_nested or get_configuration("flatten_all_nested")
-                                ) else None
+                                False
+                                if nested
+                                and (
+                                    flatten_nested
+                                    or get_configuration("flatten_all_nested")
+                                )
+                                else None
                             )
                             kwargs[var] = cast(
                                 Parameter[Any],
@@ -472,8 +486,8 @@ def task(
                                     value,
                                     tethered=tethered,
                                     autoname=tethered is not False,
-                                    typ=analyser.get_argument_annotation(var) or UNSET
-                                )
+                                    typ=analyser.get_argument_annotation(var) or UNSET,
+                                ),
                             ).make_reference(workflow=workflow)
                 original_kwargs = dict(kwargs)
                 fn_globals = analyser.globals
@@ -509,22 +523,27 @@ def task(
                             )
                     # If nested, we will execute the insides, and it is reasonable and important
                     # to have a full set of annotations for any encountered variables.
-                    elif nested and not analyser.get_argument_annotation(var, exhaustive=True) and not inspect.isclass(value) or inspect.isfunction(value):
-                        raise RuntimeError(f"Could not find a type annotation for {var} for {fn.__name__}")
                     elif (
-                        analyser.is_at_construct_arg(var, exhaustive=True) or
-                        value is evaluate or value is construct  # Allow manual building.
+                        nested
+                        and not analyser.get_argument_annotation(var, exhaustive=True)
+                        and not inspect.isclass(value)
+                        or inspect.isfunction(value)
+                    ):
+                        raise RuntimeError(
+                            f"Could not find a type annotation for {var} for {fn.__name__}"
+                        )
+                    elif (
+                        analyser.is_at_construct_arg(var, exhaustive=True)
+                        or value is evaluate
+                        or value is construct  # Allow manual building.
                     ):
                         kwargs[var] = value
-                    elif (
-                        inspect.isclass(value) or
-                        inspect.isfunction(value)
-                    ):
+                    elif inspect.isclass(value) or inspect.isfunction(value):
                         # We assume these are loaded at runtime.
                         ...
                     elif is_firm(value) or (
-                        (attrs_has(value) or is_dataclass(value)) and
-                        not inspect.isclass(value)
+                        (attrs_has(value) or is_dataclass(value))
+                        and not inspect.isclass(value)
                     ):
                         kwargs[var] = cast(
                             Parameter[Any],
@@ -532,10 +551,17 @@ def task(
                                 var,
                                 default=value,
                                 tethered=False,
-                                typ=analyser.get_argument_annotation(var, exhaustive=True) or UNSET
-                            )
+                                typ=analyser.get_argument_annotation(
+                                    var, exhaustive=True
+                                )
+                                or UNSET,
+                            ),
                         ).make_reference(workflow=workflow)
-                    elif is_expr(value) and (expr_refs := expr_to_references(value)) and len(expr_refs[1]) != 0:
+                    elif (
+                        is_expr(value)
+                        and (expr_refs := expr_to_references(value))
+                        and len(expr_refs[1]) != 0
+                    ):
                         kwargs[var] = value
                     elif nested:
                         raise NotImplementedError(
@@ -544,37 +570,53 @@ def task(
                 if nested:
                     if flatten_nested or get_configuration("flatten_all_nested"):
                         with in_nested_task():
-                            output = analyser.with_new_globals(kwargs)(**original_kwargs)
+                            output = analyser.with_new_globals(kwargs)(
+                                **original_kwargs
+                            )
                         lazy_fn = ensure_lazy(output)
                         if lazy_fn is not None:
                             with in_nested_task():
                                 output = evaluate(lazy_fn, __workflow__=workflow)
-                            #raise TypeError(
+                            # raise TypeError(
                             #    f"Task {fn.__name__} returned output of type {type(output)}, which is not a lazy function for this backend."
-                            #)
+                            # )
                         step_reference = output
                     else:
                         nested_workflow = Workflow(name=fn.__name__)
                         nested_globals: Param.kwargs = {
                             var: cast(
                                 Parameter[Any],
-                                    param(
+                                param(
                                     var,
-                                    default=value.__default__ if hasattr(value, "__default__") else UNSET,
-                                    typ=(
-                                        value.__type__
-                                    ),
-                                    tethered=nested_workflow
-                                )
-                            ).make_reference(workflow=nested_workflow) if isinstance(value, Reference) else value
+                                    default=value.__default__
+                                    if hasattr(value, "__default__")
+                                    else UNSET,
+                                    typ=(value.__type__),
+                                    tethered=nested_workflow,
+                                ),
+                            ).make_reference(workflow=nested_workflow)
+                            if isinstance(value, Reference)
+                            else value
                             for var, value in kwargs.items()
                         }
-                        nested_kwargs = {key: value for key, value in nested_globals.items() if key in original_kwargs}
+                        nested_kwargs = {
+                            key: value
+                            for key, value in nested_globals.items()
+                            if key in original_kwargs
+                        }
                         with in_nested_task():
-                            output = analyser.with_new_globals(nested_globals)(**nested_kwargs)
-                            nested_workflow = _manager(output, __workflow__=nested_workflow)
+                            output = analyser.with_new_globals(nested_globals)(
+                                **nested_kwargs
+                            )
+                            nested_workflow = _manager(
+                                output, __workflow__=nested_workflow
+                            )
                         step_reference = workflow.add_nested_step(
-                            fn.__name__, nested_workflow, analyser.return_type, original_kwargs, positional_args
+                            fn.__name__,
+                            nested_workflow,
+                            analyser.return_type,
+                            original_kwargs,
+                            positional_args,
                         )
                     if is_expr(step_reference):
                         return cast(RetType, step_reference)
@@ -588,7 +630,7 @@ def task(
                         kwargs,
                         raw_as_parameter=not is_in_nested_task(),
                         is_factory=is_factory,
-                        positional_args=positional_args
+                        positional_args=positional_args,
                     ),
                 )
                 return step
@@ -606,7 +648,7 @@ def task(
                     configuration.__exit__(None, None, None)
 
         _fn.__step_expression__ = True  # type: ignore
-        _fn.__original__ = fn # type: ignore
+        _fn.__original__ = fn  # type: ignore
         return LazyEvaluation(_fn)
 
     return _task
