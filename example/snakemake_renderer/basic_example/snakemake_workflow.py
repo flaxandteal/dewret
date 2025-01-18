@@ -172,5 +172,5 @@ if __name__ == "__main__":
                 "]": "",
             }
         )
-        smk_output = yaml.dump(smk_output, indent=4).translate(trans_table)
-        file.write(smk_output)
+        smk_text = yaml.dump(smk_output, indent=4).translate(trans_table)
+        file.write(smk_text)

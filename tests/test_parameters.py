@@ -23,7 +23,7 @@ def test_cwl_parameters() -> None:
     """
     result = rotate(num=3)
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -34,7 +34,7 @@ def test_cwl_parameters() -> None:
             type: int
             default: 3
           rotate-1-num:
-            label: rotate-1-num
+            label: num
             type: int
             default: 3
         outputs:
@@ -62,7 +62,8 @@ def test_complex_parameters() -> None:
     num = param("numx", 23)
     result = sum(left=double(num=rotate(num=num)), right=rotate(num=rotate(num=23)))
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
+
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
@@ -75,8 +76,8 @@ def test_complex_parameters() -> None:
             label: numx
             type: int
             default: 23
-          rotate-1-num:
-            label: rotate-1-num
+          rotate-2-num:
+            label: num
             type: int
             default: 23
         outputs:
@@ -91,7 +92,7 @@ def test_complex_parameters() -> None:
                 INPUT_NUM:
                     source: INPUT_NUM
                 num:
-                    source: rotate-1-num
+                    source: rotate-2/out
             out: [out]
           double-1:
             run: double
@@ -105,7 +106,7 @@ def test_complex_parameters() -> None:
                 INPUT_NUM:
                     source: INPUT_NUM
                 num:
-                    source: rotate-1/out
+                    source: rotate-2-num
             out: [out]
           rotate-3:
             run: rotate
@@ -121,6 +122,6 @@ def test_complex_parameters() -> None:
                 left:
                     source: double-1/out
                 right:
-                    source: rotate-2/out
+                    source: rotate-1/out
             out: [out]
     """)

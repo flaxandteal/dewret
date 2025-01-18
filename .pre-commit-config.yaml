@@ -11,12 +11,17 @@ repos:
     hooks:
       # Run the linter.
       - id: ruff
-        args: [ --fix ]
+        args: [--fix]
       # Run the formatter.
       - id: ruff-format
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.9.0
+    rev: v1.14.0
     hooks:
       - id: mypy
-        args: [--strict, --install-types, --non-interactive]
+        args: [
+          --strict,
+          --install-types,
+          --allow-subclassing-any,
+          --non-interactive,
+        ]
         additional_dependencies: [sympy, attrs, pytest, click, dask]

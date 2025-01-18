@@ -2,8 +2,9 @@
 
 import pytest
 from dewret.workflow import Task, Lazy
-from dewret.tasks import construct, task, nested_task, TaskException
-from ._lib.extra import increment  # noqa: F401
+from dewret.tasks import construct, task, workflow, TaskException
+from dewret.annotations import AtRender
+from ._lib.extra import increment, pi, reverse_list  # noqa: F401
 
 
 @task()  # This is expected to be the line number shown below.
@@ -12,10 +13,10 @@ def add_task(left: int, right: int) -> int:
     return left + right
 
 
-ADD_TASK_LINE_NO = 9
+ADD_TASK_LINE_NO: int = 10
 
 
-@nested_task()
+@workflow()
 def badly_add_task(left: int, right: int) -> int:
     """Badly attempts to add two numbers."""
     return add_task(left=left)  # type: ignore
@@ -36,14 +37,6 @@ class MyStrangeClass:
 
 
 @task()
-def pi() -> float:
-    """Get pi from math package."""
-    import math
-
-    return math.pi
-
-
-@task()
 def pi_exported_from_math() -> float:
     """Get pi from math package by name."""
     from math import pi
@@ -52,9 +45,9 @@ def pi_exported_from_math() -> float:
 
 
 @task()
-def test_recursive() -> float:
+def try_recursive() -> float:
     """Get pi from math package by name."""
-    return test_recursive()
+    return try_recursive()
 
 
 @task()
@@ -88,15 +81,15 @@ def pi_with_invisible_module_task() -> float:
     return extra.double(3.14 / 2)
 
 
-@nested_task()
+@workflow()
 def unacceptable_object_usage() -> int:
     """Invalid use of custom object within nested task."""
     return MyStrangeClass(add_task(left=3, right=4))  # type: ignore
 
 
-@nested_task()
-def unacceptable_nested_return(int_not_global: bool) -> int | Lazy:
-    """Bad nested_task that fails to return a task."""
+@workflow()
+def unacceptable_nested_return(int_not_global: AtRender[bool]) -> int | Lazy:
+    """Bad subworkflow that fails to return a task."""
     add_task(left=3, right=4)
     return 7 if int_not_global else ADD_TASK_LINE_NO
 
@@ -110,17 +103,16 @@ def test_missing_arguments_throw_error() -> None:
     WARNING: in keeping with Python principles, this does not error if types
     mismatch, but `mypy` should. You **must** type-check your code to catch these.
     """
-    result = add_task(left=3)  # type: ignore
     with pytest.raises(TaskException) as exc:
-        construct(result)
+        add_task(left=3)  # type: ignore
     end_section = str(exc.getrepr())[-500:]
     assert str(exc.value) == "missing a required argument: 'right'"
     assert "Task add_task declared in <module> at " in end_section
     assert f"test_errors.py:{ADD_TASK_LINE_NO}" in end_section
 
 
-def test_missing_arguments_throw_error_in_nested_task() -> None:
-    """Check whether omitting a required argument within a nested_task will give an error.
+def test_missing_arguments_throw_error_in_subworkflow() -> None:
+    """Check whether omitting a required argument within a subworkflow will give an error.
 
     Since we do not run the original function, it is up to dewret to check
     that the signature is, at least, acceptable to Python.
@@ -128,9 +120,8 @@ def test_missing_arguments_throw_error_in_nested_task() -> None:
     WARNING: in keeping with Python principles, this does not error if types
     mismatch, but `mypy` should. You **must** type-check your code to catch these.
     """
-    result = badly_add_task(left=3, right=4)
     with pytest.raises(TaskException) as exc:
-        construct(result)
+        badly_add_task(left=3, right=4)
     end_section = str(exc.getrepr())[-500:]
     assert str(exc.value) == "missing a required argument: 'right'"
     assert "def badly_add_task" in end_section
@@ -144,9 +135,8 @@ def test_positional_arguments_throw_error() -> None:
     We can use default and non-default arguments, but we expect them
     to _always_ be named.
     """
-    result = add_task(3, right=4)
     with pytest.raises(TaskException) as exc:
-        construct(result)
+        add_task(3, right=4)
     assert (
         str(exc.value)
         .strip()
@@ -154,21 +144,20 @@ def test_positional_arguments_throw_error() -> None:
     )
 
 
-def test_nesting_non_nested_tasks_throws_error() -> None:
-    """Ensure nesting is only allow in nested_tasks.
+def test_nesting_non_subworkflows_throws_error() -> None:
+    """Ensure nesting is only allow in subworkflows.
 
     Nested tasks must be evaluated at construction time, and there
     is no concept of task calls that are not resolved during construction, so
     a task should not be called inside a non-nested task.
     """
-    result = badly_wrap_task()
     with pytest.raises(TaskException) as exc:
-        construct(result)
+        badly_wrap_task()
     assert (
         str(exc.value)
         .strip()
         .startswith(
-            "You referenced a task add_task inside another task badly_wrap_task, but it is not a nested_task"
+            "You referenced a task add_task inside another task badly_wrap_task, but it is not a workflow"
         )
     )
 
@@ -185,6 +174,16 @@ def test_nesting_does_not_identify_imports_as_nesting() -> None:
     The hidden-by-math examples are also wrong - by inspect module alone, we are not sure if `math` is an import
     and (even if it's not _too_ hard to work that out) whether the variable pi actually comes from it.
 
+    UPDATE (2025/01/18): The visible version strictly succeeded by a mischaracterization
+    of getclosurevars, where an imported symbol was conflated with a global that shared its name.
+    Unfortunately, addressing that (as 3.12.8 does) makes it harder to spot incorrect task use from modules,
+    but we do not wish to execute an inline import to confirm either way, not knowing if the module is
+    available or would otherwise be imported during the rendering. A potential improvement would at least
+    check whether the module has been loaded and look, and the logic required to link an imported symbol
+    to the full module path (in most circumstances) is now in FunctionAnalyser.unbound. The next step
+    would be to assess the reliability of matching those modules to existing imports, and the footgun of
+    false negatives when the module has never been imported outside a task (or before hitting that definition).
+
     One direction to go with this would be to see how mypy follows this during inspection and see if we could
     take the same approach.
     """
@@ -192,22 +191,22 @@ def test_nesting_does_not_identify_imports_as_nesting() -> None:
         pi,
         pi_exported_from_math,
         pi_with_invisible_module_task,
+        pi_with_visible_module_task,
         pi_hidden_by_math,
         pi_hidden_by_math_2,
     ]
-    bad = [test_recursive, pi_with_visible_module_task]
+    bad = [try_recursive]
     for tsk in bad:
-        result = tsk()
         with pytest.raises(TaskException) as exc:
-            construct(result)
+            tsk()
         assert str(exc.value).strip().startswith("You referenced a task")
     for tsk in good:
         result = tsk()
         construct(result)
 
 
-def test_normal_objects_cannot_be_used_in_nested_tasks() -> None:
-    """Most entities cannot appear in a nested_task, ensure we catch them.
+def test_normal_objects_cannot_be_used_in_subworkflows() -> None:
+    """Most entities cannot appear in a subworkflow, ensure we catch them.
 
     Since the logic in nested tasks has to be embedded explicitly in the workflow,
     complex types are not necessarily representable, and in most cases, we would not
@@ -215,34 +214,67 @@ def test_normal_objects_cannot_be_used_in_nested_tasks() -> None:
 
     Note: this may be mitigated with sympy support, to some extent.
     """
-    result = unacceptable_object_usage()
     with pytest.raises(TaskException) as exc:
-        construct(result)
+        unacceptable_object_usage()
     assert (
         str(exc.value)
-        == "Nested tasks must now only refer to global parameters, raw or tasks, not objects: MyStrangeClass"
+        == "Attempted to build a workflow from a return-value/result/expression with no references."
     )
 
 
-def test_nested_tasks_must_return_a_task() -> None:
+def test_subworkflows_must_return_a_task() -> None:
     """Ensure nested tasks are lazy-evaluatable.
 
     A graph only makes sense if the edges connect, and nested tasks must therefore chain.
     As such, a nested task must represent a real subgraph, and return a node to pull it into
     the main graph.
     """
-    result = unacceptable_nested_return(int_not_global=True)
     with pytest.raises(TaskException) as exc:
+        result = unacceptable_nested_return(int_not_global=True)
         construct(result)
     assert (
         str(exc.value)
-        == "Task unacceptable_nested_return returned output of type <class 'int'>, which is not a lazy function for this backend."
+        == "Attempted to build a workflow from a return-value/result/expression with no references."
     )
 
     result = unacceptable_nested_return(int_not_global=False)
+    construct(result)
+
+
+bad_num = 3
+good_num: int = 4
+
+
+def test_must_annotate_global() -> None:
+    """TODO: Docstrings."""
+    worse_num = 3
+
+    @workflow()
+    def check_annotation() -> int | float:
+        return increment(num=bad_num)
+
     with pytest.raises(TaskException) as exc:
-        construct(result)
+        check_annotation()
+
     assert (
         str(exc.value)
-        == "Task unacceptable_nested_return returned output of type <class 'int'>, which is not a lazy function for this backend."
+        == "Could not find a type annotation for bad_num for check_annotation"
     )
+
+    @workflow()
+    def check_annotation_2() -> int | float:
+        return increment(num=worse_num)
+
+    with pytest.raises(TaskException) as exc:
+        check_annotation_2()
+
+    assert (
+        str(exc.value)
+        == "Cannot use free variables - please put worse_num at the global scope"
+    )
+
+    @workflow()
+    def check_annotation_3() -> int | float:
+        return increment(num=good_num)
+
+    check_annotation_3()

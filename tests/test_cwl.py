@@ -1,13 +1,16 @@
 """Verify CWL output is OK."""
 
 import yaml
+import pytest
 from datetime import datetime, timedelta
-from dewret.tasks import construct, task, factory
+from dewret.core import set_configuration
+from dewret.tasks import construct, task, factory, TaskException
 from dewret.renderers.cwl import render
 from dewret.utils import hasher
 from dewret.workflow import param
 
 from ._lib.extra import (
+    pi,
     increment,
     double,
     mod10,
@@ -15,14 +18,6 @@ from ._lib.extra import (
     triple_and_one,
     tuple_float_return,
 )
-
-
-@task()
-def pi() -> float:
-    """Returns pi."""
-    import math
-
-    return math.pi
 
 
 @task()
@@ -50,7 +45,7 @@ def test_basic_cwl() -> None:
     """
     result = pi()
     workflow = construct(result)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
     hsh = hasher(("pi",))
 
     assert rendered == yaml.safe_load(f"""
@@ -83,7 +78,9 @@ def test_input_factories() -> None:
     now = factory(get_now)()
     result = days_in_future(now=now, num=3)
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow, allow_complex_types=True, factories_as_params=True)
+    rendered = render(workflow, allow_complex_types=True, factories_as_params=True)[
+        "__root__"
+    ]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -92,7 +89,7 @@ def test_input_factories() -> None:
           days_in_future-1-num:
             default: 3
             type: int
-            label: days_in_future-1-num
+            label: num
           get_now-1:
             label: get_now-1
             type: datetime
@@ -112,7 +109,7 @@ def test_input_factories() -> None:
             out: [out]
     """)
 
-    rendered = render(workflow, allow_complex_types=True)
+    rendered = render(workflow, allow_complex_types=True)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
@@ -121,7 +118,7 @@ def test_input_factories() -> None:
           days_in_future-1-num:
             default: 3
             type: int
-            label: days_in_future-1-num
+            label: num
         outputs:
           out:
             label: out
@@ -147,20 +144,58 @@ def test_cwl_with_parameter() -> None:
     """Check whether we can move raw input to parameters.
 
     Produces CWL for a call with a changeable raw value, that is converted
-    to a parameter, if and only if we are calling from outside a nested task.
+    to a parameter, if and only if we are calling from outside a subworkflow.
     """
     result = increment(num=3)
     workflow = construct(result)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
     num_param = list(workflow.find_parameters())[0]
-    hsh = hasher(("increment", ("num", f"int|:param:{num_param.unique_name}")))
+    hsh = hasher(("increment", ("num", f"int|:param:{num_param._.unique_name}")))
 
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
         class: Workflow
         inputs:
           increment-{hsh}-num:
-            label: increment-{hsh}-num
+            label: num
+            type: int
+            default: 3
+        outputs:
+          out:
+            label: out
+            outputSource: increment-{hsh}/out
+            type: int
+        steps:
+          increment-{hsh}:
+            run: increment
+            in:
+                num:
+                    source: increment-{hsh}-num
+            out: [out]
+    """)
+
+
+def test_cwl_with_positional_parameter() -> None:
+    """Check whether we can move raw input to parameters.
+
+    Produces CWL for a call with a changeable raw value, that is converted
+    to a parameter, if and only if we are calling from outside a subworkflow.
+    """
+    with pytest.raises(TaskException) as _:
+        result = increment(3)
+    with set_configuration(allow_positional_args=True):
+        result = increment(3)
+        workflow = construct(result)
+        rendered = render(workflow)["__root__"]
+    num_param = list(workflow.find_parameters())[0]
+    hsh = hasher(("increment", ("num", f"int|:param:{num_param._.unique_name}")))
+
+    assert rendered == yaml.safe_load(f"""
+        cwlVersion: 1.2
+        class: Workflow
+        inputs:
+          increment-{hsh}-num:
+            label: num
             type: int
             default: 3
         outputs:
@@ -187,7 +222,7 @@ def test_cwl_without_default() -> None:
 
     result = increment(num=my_param)
     workflow = construct(result)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
     hsh = hasher(("increment", ("num", "int|:param:my_param")))
 
     assert rendered == yaml.safe_load(f"""
@@ -217,7 +252,9 @@ def test_cwl_with_subworkflow() -> None:
     my_param = param("num", typ=int)
     result = increment(num=floor(num=triple_and_one(num=increment(num=my_param))))
     workflow = construct(result, simplify_ids=True)
-    rendered, subworkflows = render(workflow)
+    subworkflows = render(workflow)
+    rendered = subworkflows["__root__"]
+    del subworkflows["__root__"]
 
     assert len(subworkflows) == 1
     assert isinstance(subworkflows, dict)
@@ -233,7 +270,7 @@ def test_cwl_with_subworkflow() -> None:
         outputs:
           out:
             label: out
-            outputSource: increment-2/out
+            outputSource: increment-1/out
             type: int
         steps:
           floor-1:
@@ -242,13 +279,13 @@ def test_cwl_with_subworkflow() -> None:
                  source: triple_and_one-1/out
              out: [out]
              run: floor
-          increment-1:
+          increment-2:
              in:
                num:
                  source: num
              out: [out]
              run: increment
-          increment-2:
+          increment-1:
              in:
                num:
                  source: floor-1/out
@@ -257,7 +294,7 @@ def test_cwl_with_subworkflow() -> None:
           triple_and_one-1:
              in:
                num:
-                 source: increment-1/out
+                 source: increment-2/out
              out: [out]
              run: triple_and_one
     """)
@@ -269,14 +306,10 @@ def test_cwl_with_subworkflow() -> None:
           num:
             label: num
             type: int
-          sum-1-2-right:
-            default: 1
-            label: sum-1-2-right
-            type: int
         outputs:
           out:
             label: out
-            outputSource: sum-1-2/out
+            outputSource: sum-1-1/out
             type:
             - int
             - float
@@ -288,7 +321,7 @@ def test_cwl_with_subworkflow() -> None:
             out:
             - out
             run: double
-          sum-1-1:
+          sum-1-2:
             in:
               left:
                 source: double-1-1/out
@@ -297,12 +330,12 @@ def test_cwl_with_subworkflow() -> None:
             out:
             - out
             run: sum
-          sum-1-2:
+          sum-1-1:
             in:
               left:
-                source: sum-1-1/out
+                source: sum-1-2/out
               right:
-                source: sum-1-2-right
+                default: 1
             out:
             - out
             run: sum
@@ -316,26 +349,26 @@ def test_cwl_references() -> None:
     """
     result = double(num=increment(num=3))
     workflow = construct(result)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
     num_param = list(workflow.find_parameters())[0]
     hsh_increment = hasher(
-        ("increment", ("num", f"int|:param:{num_param.unique_name}"))
+        ("increment", ("num", f"int|:param:{num_param._.unique_name}"))
     )
-    hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}/out")))
+    hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}")))
 
     assert rendered == yaml.safe_load(f"""
         cwlVersion: 1.2
         class: Workflow
         inputs:
           increment-{hsh_increment}-num:
-            label: increment-{hsh_increment}-num
+            label: num
             type: int
             default: 3
         outputs:
           out:
             label: out
             outputSource: double-{hsh_double}/out
-            type: 
+            type:
             - int
             - float
         steps:
@@ -361,25 +394,21 @@ def test_complex_cwl_references() -> None:
     """
     result = sum(left=double(num=increment(num=23)), right=mod10(num=increment(num=23)))
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)
+    rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
         inputs:
           increment-1-num:
-            label: increment-1-num
-            type: int
-            default: 23
-          increment-2-num:
-            label: increment-2-num
+            label: num
             type: int
             default: 23
         outputs:
           out:
             label: out
             outputSource: sum-1/out
-            type: 
+            type:
             - int
             - float
         steps:
@@ -389,17 +418,11 @@ def test_complex_cwl_references() -> None:
                 num:
                     source: increment-1-num
             out: [out]
-          increment-2:
-            run: increment
-            in:
-                num:
-                    source: increment-2-num
-            out: [out]
           double-1:
             run: double
             in:
                 num:
-                    source: increment-2/out
+                    source: increment-1/out
             out: [out]
           mod10-1:
             run: mod10
@@ -423,8 +446,10 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
     my_param = param("num", typ=int)
     result = increment(num=floor(num=triple_and_one(num=sum(left=my_param, right=3))))
     workflow = construct(result, simplify_ids=True)
-    rendered, subworkflows = render(workflow)
+    subworkflows = render(workflow)
+    rendered = subworkflows["__root__"]
 
+    del subworkflows["__root__"]
     assert len(subworkflows) == 1
     assert isinstance(subworkflows, dict)
     name, subworkflow = list(subworkflows.items())[0]
@@ -438,7 +463,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             type: int
           sum-1-right:
             default: 3
-            label: sum-1-right
+            label: right
             type: int
         outputs:
           out:
@@ -484,14 +509,10 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
               int,
               float
             ]
-          sum-1-2-right:
-            default: 1
-            label: sum-1-2-right
-            type: int
         outputs:
           out:
             label: out
-            outputSource: sum-1-2/out
+            outputSource: sum-1-1/out
             type:
             - int
             - float
@@ -503,7 +524,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             out:
             - out
             run: double
-          sum-1-1:
+          sum-1-2:
             in:
               left:
                 source: double-1-1/out
@@ -512,12 +533,12 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
             out:
             - out
             run: sum
-          sum-1-2:
+          sum-1-1:
             in:
               left:
-                source: sum-1-1/out
+                source: sum-1-2/out
               right:
-                source: sum-1-2-right
+                default: 1
             out:
             - out
             run: sum
@@ -531,8 +552,7 @@ def test_tuple_floats() -> None:
     """
     result = tuple_float_return()
     workflow = construct(result, simplify_ids=True)
-    rendered = render(workflow)
-    print(yaml.dump(rendered))
+    rendered = render(workflow)["__root__"]
     assert rendered == yaml.safe_load("""
         cwlVersion: 1.2
         class: Workflow
@@ -541,11 +561,10 @@ def test_tuple_floats() -> None:
           out:
             label: out
             outputSource: tuple_float_return-1/out
-            type: 
-              items: 
-                - type: float
-                - type: float
-              type: array
+            items:
+              - float
+              - float
+            type: array
         steps:
           tuple_float_return-1:
             run: tuple_float_return

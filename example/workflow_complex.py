@@ -7,13 +7,13 @@ $ python -m dewret workflow_complex.py --pretty nested_workflow
 ```
 """
 
-from dewret.tasks import subworkflow
+from dewret.tasks import workflow
 from workflow_tasks import sum, double, increase
 
 STARTING_NUMBER: int = 23
 
 
-@subworkflow()
+@workflow()
 def nested_workflow() -> int | float:
     """Creates a complex workflow with a nested task.
 
