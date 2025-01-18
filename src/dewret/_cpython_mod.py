@@ -11,6 +11,7 @@ from inspect import (
 )
 from typing import Callable, Any
 
+
 def getclosurevars(func: Callable[..., Any]) -> ClosureVars:
     if ismethod(func):
         func = func.__func__
@@ -25,9 +26,9 @@ def getclosurevars(func: Callable[..., Any]) -> ClosureVars:
         nonlocal_vars = {}
     else:
         nonlocal_vars = {
-            var : cell.cell_contents
-            for var, cell in zip(code.co_freevars, func.__closure__)
-       }
+            var: cell.cell_contents
+            for var, cell in zip(code.co_freevars, func.__closure__, strict=False)
+        }
 
     # Global and builtin references are named in co_names and resolved
     # by looking them up in __globals__ or __builtins__
@@ -59,5 +60,4 @@ def getclosurevars(func: Callable[..., Any]) -> ClosureVars:
             except KeyError:
                 unbound_names.add(name)
 
-    return ClosureVars(nonlocal_vars, global_vars,
-                       builtin_vars, unbound_names)
+    return ClosureVars(nonlocal_vars, global_vars, builtin_vars, unbound_names)
