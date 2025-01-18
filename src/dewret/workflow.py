@@ -1611,7 +1611,6 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
 class DatasetParameterReference(ParameterReference[U]): ...
 
 
-
 class IterableParameterReference(IterableMixin[U], ParameterReference[U]):
     """Iterable form of parameter references."""
 

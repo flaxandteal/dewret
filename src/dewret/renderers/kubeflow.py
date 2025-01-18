@@ -183,9 +183,7 @@ def create_component_from_step(
                 signature.append((param, f"Input[{artifacts[param].__qualname__}]"))
                 in_paths.append(param)
             else:
-                signature.append(
-                    (param, sig.parameters[param].annotation.__qualname__)
-                )
+                signature.append((param, sig.parameters[param].annotation.__qualname__))
         wrapper_str = ", ".join(f"{n}: {t}" for n, t in signature)
         print(step.return_type)
         command[-1] += """
@@ -277,7 +275,10 @@ from pathlib import Path
 
 
 def get_name_to_specs(
-    func_params: list[tuple[str, str]], return_ann: type[Any], step_name: str, containerized: bool = False
+    func_params: list[tuple[str, str]],
+    return_ann: type[Any],
+    step_name: str,
+    containerized: bool = False,
 ) -> tuple[dict[str, dsl.structures.InputSpec], dict[str, dsl.structures.OutputSpec]]:
     name_to_input_specs = {}
     name_to_output_specs = {}
@@ -309,9 +310,7 @@ def get_name_to_specs(
             if output_spec is not None:
                 name_to_output_specs[name] = output_spec
     else:
-        rettyp = make_output_spec(
-            dsl.component_factory.SINGLE_OUTPUT_NAME, return_ann
-        )
+        rettyp = make_output_spec(dsl.component_factory.SINGLE_OUTPUT_NAME, return_ann)
         if rettyp is not None:
             name_to_output_specs[prefix] = rettyp
     return name_to_input_specs, name_to_output_specs
@@ -397,7 +396,6 @@ class DewretPipelineTask(dsl.pipeline_task.PipelineTask):
             self.importer_spec.artifact_uri = args["uri"]
         else:
             self.pipeline_spec = self.component_spec.implementation.graph
-
 
         if output is not None:
             self._outputs = {output.name: ensure_channels(output, component_spec.name)}
@@ -697,7 +695,9 @@ class StepDefinition:
         inputs, outputs = get_name_to_specs(
             param_types, step.return_type, step_name=k8s_name(step.name) or step.name
         )
-        executor_configs = cast(dict[str, ExecutorConfiguration], get_render_configuration("executor"))
+        executor_configs = cast(
+            dict[str, ExecutorConfiguration], get_render_configuration("executor")
+        )
         executor_config = executor_configs["default"]
 
         default_image = executor_config.get("image", "python:3.9")
@@ -781,7 +781,7 @@ def to_kfp_type(
     """
     typ, annotateds = strip_annotations(full_typ)
     typ_dict: CommandInputSchema = {"type": ""}
-    artifacts: dict[str, type[dsl.types.artifact_types.Artifact]]= {}
+    artifacts: dict[str, type[dsl.types.artifact_types.Artifact]] = {}
     base: Any | None = typ
     args = get_args(typ)
     if args:
@@ -824,7 +824,7 @@ def to_kfp_type(
                 }
             elif len(args) == 1:
                 interior_typ, interior_artifacts = to_kfp_type(label, args[0])
-                typ_dict.update({"type": f"List[{interior_typ["type"]}"})
+                typ_dict.update({"type": f"List[{interior_typ['type']}"})
                 if set(artifacts.keys()) & set(interior_artifacts.keys()):
                     raise TypeError(
                         f"Artifacts have overlapping keys: {artifacts} -- {interior_artifacts}"
@@ -899,9 +899,7 @@ def make_output_spec(
         if hasattr(kfp_ann, "_fields"):
             fields = {}
             for name in kfp_ann._fields:
-                output_spec = make_output_spec(
-                    name, kfp_ann.__annotations__[name]
-                )
+                output_spec = make_output_spec(name, kfp_ann.__annotations__[name])
                 fields[name] = cast(dsl.structures.OutputSpec, output_spec)
 
     if fields:
@@ -953,7 +951,6 @@ class DewretGraphComponent(dsl.base_component.BaseComponent):
             }
         return dsl_pipeline, pipeline_outputs
 
-
     @classmethod
     def _make_component_spec(
         cls, workflow: Workflow, name: str | None
@@ -987,7 +984,6 @@ class DewretGraphComponent(dsl.base_component.BaseComponent):
             outputs=outputs,
             implementation=dsl.structures.Implementation(),
         )
-
 
     @classmethod
     def from_workflow(
@@ -1039,7 +1035,7 @@ class DewretGraphComponent(dsl.base_component.BaseComponent):
             Reduced form as a native Python dict structure for
             serialization.
         """
-        return json_format.MessageToDict(self.pipeline_spec) # type: ignore
+        return json_format.MessageToDict(self.pipeline_spec)  # type: ignore
 
 
 def render(
