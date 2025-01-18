@@ -2,7 +2,7 @@ name: Test
 on: [push, pull_request]
 jobs:
   unit-pip:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
