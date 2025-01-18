@@ -30,7 +30,6 @@ from kfp.dsl.pipeline_context import Pipeline
 from attrs import define, has as attrs_has, fields as attrs_fields, AttrsInstance
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections.abc import Mapping
-import yaml
 from typing import (
     TypeVar,
     Annotated,
@@ -44,7 +43,6 @@ from typing import (
     Unpack,
     Iterable,
     Optional,
-    List,
 )
 from types import UnionType
 import inspect
@@ -70,9 +68,7 @@ from dewret.workflow import (
     expr_to_references,
 )
 from dewret.utils import (
-    crawl_raw,
     DataclassProtocol,
-    firm_to_raw,
 )
 from dewret.render import base_render
 from dewret.core import (
