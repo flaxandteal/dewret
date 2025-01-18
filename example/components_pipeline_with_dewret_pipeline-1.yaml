@@ -1,0 +1,540 @@
+components:
+  comp-evaluate-1-1:
+    executorLabel: exec-evaluate-1-1
+    inputDefinitions:
+      artifacts:
+        predictions:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        y_test:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        evaluate_1_1:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-load-dataset-from-gcs-1-1:
+    executorLabel: exec-load-dataset-from-gcs-1-1
+    inputDefinitions:
+      parameters:
+        blob_name:
+          parameterType: STRING
+        bucket_name:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        load_dataset_from_gcs_1_1:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-model-training-1-1:
+    executorLabel: exec-model-training-1-1
+    inputDefinitions:
+      artifacts:
+        X_test_input:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        X_train_input:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        y_train_input:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        model_training_1_1__0:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_training_1_1__1:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-predict-1-1:
+    executorLabel: exec-predict-1-1
+    inputDefinitions:
+      artifacts:
+        X_test:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        trained_model:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        predict_1_1:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-preprocess-the-dataset-1-1:
+    executorLabel: exec-preprocess-the-dataset-1-1
+    inputDefinitions:
+      artifacts:
+        dataset_content:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        preprocess_the_dataset_1_1:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-train-test-split-1-1:
+    executorLabel: exec-train-test-split-1-1
+    inputDefinitions:
+      artifacts:
+        input_df:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        train_test_split_1_1__0:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        train_test_split_1_1__1:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        train_test_split_1_1__2:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        train_test_split_1_1__3:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate-1-1:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'joblib' 'minio==7.1.14'\
+          \ 'numpy' 'pandas' 'scikit-learn' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate(y_test: Dataset, predictions: Dataset) -> Dataset:\n\
+          \    from sklearn.metrics import mean_squared_error, mean_absolute_error\n\
+          \    import pandas as pd\n    import numpy as np\n    y_test_data = pd.read_csv(y_test)\n\
+          \    predictions_data = pd.read_csv(predictions)\n\n    mae = mean_absolute_error(y_test_data,\
+          \ predictions_data)\n    mse = mean_squared_error(y_test_data, predictions_data)\n\
+          \    rmse = np.sqrt(mse)\n\n    with open(metrics_output, 'w') as f:\n \
+          \       f.write(f'MAE: {mae}\\n')\n        f.write(f'MSE: {mse}\\n')\n \
+          \       f.write(f'RMSE: {rmse}\\n')\n\n    return metrics_output\n\n\nfrom\
+          \ kfp.dsl.types.artifact_types import *\nimport typing\nfrom typing import\
+          \ NamedTuple\nimport os\nimport shutil\nfrom tempfile import mkstemp\nfrom\
+          \ pathlib import Path\ndef evaluate_(y_test: Input[Dataset], predictions:\
+          \ Input[Dataset], evaluate_1_1: dsl.Output[Dataset]):\n    paths = {}\n\
+          \    unpaths = {}\n    y_test = y_test.path\n    predictions = predictions.path\n\
+          \    f, metrics_output = mkstemp(); os.close(f)\n    paths['metrics_output']\
+          \ = Path(metrics_output)\n    unpaths[Path(metrics_output)] = 0\n    globals().update(paths)\n\
+          \    final_output = evaluate(y_test=y_test, predictions=predictions)\n \
+          \   shutil.move(final_output, evaluate_1_1.path)\n    for p in unpaths:\
+          \ shutil.rmtree(str(p), ignore_errors=True)\n"
+        image: python:3.9
+    exec-load-dataset-from-gcs-1-1:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - load_dataset_from_gcs_
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'joblib' 'minio==7.1.14'\
+          \ 'numpy' 'pandas' 'scikit-learn' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef load_dataset_from_gcs(bucket_name: str, blob_name: str) -> Dataset:\n\
+          \    import pandas as pd\n    from minio import Minio\n    from minio.error\
+          \ import S3Error\n    import io\n    client = Minio('minio-service.default:9000',\n\
+          \                   'minio',\n                   'minio123',\n         \
+          \          secure=False)\n    response = client.get_object(bucket_name,\
+          \ blob_name)\n\n    data = pd.read_csv(io.BytesIO(response.data), header=None,\
+          \ delim_whitespace=True, comment=\"#\")\n    data.to_csv(output_dataset,\
+          \ header=True, index=False)\n\n    return output_dataset\n\n\nfrom kfp.dsl.types.artifact_types\
+          \ import *\nimport typing\nfrom typing import NamedTuple\nimport os\nimport\
+          \ shutil\nfrom tempfile import mkstemp\nfrom pathlib import Path\ndef load_dataset_from_gcs_(bucket_name:\
+          \ str, blob_name: str, load_dataset_from_gcs_1_1: dsl.Output[Dataset]):\n\
+          \    paths = {}\n    unpaths = {}\n    f, output_dataset = mkstemp(); os.close(f)\n\
+          \    paths['output_dataset'] = Path(output_dataset)\n    unpaths[Path(output_dataset)]\
+          \ = 0\n    globals().update(paths)\n    final_output = load_dataset_from_gcs(bucket_name=bucket_name,\
+          \ blob_name=blob_name)\n    shutil.move(final_output, load_dataset_from_gcs_1_1.path)\n\
+          \    for p in unpaths: shutil.rmtree(str(p), ignore_errors=True)\n"
+        image: python:3.9
+    exec-model-training-1-1:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - model_training_
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'joblib' 'minio==7.1.14'\
+          \ 'numpy' 'pandas' 'scikit-learn' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef model_training(\n    X_train_input: Dataset,\n    X_test_input:\
+          \ Dataset,\n    y_train_input: Dataset,\n) -> tuple[Dataset, Artifact]:\n\
+          \    from sklearn.preprocessing import StandardScaler\n    from sklearn.linear_model\
+          \ import LinearRegression\n    import joblib\n    from minio import Minio\n\
+          \    from minio.error import S3Error\n    import io\n    import pandas as\
+          \ pd\n    scaler = StandardScaler()\n\n    X_train = pd.read_csv(X_train_input)\n\
+          \    X_test = pd.read_csv(X_test_input)\n    y_train = pd.read_csv(y_train_input)\n\
+          \n    X_train_scaled = scaler.fit_transform(X_train)\n    X_test_scaled2=\
+          \ pd.DataFrame(scaler.transform(X_test))\n    X_test_scaled2.to_csv(X_test_scaled,\
+          \ index=False)  # Fixing typo here\n\n    regression = LinearRegression()\n\
+          \    regression.fit(X_train_scaled, y_train)\n\n    joblib.dump(regression,\
+          \ model_file)\n    client = Minio('minio-service.default:9000',\n      \
+          \             'minio',\n                   'minio123',\n               \
+          \    secure=False)\n    client.fput_object('boston-house-data', 'data/model.pkl',\
+          \ str(model_file))\n    return X_test_scaled, model_file\n\nmodel_training_1_1\
+          \ = NamedTuple('model_training_1_1', (('model_training_1_1__0', Dataset),\
+          \ ('model_training_1_1__1', Artifact)))\n\nfrom kfp.dsl.types.artifact_types\
+          \ import *\nimport typing\nfrom typing import NamedTuple\nimport os\nimport\
+          \ shutil\nfrom tempfile import mkstemp\nfrom pathlib import Path\ndef model_training_(X_train_input:\
+          \ Input[Dataset], X_test_input: Input[Dataset], y_train_input: Input[Dataset],\
+          \ model_training_1_1__0: dsl.Output[Dataset], model_training_1_1__1: dsl.Output[Artifact]):\n\
+          \    paths = {}\n    unpaths = {}\n    X_train_input = X_train_input.path\n\
+          \    X_test_input = X_test_input.path\n    y_train_input = y_train_input.path\n\
+          \    f, X_test_scaled = mkstemp(); os.close(f)\n    paths['X_test_scaled']\
+          \ = Path(X_test_scaled)\n    unpaths[Path(X_test_scaled)] = 0\n    f, model_file\
+          \ = mkstemp(); os.close(f)\n    paths['model_file'] = Path(model_file)\n\
+          \    unpaths[Path(model_file)] = 0\n    globals().update(paths)\n    final_output\
+          \ = model_training(X_train_input=X_train_input, X_test_input=X_test_input,\
+          \ y_train_input=y_train_input)\n    model_training_1_1 = (model_training_1_1__0,\
+          \ model_training_1_1__1)\n    for p, q in zip(final_output, model_training_1_1):\
+          \ shutil.move(p, q.path)\n    for p in unpaths: shutil.rmtree(str(p), ignore_errors=True)\n"
+        image: python:3.9
+    exec-predict-1-1:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - predict_
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'joblib' 'minio==7.1.14'\
+          \ 'numpy' 'pandas' 'scikit-learn' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef predict(X_test: Dataset, trained_model: Artifact) -> Dataset:\n\
+          \    import joblib\n    import pandas as pd\n    from minio import Minio\n\
+          \    from minio.error import S3Error\n    X_test_data = pd.read_csv(X_test)\n\
+          \n    client = Minio('minio-service.default:9000',\n                   'minio',\n\
+          \                   'minio123',\n                   secure=False)\n    model_file\
+          \ = 'model.pkl'\n    client.fget_object('boston-house-data', 'data/model.pkl',\
+          \ model_file)\n    regression = joblib.load(model_file)\n\n    predictions\
+          \ = regression.predict(X_test_data)\n    pd.DataFrame(predictions).to_csv(prediction,\
+          \ index=False)\n    return prediction\n\n\nfrom kfp.dsl.types.artifact_types\
+          \ import *\nimport typing\nfrom typing import NamedTuple\nimport os\nimport\
+          \ shutil\nfrom tempfile import mkstemp\nfrom pathlib import Path\ndef predict_(X_test:\
+          \ Input[Dataset], trained_model: Input[Artifact], predict_1_1: dsl.Output[Dataset]):\n\
+          \    paths = {}\n    unpaths = {}\n    X_test = X_test.path\n    trained_model\
+          \ = trained_model.path\n    f, prediction = mkstemp(); os.close(f)\n   \
+          \ paths['prediction'] = Path(prediction)\n    unpaths[Path(prediction)]\
+          \ = 0\n    globals().update(paths)\n    final_output = predict(X_test=X_test,\
+          \ trained_model=trained_model)\n    shutil.move(final_output, predict_1_1.path)\n\
+          \    for p in unpaths: shutil.rmtree(str(p), ignore_errors=True)\n"
+        image: python:3.9
+    exec-preprocess-the-dataset-1-1:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - preprocess_the_dataset_
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'joblib' 'minio==7.1.14'\
+          \ 'numpy' 'pandas' 'scikit-learn' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef preprocess_the_dataset(dataset_content: Dataset) -> Dataset:\n\
+          \    import pandas as pd\n    data = pd.read_csv(dataset_content, header=0)\n\
+          \    if data.isna().sum().any():\n        raise ValueError(\"The data needs\
+          \ preprocessing (remove missing values)\")\n\n    data.to_csv(out_data,\
+          \ index=False)\n    return out_data\n\n\nfrom kfp.dsl.types.artifact_types\
+          \ import *\nimport typing\nfrom typing import NamedTuple\nimport os\nimport\
+          \ shutil\nfrom tempfile import mkstemp\nfrom pathlib import Path\ndef preprocess_the_dataset_(dataset_content:\
+          \ Input[Dataset], preprocess_the_dataset_1_1: dsl.Output[Dataset]):\n  \
+          \  paths = {}\n    unpaths = {}\n    dataset_content = dataset_content.path\n\
+          \    f, out_data = mkstemp(); os.close(f)\n    paths['out_data'] = Path(out_data)\n\
+          \    unpaths[Path(out_data)] = 0\n    globals().update(paths)\n    final_output\
+          \ = preprocess_the_dataset(dataset_content=dataset_content)\n    shutil.move(final_output,\
+          \ preprocess_the_dataset_1_1.path)\n    for p in unpaths: shutil.rmtree(str(p),\
+          \ ignore_errors=True)\n"
+        image: python:3.9
+    exec-train-test-split-1-1:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_test_split_
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'joblib' 'minio==7.1.14'\
+          \ 'numpy' 'pandas' 'scikit-learn' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_test_split(\n        input_df: Dataset, \n) -> tuple[Dataset,\
+          \ Dataset, Dataset, Dataset]:\n    from sklearn.model_selection import train_test_split\n\
+          \    import pandas as pd\n    df = pd.read_csv(input_df)\n    X = df.iloc[:,\
+          \ :-1]\n    y = df.iloc[:, -1]\n    X_train, X_test, y_train, y_test = train_test_split(X,\
+          \ y, test_size=0.3, random_state=42)\n\n    X_train.to_csv(X_train_artifact,\
+          \ index=False)\n    X_test.to_csv(X_test_artifact, index=False)\n    y_train.to_csv(y_train_artifact,\
+          \ index=False)\n    y_test.to_csv(y_test_artifact, index=False)\n\n    return\
+          \ (\n        X_train_artifact,\n        X_test_artifact,\n        y_train_artifact,\n\
+          \        y_test_artifact,\n    )\n\ntrain_test_split_1_1 = NamedTuple('train_test_split_1_1',\
+          \ (('train_test_split_1_1__0', Dataset), ('train_test_split_1_1__1', Dataset),\
+          \ ('train_test_split_1_1__2', Dataset), ('train_test_split_1_1__3', Dataset)))\n\
+          \nfrom kfp.dsl.types.artifact_types import *\nimport typing\nfrom typing\
+          \ import NamedTuple\nimport os\nimport shutil\nfrom tempfile import mkstemp\n\
+          from pathlib import Path\ndef train_test_split_(input_df: Input[Dataset],\
+          \ train_test_split_1_1__0: dsl.Output[Dataset], train_test_split_1_1__1:\
+          \ dsl.Output[Dataset], train_test_split_1_1__2: dsl.Output[Dataset], train_test_split_1_1__3:\
+          \ dsl.Output[Dataset]):\n    paths = {}\n    unpaths = {}\n    input_df\
+          \ = input_df.path\n    f, X_train_artifact = mkstemp(); os.close(f)\n  \
+          \  paths['X_train_artifact'] = Path(X_train_artifact)\n    unpaths[Path(X_train_artifact)]\
+          \ = 0\n    f, y_train_artifact = mkstemp(); os.close(f)\n    paths['y_train_artifact']\
+          \ = Path(y_train_artifact)\n    unpaths[Path(y_train_artifact)] = 0\n  \
+          \  f, y_test_artifact = mkstemp(); os.close(f)\n    paths['y_test_artifact']\
+          \ = Path(y_test_artifact)\n    unpaths[Path(y_test_artifact)] = 0\n    f,\
+          \ X_test_artifact = mkstemp(); os.close(f)\n    paths['X_test_artifact']\
+          \ = Path(X_test_artifact)\n    unpaths[Path(X_test_artifact)] = 0\n    globals().update(paths)\n\
+          \    final_output = train_test_split(input_df=input_df)\n    train_test_split_1_1\
+          \ = (train_test_split_1_1__0, train_test_split_1_1__1, train_test_split_1_1__2,\
+          \ train_test_split_1_1__3)\n    for p, q in zip(final_output, train_test_split_1_1):\
+          \ shutil.move(p, q.path)\n    for p in unpaths: shutil.rmtree(str(p), ignore_errors=True)\n"
+        image: python:3.9
+pipelineInfo:
+  description: DESCRIPTION
+  name: myname
+root:
+  dag:
+    outputs:
+      artifacts:
+        Output:
+          artifactSelectors:
+          - outputArtifactKey: evaluate_1_1
+            producerSubtask: evaluate-1-1
+    tasks:
+      evaluate-1-1:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate-1-1
+        dependentTasks:
+        - predict-1-1
+        - train-test-split-1-1
+        inputs:
+          artifacts:
+            predictions:
+              taskOutputArtifact:
+                outputArtifactKey: predict_1_1
+                producerTask: predict-1-1
+            y_test:
+              taskOutputArtifact:
+                outputArtifactKey: train_test_split_1_1__3
+                producerTask: train-test-split-1-1
+        taskInfo:
+          name: evaluate-1-1
+      load-dataset-from-gcs-1-1:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-load-dataset-from-gcs-1-1
+        inputs:
+          parameters:
+            blob_name:
+              runtimeValue:
+                constant: data/housing.csv
+            bucket_name:
+              runtimeValue:
+                constant: boston-house-data
+        taskInfo:
+          name: load-dataset-from-gcs-1-1
+      model-training-1-1:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-model-training-1-1
+        dependentTasks:
+        - train-test-split-1-1
+        inputs:
+          artifacts:
+            X_test_input:
+              taskOutputArtifact:
+                outputArtifactKey: train_test_split_1_1__1
+                producerTask: train-test-split-1-1
+            X_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: train_test_split_1_1__0
+                producerTask: train-test-split-1-1
+            y_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: train_test_split_1_1__2
+                producerTask: train-test-split-1-1
+        taskInfo:
+          name: model-training-1-1
+      predict-1-1:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-predict-1-1
+        dependentTasks:
+        - model-training-1-1
+        inputs:
+          artifacts:
+            X_test:
+              taskOutputArtifact:
+                outputArtifactKey: model_training_1_1__0
+                producerTask: model-training-1-1
+            trained_model:
+              taskOutputArtifact:
+                outputArtifactKey: model_training_1_1__1
+                producerTask: model-training-1-1
+        taskInfo:
+          name: predict-1-1
+      preprocess-the-dataset-1-1:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-preprocess-the-dataset-1-1
+        dependentTasks:
+        - load-dataset-from-gcs-1-1
+        inputs:
+          artifacts:
+            dataset_content:
+              taskOutputArtifact:
+                outputArtifactKey: load_dataset_from_gcs_1_1
+                producerTask: load-dataset-from-gcs-1-1
+        taskInfo:
+          name: preprocess-the-dataset-1-1
+      train-test-split-1-1:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-test-split-1-1
+        dependentTasks:
+        - preprocess-the-dataset-1-1
+        inputs:
+          artifacts:
+            input_df:
+              taskOutputArtifact:
+                outputArtifactKey: preprocess_the_dataset_1_1
+                producerTask: preprocess-the-dataset-1-1
+        taskInfo:
+          name: train-test-split-1-1
+  outputDefinitions:
+    artifacts:
+      Output:
+        artifactType:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.10.1

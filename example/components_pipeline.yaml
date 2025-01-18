@@ -1,0 +1,460 @@
+components:
+  comp-evaluate:
+    executorLabel: exec-evaluate
+    inputDefinitions:
+      artifacts:
+        predictions:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        metrics_output:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-load-dataset-from-gcs:
+    executorLabel: exec-load-dataset-from-gcs
+    inputDefinitions:
+      parameters:
+        blob_name:
+          parameterType: STRING
+        bucket_name:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        output_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-model-training:
+    executorLabel: exec-model-training
+    inputDefinitions:
+      artifacts:
+        X_test_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_train_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train_input:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        X_test_scaled:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        model_output:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-predict:
+    executorLabel: exec-predict
+    inputDefinitions:
+      artifacts:
+        X_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        trained_model:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        prediction:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-preprocess-the-dataset:
+    executorLabel: exec-preprocess-the-dataset
+    inputDefinitions:
+      artifacts:
+        dataset_content:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        out_data:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-train-test-split:
+    executorLabel: exec-train-test-split
+    inputDefinitions:
+      artifacts:
+        input_df:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        X_test_artifact:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        X_train_artifact:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_test_artifact:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train_artifact:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+defaultPipelineRoot: gs://boston-house-pred
+deploymentSpec:
+  executors:
+    exec-evaluate:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn'\
+          \ 'numpy' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate(y_test: Input[Dataset], predictions: Input[Dataset],\
+          \ metrics_output: Output[Artifact]):\n    from sklearn.metrics import mean_squared_error,\
+          \ mean_absolute_error\n    import pandas as pd\n    import numpy as np\n\
+          \    y_test_data = pd.read_csv(y_test.path)\n    predictions_data = pd.read_csv(predictions.path)\n\
+          \n    mae = mean_absolute_error(y_test_data, predictions_data)\n    mse\
+          \ = mean_squared_error(y_test_data, predictions_data)\n    rmse = np.sqrt(mse)\n\
+          \n    with open(metrics_output.path, 'w') as f:\n        f.write(f'MAE:\
+          \ {mae}\\n')\n        f.write(f'MSE: {mse}\\n')\n        f.write(f'RMSE:\
+          \ {rmse}\\n')\n\n"
+        image: python:3.9
+    exec-load-dataset-from-gcs:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - load_dataset_from_gcs
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-storage'\
+          \ 'pandas' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef load_dataset_from_gcs(bucket_name: str, blob_name: str, output_dataset:\
+          \ Output[Dataset]): \n    from google.cloud import storage\n    import pandas\
+          \ as pd\n    from io import StringIO\n    storage_client = storage.Client()\n\
+          \    bucket = storage_client.get_bucket(bucket_name)\n    blob = bucket.blob(blob_name)\n\
+          \n    dataset_content = blob.download_as_string().decode('utf-8')\n\n  \
+          \  data = pd.read_csv(StringIO(dataset_content), header=None, delim_whitespace=True)\n\
+          \    data.to_csv(output_dataset.path, header=True, index=False)\n\n"
+        image: python:3.9
+    exec-model-training:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - model_training
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'numpy' 'scikit-learn'\
+          \ 'joblib' 'pandas' 'google-cloud-storage' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef model_training(X_train_input: Input[Dataset],\n             \
+          \      X_test_input: Input[Dataset],\n                   y_train_input:\
+          \ Input[Dataset],\n                   X_test_scaled: Output[Dataset],\n\
+          \                   model_output: Output[Artifact]):\n    from sklearn.preprocessing\
+          \ import StandardScaler\n    from sklearn.linear_model import LinearRegression\n\
+          \    import joblib\n    from google.cloud import storage\n    import pandas\
+          \ as pd\n    scaler = StandardScaler()\n\n    X_train = pd.read_csv(X_train_input.path)\n\
+          \    X_test = pd.read_csv(X_test_input.path)\n    y_train = pd.read_csv(y_train_input.path)\n\
+          \n    X_train_scaled = scaler.fit_transform(X_train)\n    X_test_scaled2=\
+          \ pd.DataFrame(scaler.transform(X_test))\n    X_test_scaled2.to_csv(X_test_scaled.path,\
+          \ index=False)  # Fixing typo here\n\n    regression = LinearRegression()\n\
+          \    regression.fit(X_train_scaled, y_train)\n\n    model_file = '/trained_model.joblib'\n\
+          \    joblib.dump(regression, model_file)\n    # Upload the model file to\
+          \ Google Cloud Storage\n    storage_client = storage.Client()\n    bucket\
+          \ = storage_client.bucket('boston-house-data')\n    blob = bucket.blob('data/model.pkl')\n\
+          \    blob.upload_from_filename(model_file)\n    model_output.file = model_file\n\
+          \n"
+        image: python:3.9
+    exec-predict:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - predict
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'joblib'\
+          \ 'google-cloud-storage' 'scikit-learn' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef predict(X_test: Input[Dataset], trained_model: Input[Artifact],\
+          \ prediction: Output[Dataset]):\n    import joblib\n    import pandas as\
+          \ pd\n    from google.cloud import storage\n    import sklearn\n    X_test_data\
+          \ = pd.read_csv(X_test.path)\n\n    storage_client = storage.Client()\n\
+          \    bucket = storage_client.bucket(\"boston-house-data\")\n    blob = bucket.blob(\"\
+          data/model.pkl\")\n    model_file = 'model.pkl'\n    blob.download_to_filename(model_file)\n\
+          \n\n    regression = joblib.load(model_file)\n\n    predictions = regression.predict(X_test_data)\n\
+          \    pd.DataFrame(predictions).to_csv(prediction.path, index=False)\n\n"
+        image: python:3.9
+    exec-preprocess-the-dataset:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - preprocess_the_dataset
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' &&\
+          \ \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef preprocess_the_dataset(dataset_content: Input[Dataset], out_data:\
+          \ Output[Dataset]):\n    import pandas as pd\n    data = pd.read_csv(dataset_content.path,\
+          \ header=0)\n    if data.isna().sum().any():\n        raise ValueError(\"\
+          The data needs preprocessing (remove missing values)\")\n\n    data.to_csv(out_data.path,\
+          \ index=False)\n\n"
+        image: python:3.9
+    exec-train-test-split:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_test_split
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.10.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'scikit-learn'\
+          \ 'pandas' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_test_split(input_df: Input[Dataset], \n               \
+          \      X_train_artifact: Output[Dataset], \n                     X_test_artifact:\
+          \ Output[Dataset], \n                     y_train_artifact: Output[Dataset],\
+          \ \n                     y_test_artifact: Output[Dataset]):\n    from sklearn.model_selection\
+          \ import train_test_split\n    import pandas as pd\n    df = pd.read_csv(input_df.path)\n\
+          \    X = df.iloc[:, :-1]\n    y = df.iloc[:, -1]\n    X_train, X_test, y_train,\
+          \ y_test = train_test_split(X, y, test_size=0.3, random_state=42)\n\n  \
+          \  X_train.to_csv(X_train_artifact.path, index=False)\n    X_test.to_csv(X_test_artifact.path,\
+          \ index=False)\n    y_train.to_csv(y_train_artifact.path, index=False)\n\
+          \    y_test.to_csv(y_test_artifact.path, index=False)\n\n"
+        image: python:3.9
+pipelineInfo:
+  description: A pipeline to prepare dataset, split into train and test sets, train
+    a model, and predict
+  name: boston-house-training-prediction
+root:
+  dag:
+    tasks:
+      evaluate:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate
+        dependentTasks:
+        - predict
+        - train-test-split
+        inputs:
+          artifacts:
+            predictions:
+              taskOutputArtifact:
+                outputArtifactKey: prediction
+                producerTask: predict
+            y_test:
+              taskOutputArtifact:
+                outputArtifactKey: y_test_artifact
+                producerTask: train-test-split
+        taskInfo:
+          name: evaluate
+      load-dataset-from-gcs:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-load-dataset-from-gcs
+        inputs:
+          parameters:
+            blob_name:
+              runtimeValue:
+                constant: data/housing.csv
+            bucket_name:
+              runtimeValue:
+                constant: boston-house-data
+        taskInfo:
+          name: load-dataset-from-gcs
+      model-training:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-model-training
+        dependentTasks:
+        - train-test-split
+        inputs:
+          artifacts:
+            X_test_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_test_artifact
+                producerTask: train-test-split
+            X_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: X_train_artifact
+                producerTask: train-test-split
+            y_train_input:
+              taskOutputArtifact:
+                outputArtifactKey: y_train_artifact
+                producerTask: train-test-split
+        taskInfo:
+          name: model-training
+      predict:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-predict
+        dependentTasks:
+        - model-training
+        inputs:
+          artifacts:
+            X_test:
+              taskOutputArtifact:
+                outputArtifactKey: X_test_scaled
+                producerTask: model-training
+            trained_model:
+              taskOutputArtifact:
+                outputArtifactKey: model_output
+                producerTask: model-training
+        taskInfo:
+          name: predict
+      preprocess-the-dataset:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-preprocess-the-dataset
+        dependentTasks:
+        - load-dataset-from-gcs
+        inputs:
+          artifacts:
+            dataset_content:
+              taskOutputArtifact:
+                outputArtifactKey: output_dataset
+                producerTask: load-dataset-from-gcs
+        taskInfo:
+          name: preprocess-the-dataset
+      train-test-split:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-test-split
+        dependentTasks:
+        - preprocess-the-dataset
+        inputs:
+          artifacts:
+            input_df:
+              taskOutputArtifact:
+                outputArtifactKey: out_data
+                producerTask: preprocess-the-dataset
+        taskInfo:
+          name: train-test-split
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.10.1

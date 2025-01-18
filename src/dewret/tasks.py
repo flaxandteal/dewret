@@ -45,6 +45,7 @@ from contextvars import ContextVar, copy_context
 from contextlib import contextmanager
 
 from .utils import is_firm, make_traceback, is_expr
+from .data import Dataset
 from .workflow import (
     expr_to_references,
     unify_workflows,
@@ -56,6 +57,7 @@ from .workflow import (
     LazyFactory,
     Parameter,
     ParameterReference,
+    DatasetParameter,
     param,
     Task,
     is_task,
@@ -73,6 +75,7 @@ from .core import (
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
 T = TypeVar("T")
+
 
 class Backend(Enum):
     """Stringy enum representing available backends."""
@@ -323,6 +326,7 @@ def factory(fn: Callable[..., RetType]) -> Callable[..., RetType]:
     """
     return task(is_factory=True)(fn)
 
+
 # Workaround for PyCharm
 factory: Callable[[Callable[..., RetType]], Callable[..., RetType]] = factory
 
@@ -353,6 +357,7 @@ def workflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]
         Task that runs at render, not execution, time.
     """
     return task(nested=True, flatten_nested=False)
+
 
 # Workaround for PyCharm
 workflow: Callable[[], Callable[[T], T]] = workflow
@@ -408,6 +413,7 @@ def task(
         ) -> RetType:
             configuration = None
             allow_positional_args = bool(get_configuration("allow_positional_args"))
+            strict = bool(get_configuration("strict"))
 
             try:
                 # Ensure that all arguments are passed as keyword args and prevent positional args.
@@ -547,12 +553,16 @@ def task(
                     elif inspect.isclass(value) or inspect.isfunction(value):
                         # We assume these are loaded at runtime.
                         ...
-                    elif is_firm(value) or (
-                        (attrs_has(value) or is_dataclass(value))
-                        and not inspect.isclass(value)
+                    elif (
+                        is_firm(value)
+                        or (
+                            (attrs_has(value) or is_dataclass(value))
+                            and not inspect.isclass(value)
+                        )
+                        or isinstance(value, Dataset)
                     ):
                         kwargs[var] = cast(
-                            Parameter[Any],
+                            DatasetParameter[Any],
                             param(
                                 var,
                                 default=value,
@@ -561,17 +571,22 @@ def task(
                                     var, exhaustive=True
                                 )
                                 or UNSET,
+                                parameter_cls=DatasetParameter,
                             ),
                         ).make_reference(workflow=workflow)
                     elif (
                         is_expr(value)
-                        and (expr_refs := expr_to_references(value))
+                        and (expr_refs := expr_to_references(value)[1])
                         and len(expr_refs[1]) != 0
                     ):
                         kwargs[var] = value
                     elif nested:
                         raise NotImplementedError(
                             f"Nested tasks must now only refer to global parameters, raw or tasks, not objects: {var}"
+                        )
+                    elif strict:
+                        raise NotImplementedError(
+                            f"In strict mode, tasks must now only refer to global parameters, raw or tasks, not objects: {var}"
                         )
                 if nested:
                     if flatten_nested or get_configuration("flatten_all_nested"):
@@ -659,8 +674,10 @@ def task(
 
     return _task
 
+
 # Workaround for PyCharm
 task: Callable[[], Callable[[T], T]] = task
+
 
 def set_backend(backend: Backend) -> None:
     """Choose a backend.
