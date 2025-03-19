@@ -93,7 +93,13 @@ def render(
 
     render_module: Path | ModuleType
     if mtch := re.match(r"^([a-z_0-9-.]+)$", renderer):
-        render_module = importlib.import_module(f"dewret.renderers.{mtch.group(1)}")
+        try:
+            render_module = importlib.import_module(mtch.group(1))
+        except ModuleNotFoundError:
+            try:
+                render_module = importlib.import_module(f"dewret.renderers.{mtch.group(1)}")
+            except ModuleNotFoundError:
+                raise ModuleNotFoundError(f"Unable to find render module {mtch.group(1)} in PYTHONPATH or dewret.renderers.") 
         if not isinstance(render_module, RawRenderModule) and not isinstance(
             render_module, StructuredRenderModule
         ):
