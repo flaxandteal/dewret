@@ -164,5 +164,5 @@ def render(
     else:
         write_rendered_output(rendered, output, opener)
 
-
-render()
+if __name__ == '__main__':
+    render()
