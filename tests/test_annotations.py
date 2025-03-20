@@ -88,10 +88,10 @@ def test_at_render_bad() -> None:
     """Test the rendering of workflows with exceptions handling."""
     with pytest.raises(TaskException) as _:
         result = to_int_bad(num=increment(num=3), should_double=True)
-        wkflw = construct(result, simplify_ids=True)
+        construct(result, simplify_ids=True)
     with pytest.raises(TaskException) as _:
         result = to_int_bad_2(num=increment(num=3), should_double=True)
-        wkflw = construct(result, simplify_ids=True)
+        construct(result, simplify_ids=True)
 
 
 def test_at_render() -> None:
