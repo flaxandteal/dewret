@@ -26,3 +26,7 @@ Advantages of doing so include:
 ### Documentation
 
 For further information, see the [documentation](https://flaxandteal.github.io/dewret).
+
+## Developer Set up
+
+Run the relevant script in `.set_up`
