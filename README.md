@@ -26,3 +26,18 @@ Advantages of doing so include:
 ### Documentation
 
 For further information, see the [documentation](https://flaxandteal.github.io/dewret).
+
+## Developer Set up
+
+### Conda
+```sh
+conda create -n <env-name> -c conda-forge conda-build -y
+conda install --name <env-name> --file requirements.txt -y
+conda develop src
+```
+
+### Pre-commit hooks
+```sh
+conda install pre-commit ruff mypy -y
+pre-commit install
+```
