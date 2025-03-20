@@ -1,5 +1,6 @@
+"""Utility file used to generate recipe.yaml."""
+
 import textwrap
-import os
 import toml
 
 with open("pyproject.toml") as f:

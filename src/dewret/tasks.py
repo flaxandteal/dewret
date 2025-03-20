@@ -74,6 +74,7 @@ Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
 T = TypeVar("T")
 
+
 class Backend(Enum):
     """Stringy enum representing available backends."""
 
@@ -323,6 +324,7 @@ def factory(fn: Callable[..., RetType]) -> Callable[..., RetType]:
     """
     return task(is_factory=True)(fn)
 
+
 # Workaround for PyCharm
 factory: Callable[[Callable[..., RetType]], Callable[..., RetType]] = factory
 
@@ -353,6 +355,7 @@ def workflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]
         Task that runs at render, not execution, time.
     """
     return task(nested=True, flatten_nested=False)
+
 
 # Workaround for PyCharm
 workflow: Callable[[], Callable[[T], T]] = workflow
@@ -659,8 +662,10 @@ def task(
 
     return _task
 
+
 # Workaround for PyCharm
 task: Callable[[], Callable[[T], T]] = task
+
 
 def set_backend(backend: Backend) -> None:
     """Choose a backend.

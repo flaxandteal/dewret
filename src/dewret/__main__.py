@@ -97,9 +97,13 @@ def render(
             render_module = importlib.import_module(mtch.group(1))
         except ModuleNotFoundError:
             try:
-                render_module = importlib.import_module(f"dewret.renderers.{mtch.group(1)}")
-            except ModuleNotFoundError:
-                raise ModuleNotFoundError(f"Unable to find render module {mtch.group(1)} in PYTHONPATH or dewret.renderers.") 
+                render_module = importlib.import_module(
+                    f"dewret.renderers.{mtch.group(1)}"
+                )
+            except ModuleNotFoundError as err:
+                raise ModuleNotFoundError(
+                    f"Unable to find render module {mtch.group(1)} in PYTHONPATH or dewret.renderers."
+                ) from err
         if not isinstance(render_module, RawRenderModule) and not isinstance(
             render_module, StructuredRenderModule
         ):
@@ -170,5 +174,6 @@ def render(
     else:
         write_rendered_output(rendered, output, opener)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     render()
