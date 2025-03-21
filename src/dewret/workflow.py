@@ -26,6 +26,7 @@ from collections import Counter, OrderedDict
 from typing import (
     Protocol,
     Any,
+    ParamSpec,
     TypeVar,
     Generic,
     cast,
@@ -63,6 +64,7 @@ from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
 T = TypeVar("T")
 U = TypeVar("U")
 RetType = TypeVar("RetType")
+Param = ParamSpec("Param")
 
 CHECK_IDS = False
 AVAILABLE_TYPES = {"int": int, "str": str}
@@ -81,14 +83,14 @@ class Lazy(Protocol):
 class LazyEvaluation(Lazy, Generic[RetType]):
     """Tracks a single evaluation of a lazy function."""
 
-    def __init__(self, fn: Callable[..., RetType]):
+    def __init__(self, fn: Callable[Param, RetType]):
         """Initialize an evaluation.
 
         Args:
             fn: callable returning RetType, which this will return
                 also from it's __call__ method for consistency.
         """
-        self._fn: Callable[..., RetType] = fn
+        self._fn: Callable[Param, RetType] = fn
         self.__name__ = fn.__name__
 
     def __call__(self, *args: Any, **kwargs: Any) -> RetType:
@@ -101,7 +103,7 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         is attempted.
         """
         tb = make_traceback()
-        result = self._fn(*args, **kwargs, __traceback__=tb)
+        result = self._fn(*args, **kwargs, __traceback__=tb)  # type: ignore[arg-type]
         return result
 
 
