@@ -404,7 +404,7 @@ def task(
         declaration_tb = make_traceback()
 
         def _fn(
-            *args: Any,
+            *args: Param.args,
             __workflow__: Workflow | None = None,
             __traceback__: TracebackType | None = None,
             **kwargs: Param.kwargs,
@@ -592,7 +592,7 @@ def task(
                         step_reference = output
                     else:
                         nested_workflow = Workflow(name=fn.__name__)
-                        nested_globals: Param.kwargs = {
+                        nested_globals: dict[str, Any] = {
                             var: cast(
                                 Parameter[Any],
                                 param(
