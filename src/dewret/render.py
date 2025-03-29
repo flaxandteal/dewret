@@ -73,6 +73,7 @@ def get_render_method(
         sys.modules["__renderer_mod__"] = module
         render_module = cast(BaseRenderModule, module)
     else:
+        sys.modules["__renderer_mod__"] = renderer
         render_module = renderer
 
     if isinstance(render_module, RawRenderModule):
