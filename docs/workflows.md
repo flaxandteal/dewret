@@ -843,3 +843,69 @@ steps:
     run: sum
 
 ```
+
+## Metadata
+
+It is possible to add metadata to steps that dewret is disinterested
+in, but may be used by a renderer. By default, CWL will add these
+as extra key-value pairs to step definitions, allowing extension
+of the existing renderer support. Note that the CWL renderer will
+not allow overriding of known step keys this way.
+
+To use this feature, import `meta` from the `dewret.utils` module.
+You can then set key-value pairs by using:
+
+```python
+meta(result).labels = ["label-1", "label-2"]
+meta(result)["my data"] = {"mydata": "otherdata"}
+```
+
+For example:
+```python
+>>> import sys
+>>> import yaml
+>>> from dewret.workflow import param
+>>> from dewret.tasks import task, construct
+>>> from dewret.renderers.cwl import render
+>>> from dewret.utils import meta
+>>> INPUT_NUM = 3
+>>> @task()
+... def rotate(num: int) -> int:
+...    """Rotate an integer."""
+...    return (num + INPUT_NUM) % INPUT_NUM
+>>>
+>>> result = rotate(num=5)
+>>> meta(result).labels = ["my-label"]
+>>> wkflw = construct(result, simplify_ids=True)
+>>> cwl = render(wkflw)["__root__"]
+>>> yaml.dump(cwl, sys.stdout, indent=2)
+class: Workflow
+cwlVersion: 1.2
+inputs:
+  INPUT_NUM:
+    default: 3
+    label: INPUT_NUM
+    type: int
+  rotate-1-num:
+    default: 5
+    label: num
+    type: int
+outputs:
+  out:
+    label: out
+    outputSource: rotate-1/out
+    type: int
+steps:
+  rotate-1:
+    in:
+      INPUT_NUM:
+        source: INPUT_NUM
+      num:
+        source: rotate-1-num
+    labels:
+    - my-label
+    out:
+    - out
+    run: rotate
+
+```
