@@ -34,20 +34,20 @@ def fn(arg5: int, arg6: AtRender[int]) -> float:
 
 
 @workflow()
-def to_int_bad(num: int, should_double: bool) -> int | float:
-    """A mock workflow that casts to an int with a wrong type for handling doubles."""
-    return increment(num=num) if should_double else sum(left=num, right=num)
+def to_int_bad(num: int, should_double: bool | Any) -> int | float:
+    """This workflow is in-valid because the boolean is NOT Annotated with AtRender and resolved at render time by dewret.
 
-
-@workflow()
-def to_int_bad_2(num: int, should_double: Any) -> int | float:
-    """A mock workflow that casts to an int with a wrong type for handling doubles."""
+    TODO: understand and document if this is possible in dewret
+    """
     return increment(num=num) if should_double else sum(left=num, right=num)
 
 
 @workflow()
 def to_int(num: int, should_double: AtRender[bool]) -> int | float:
-    """A mock workflow that casts to an int with a right type for handling doubles."""
+    """This workflow is valid because the boolean is Annotated with AtRender, and resolved at render time by dewret.
+
+    The output does not contain a branch on the value of should_double.
+    """
     return increment(num=num) if should_double else sum(left=num, right=num)
 
 
@@ -88,9 +88,6 @@ def test_at_render_bad() -> None:
     """Test the rendering of workflows with exceptions handling."""
     with pytest.raises(TaskException) as _:
         result = to_int_bad(num=increment(num=3), should_double=True)
-        construct(result, simplify_ids=True)
-    with pytest.raises(TaskException) as _:
-        result = to_int_bad_2(num=increment(num=3), should_double=True)
         construct(result, simplify_ids=True)
 
 
