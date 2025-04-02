@@ -11,9 +11,6 @@ jobs:
       - uses: chartboost/ruff-action@v1
         with:
           src: "./src ./tests ./example"
-      - uses: python/mypy@v1.14.1
-        with:
-          paths: "./src"
       - run: pip install .[test] && python -m mypy --strict --install-types --allow-subclassing-any --non-interactive ./src ./tests ./example
 
   audit:
