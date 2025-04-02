@@ -347,6 +347,23 @@ def get_render_configuration(key: str) -> RawType:
         return default_renderer_config().get(key)
 
 
+class WorkflowComponentMetadata(dict[str, Any]):
+    """Generic metadata-handling class.
+
+    Workflow components should use this and assign it to their
+    `user_meta` member to get metadata support. References to this
+    component can then access this dict-like object via `dewret.utils.meta(cmpt)`
+    """
+
+    def __getattr__(self, key: str) -> Any:
+        """Wrapper to make dict access neater in metadata context."""
+        return self.__getitem__(key)
+
+    def __setattr__(self, key: str, value: Any) -> None:
+        """Wrapper to make dict access neater in metadata context."""
+        self.__setitem__(key, value)
+
+
 class WorkflowComponent:
     """Base class for anything directly tied to an individual `Workflow`.
 
@@ -355,6 +372,7 @@ class WorkflowComponent:
     """
 
     __workflow_real__: WorkflowProtocol
+    user_meta: WorkflowComponentMetadata | None = None
 
     def __init__(self, *args: Any, workflow: WorkflowProtocol, **kwargs: Any):
         """Tie to a `Workflow`.
@@ -401,6 +419,13 @@ class Reference(Generic[U], Symbol, WorkflowComponent):
     def name(self) -> str:
         """Printable name of the reference."""
         return self.__name__
+
+    @property
+    def __referee__(self) -> WorkflowComponent:
+        """Get the target of the reference if possible."""
+        raise NotImplementedError(
+            f"It is not possible to retrieve a target for this reference type: {self.__class__}"
+        )
 
     def __new__(cls, *args: Any, **kwargs: Any) -> "Reference[U]":
         """As all references are sympy Expressions, the real returned object must be made with Expr."""

@@ -72,6 +72,7 @@ from .core import (
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
+T = TypeVar("T")
 
 
 class Backend(Enum):
@@ -324,6 +325,10 @@ def factory(fn: Callable[..., RetType]) -> Callable[..., RetType]:
     return task(is_factory=True)(fn)
 
 
+# Workaround for PyCharm
+factory: Callable[[Callable[..., RetType]], Callable[..., RetType]] = factory
+
+
 def workflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """Shortcut for marking a task as nested.
 
@@ -350,6 +355,10 @@ def workflow() -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]
         Task that runs at render, not execution, time.
     """
     return task(nested=True, flatten_nested=False)
+
+
+# Workaround for PyCharm
+workflow: Callable[[], Callable[[T], T]] = workflow
 
 
 def task(
@@ -395,10 +404,10 @@ def task(
         declaration_tb = make_traceback()
 
         def _fn(
-            *args: Any,
+            *args: Param.args,
             __workflow__: Workflow | None = None,
             __traceback__: TracebackType | None = None,
-            **kwargs: Param.kwargs,
+            **kwargs: Any,
         ) -> RetType:
             configuration = None
             allow_positional_args = bool(get_configuration("allow_positional_args"))
@@ -583,7 +592,7 @@ def task(
                         step_reference = output
                     else:
                         nested_workflow = Workflow(name=fn.__name__)
-                        nested_globals: Param.kwargs = {
+                        nested_globals: dict[str, Any] = {
                             var: cast(
                                 Parameter[Any],
                                 param(
@@ -652,6 +661,10 @@ def task(
         return LazyEvaluation(_fn)
 
     return _task
+
+
+# Workaround for PyCharm
+task: Callable[[], Callable[[T], T]] = task
 
 
 def set_backend(backend: Backend) -> None:

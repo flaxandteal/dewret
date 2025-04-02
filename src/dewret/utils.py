@@ -23,13 +23,33 @@ import sys
 import importlib
 import importlib.util
 from types import FrameType, TracebackType, UnionType, ModuleType
-from typing import Any, cast, Protocol, ClassVar, Callable, Iterable, get_args, Hashable
+from typing import (
+    Any,
+    cast,
+    Protocol,
+    ClassVar,
+    Callable,
+    Iterable,
+    get_args,
+    Hashable,
+    TypeVar,
+)
 from pathlib import Path
 from collections.abc import Sequence, Mapping
 from dataclasses import asdict, is_dataclass
 from sympy import Basic, Integer, Float, Rational
 
-from .core import Reference, RawType, FirmType, Raw
+from .core import (
+    Reference,
+    RawType,
+    FirmType,
+    Raw,
+    WorkflowComponentMetadata,
+    WorkflowComponent,
+)
+
+
+U = TypeVar("U")
 
 
 class Unset:
@@ -290,3 +310,20 @@ def hasher(construct: FirmType) -> str:
     hsh = hashlib.md5()
     hsh.update(construct_as_string.encode())
     return hsh.hexdigest()
+
+
+def meta(cmpt: Any) -> WorkflowComponentMetadata:
+    """Get metadata object for the referee of this reference."""
+    component: WorkflowComponent
+    if isinstance(cmpt, Reference):
+        component = cmpt.__referee__
+    elif isinstance(cmpt, WorkflowComponent):
+        component = cmpt
+    else:
+        raise RuntimeError(
+            f"Attempted to add metadata to {cmpt}, which is not a dewret reference,"
+            " e.g. the return value of a task."
+        )
+    if component.user_meta is None:
+        raise RuntimeError(f"Reference {component} does not contain metadata")
+    return component.user_meta

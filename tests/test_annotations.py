@@ -10,6 +10,8 @@ from dewret.core import set_configuration
 
 from ._lib.extra import increment, sum, try_nothing
 
+from typing import Any
+
 ARG1: AtRender[bool] = True
 ARG2: bool = False
 
@@ -38,6 +40,12 @@ def to_int_bad(num: int, should_double: bool) -> int | float:
 
 
 @workflow()
+def to_int_bad_2(num: int, should_double: Any) -> int | float:
+    """A mock workflow that casts to an int with a wrong type for handling doubles."""
+    return increment(num=num) if should_double else sum(left=num, right=num)
+
+
+@workflow()
 def to_int(num: int, should_double: AtRender[bool]) -> int | float:
     """A mock workflow that casts to an int with a right type for handling doubles."""
     return increment(num=num) if should_double else sum(left=num, right=num)
@@ -56,6 +64,7 @@ def test_can_analyze_annotations() -> None:
     assert analyser.argument_has("arg3", AtRender, exhaustive=True) is False
     assert analyser.argument_has("ARG2", AtRender, exhaustive=True) is False
     assert analyser.argument_has("arg2", AtRender, exhaustive=True) is True
+    assert analyser.argument_has("arg2", AtRender, exhaustive=False) is True
     assert (
         analyser.argument_has("arg4", AtRender, exhaustive=True) is False
     )  # Not a global/argument
@@ -67,6 +76,7 @@ def test_can_analyze_annotations() -> None:
     assert analyser.argument_has("arg7", AtRender, exhaustive=True) is False
     assert analyser.argument_has("ARG2", AtRender, exhaustive=True) is False
     assert analyser.argument_has("arg6", AtRender, exhaustive=True) is True
+    assert analyser.argument_has("arg6", AtRender, exhaustive=False) is True
     assert (
         analyser.argument_has("arg8", AtRender, exhaustive=True) is False
     )  # Not a global/argument
@@ -74,12 +84,18 @@ def test_can_analyze_annotations() -> None:
     assert analyser.argument_has("ARG1", AtRender) is False
 
 
-def test_at_render() -> None:
-    """Test the rendering of workflows with `dewret.annotations.AtRender` and exceptions handling."""
+def test_at_render_bad() -> None:
+    """Test the rendering of workflows with exceptions handling."""
     with pytest.raises(TaskException) as _:
         result = to_int_bad(num=increment(num=3), should_double=True)
-        wkflw = construct(result, simplify_ids=True)
+        construct(result, simplify_ids=True)
+    with pytest.raises(TaskException) as _:
+        result = to_int_bad_2(num=increment(num=3), should_double=True)
+        construct(result, simplify_ids=True)
 
+
+def test_at_render() -> None:
+    """Test the rendering of workflows with `dewret.annotations.AtRender`."""
     result = to_int(num=increment(num=3), should_double=True)
     wkflw = construct(result, simplify_ids=True)
     subworkflows = render(wkflw, allow_complex_types=True)
