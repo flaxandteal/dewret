@@ -404,7 +404,7 @@ def task(
         declaration_tb = make_traceback()
 
         def _fn(
-            *args: Any,
+            *args: Param.args,
             __workflow__: Workflow | None = None,
             __traceback__: TracebackType | None = None,
             **kwargs: Any,
