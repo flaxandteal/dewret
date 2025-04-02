@@ -1644,7 +1644,7 @@ class StepReference(FieldableMixin, Reference[U]):
 
     step: BaseStep
 
-    class StepReferenceMetadata[T]:
+    class StepReferenceMetadata(Generic[T]):
         """Wrapper for any metadata that we would not want to conflict with fieldnames.
 
         Attributes:
