@@ -23,5 +23,11 @@ repos:
           --install-types,
           --allow-subclassing-any,
           --non-interactive,
+          # I cannot find a good link for this but it seems to be needed
+          # for pre-commit to install the local dewret installation,
+          # the pass_filenames option is needed to avoid the having problems with duplicate
+          # imports when scanning using "."
+          ".", 
         ]
-        additional_dependencies: [sympy, attrs, pytest, click, dask]
+        pass_filenames: false
+        additional_dependencies: [sympy, pytest, attrs, click, dask]
