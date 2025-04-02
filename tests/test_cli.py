@@ -1,11 +1,9 @@
 """Test CLI render function."""
 
 import yaml
-from pathlib import Path
-
-# TODO if the mypy CI doesn't complain remove this  comment
-from dewret.cli import render
 import pytest
+from pathlib import Path
+from dewret.cli import render
 
 
 def test_cli_call() -> None:
