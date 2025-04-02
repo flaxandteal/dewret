@@ -29,4 +29,4 @@ For further information, see the [documentation](https://flaxandteal.github.io/d
 
 ## Developer Set up
 
-Run the relevant script in `.set_up`
+For development with conda, run the relevant script in `.set_up`
