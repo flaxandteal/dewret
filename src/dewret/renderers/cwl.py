@@ -278,6 +278,7 @@ class StepDefinition:
     run: str
     out: dict[str, "CommandInputSchema"] | list[str]
     in_: Mapping[str, ReferenceDefinition | Raw]
+    supplementary: Mapping[str, RawType]
 
     @classmethod
     def from_step(cls, step: BaseStep) -> "StepDefinition":
@@ -307,6 +308,7 @@ class StepDefinition:
                 )
                 for key, param in step.arguments.items()
             },
+            supplementary=step.user_meta,
         )
 
     def render(self) -> dict[str, RawType]:
@@ -316,22 +318,26 @@ class StepDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
-        return {
-            "run": self.run,
-            "in": {
-                key: (
-                    ref.render()
-                    if isinstance(ref, ReferenceDefinition)
-                    else render_expression(ref).render()
-                    if isinstance(ref, Basic)
-                    else {"default": firm_to_raw(ref.value)}
-                    if hasattr(ref, "value")
-                    else render_expression(ref).render()
-                )
-                for key, ref in self.in_.items()
-            },
-            "out": crawl_raw(self.out),
-        }
+        block: dict[str, Basic] = dict(self.supplementary)
+        block.update(
+            {
+                "run": self.run,
+                "in": {
+                    key: (
+                        ref.render()
+                        if isinstance(ref, ReferenceDefinition)
+                        else render_expression(ref).render()
+                        if isinstance(ref, Basic)
+                        else {"default": firm_to_raw(ref.value)}
+                        if hasattr(ref, "value")
+                        else render_expression(ref).render()
+                    )
+                    for key, ref in self.in_.items()
+                },
+                "out": crawl_raw(self.out),
+            }
+        )
+        return block
 
 
 def cwl_type_from_value(label: str, val: RawType | Unset) -> CommandInputSchema:

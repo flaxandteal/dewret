@@ -57,6 +57,7 @@ from .core import (
     strip_annotations,
     WorkflowProtocol,
     WorkflowComponent,
+    WorkflowComponentMetadata,
     ExprType,
 )
 from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
@@ -1114,6 +1115,7 @@ class BaseStep(WorkflowComponent):
     arguments: Mapping[str, Basic | Reference[Any] | Raw]
     workflow: Workflow
     positional_args: dict[str, bool] | None = None
+    user_meta: WorkflowComponentMetadata
 
     def __init__(
         self,
@@ -1133,6 +1135,7 @@ class BaseStep(WorkflowComponent):
         super().__init__(workflow=workflow)
         self.task = task
         self.arguments = {}
+        self.user_meta = WorkflowComponentMetadata()
         for key, value in arguments.items():
             if (
                 isinstance(value, FactoryCall)
@@ -1479,6 +1482,11 @@ class ParameterReference(FieldableMixin, Reference[U], WorkflowComponent):
         """
         return self._.parameter.name
 
+    @property
+    def __referee__(self) -> WorkflowComponent:
+        """Get the target parameter."""
+        return self._.parameter
+
     def __init__(
         self,
         parameter: Parameter[U],
@@ -1636,13 +1644,16 @@ class StepReference(FieldableMixin, Reference[U]):
 
     step: BaseStep
 
-    class StepReferenceMetadata:
+    class StepReferenceMetadata[U]:
         """Wrapper for any metadata that we would not want to conflict with fieldnames.
 
         Attributes:
             step: the step being wrapped.
             _typ: the type to return, if overriding the step's own type, or None.
         """
+
+        step: BaseStep
+        _typ: type[U] | None
 
         def __init__(self, step: BaseStep, typ: type[U] | None = None):
             """Initialize the reference.
@@ -1661,7 +1672,7 @@ class StepReference(FieldableMixin, Reference[U]):
             """Type of this reference, which may be overridden or may be the step's own type."""
             return self._typ or self.step.return_type
 
-    _: StepReferenceMetadata
+    _: StepReferenceMetadata[U]
 
     def __init__(
         self, step: BaseStep, *args: Any, typ: type[U] | None = None, **kwargs: Any
@@ -1691,6 +1702,11 @@ class StepReference(FieldableMixin, Reference[U]):
     def __hash__(self) -> int:
         """Hashable value for this workflow."""
         return hash((repr(self), id(self.__workflow__)))
+
+    @property
+    def __referee__(self) -> WorkflowComponent:
+        """Get the target step."""
+        return self._.step
 
     def __getitem__(self, attr: str) -> "StepReference[Any]":
         """Reference to a field within this result, if possible.
