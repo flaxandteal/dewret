@@ -1644,7 +1644,7 @@ class StepReference(FieldableMixin, Reference[U]):
 
     step: BaseStep
 
-    class StepReferenceMetadata[U]:
+    class StepReferenceMetadata[T]:
         """Wrapper for any metadata that we would not want to conflict with fieldnames.
 
         Attributes:
@@ -1653,9 +1653,9 @@ class StepReference(FieldableMixin, Reference[U]):
         """
 
         step: BaseStep
-        _typ: type[U] | None
+        _typ: type[T] | None
 
-        def __init__(self, step: BaseStep, typ: type[U] | None = None):
+        def __init__(self, step: BaseStep, typ: type[T] | None = None):
             """Initialize the reference.
 
             Args:
