@@ -2,8 +2,10 @@
 
 import yaml
 from pathlib import Path
+
+# TODO if the mypy CI doesn't complain remove this  comment
+from dewret.cli import render
 import pytest
-from dewret.__main__ import render # without # type ignore, local mypy complains, but with it, the CI mypy complains, so this has to be committed with --no-verify to stop CI from complaining
 
 
 def test_cli_call() -> None:
