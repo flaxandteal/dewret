@@ -1,0 +1,8 @@
+executor:
+  default:
+    packages:
+    - joblib
+    - minio==7.1.14
+    - numpy
+    - pandas
+    - scikit-learn

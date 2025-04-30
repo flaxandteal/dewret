@@ -57,6 +57,7 @@ test = ["pytest", "coverage", "ruff", "mypy >= 1.14.1"]
 docs = [
   "tmp_fat_portray >= v1.8.0"
 ]
+kubeflow = ["kfp"]
 
 [tool.pixi.project]
 channels = ["conda-forge"]
