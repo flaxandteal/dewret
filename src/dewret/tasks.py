@@ -446,6 +446,18 @@ def task(
                         positional_args[key] = True
                 sig.bind(**kwargs)
 
+                for p in sig.parameters.values():
+                    if p.kind == p.VAR_KEYWORD and hasattr(p.annotation, "__args__"):
+                        td_class = p.annotation.__args__[0]
+                        if hasattr(td_class, "__annotations__"):
+                            allowed_keys = td_class.__annotations__.keys()
+                            for key in list(kwargs.keys()):
+                                if key not in allowed_keys:
+                                    raise TypeError(
+                                        f"{fn.__name__}() got an unexpected keyword argument '{key}' "
+                                        f"(expected one of: {', '.join(allowed_keys)})"
+                                    )
+
                 def _to_param_ref(value: Any) -> ParameterReference[Any] | None:
                     if isinstance(value, Parameter):
                         return value.make_reference(workflow=__workflow__)
