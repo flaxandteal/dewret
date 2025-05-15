@@ -47,7 +47,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
 ]
 requires-python = ">=3.11"
-dependencies = ["dask >= 2022", "pyyaml", "attrs", "click", "setuptools >= 65.5.1", "numpy", "sympy"]
+dependencies = ["dask >= 2022", "pyyaml", "attrs", "click", "setuptools >= 65.5.1", "numpy", "sympy < 1.14.0"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
