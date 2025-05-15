@@ -446,17 +446,70 @@ def task(
                         positional_args[key] = True
                 sig.bind(**kwargs)
 
+                # Handling of TypedDicts
                 for p in sig.parameters.values():
                     if p.kind == p.VAR_KEYWORD and hasattr(p.annotation, "__args__"):
                         td_class = p.annotation.__args__[0]
                         if hasattr(td_class, "__annotations__"):
                             allowed_keys = td_class.__annotations__.keys()
+                            required_keys = td_class.__required_keys__
+                            # Check for unexpected keys
                             for key in list(kwargs.keys()):
                                 if key not in allowed_keys:
-                                    raise TypeError(
+                                    raise TaskException(
+                                        fn,
+                                        declaration_tb,
+                                        __traceback__,
                                         f"{fn.__name__}() got an unexpected keyword argument '{key}' "
-                                        f"(expected one of: {', '.join(allowed_keys)})"
+                                        f"(expected one of: {', '.join(allowed_keys)})",
                                     )
+                            # Check for missing required keys
+                            missing_keys = required_keys - kwargs.keys()
+                            if missing_keys:
+                                raise TaskException(
+                                    fn,
+                                    declaration_tb,
+                                    __traceback__,
+                                    f"{fn.__name__}() missing required keyword arguments: {', '.join(missing_keys)}",
+                                )
+
+                            for key, expected_type in td_class.__annotations__.items():
+                                if key in kwargs:
+                                    value = kwargs[key]
+
+                                    BASIC_TYPES = (
+                                        int,
+                                        float,
+                                        str,
+                                        bool,
+                                        dict,
+                                        list,
+                                        set,
+                                        tuple,
+                                    )
+                                    # Is none a valid value?
+                                    if value is None:
+                                        continue
+
+                                    arguments = getattr(expected_type, "__args__", ())
+                                    if (
+                                        expected_type is not None
+                                        and expected_type not in BASIC_TYPES
+                                    ):
+                                        expected_types = tuple(
+                                            t for t in arguments if t is not type(None)
+                                        )
+                                    else:
+                                        expected_types = expected_type
+
+                                    if not isinstance(value, expected_types):
+                                        raise TaskException(
+                                            fn,
+                                            declaration_tb,
+                                            __traceback__,
+                                            f"{fn.__name__}() got invalid type for argument '{key}': "
+                                            f"expected {expected_type}, got {type(value).__name__}",
+                                        )
 
                 def _to_param_ref(value: Any) -> ParameterReference[Any] | None:
                     if isinstance(value, Parameter):
