@@ -18,7 +18,6 @@ The code lives in cli.py so it can be imported in python for testing.
 """
 
 import importlib
-import importlib.util
 from pathlib import Path
 from contextlib import contextmanager
 import sys
@@ -62,22 +61,10 @@ from .tasks import Backend, construct
     default=Backend.DASK.name,
     help="Backend to use for workflow evaluation.",
 )
-@click.option(
-    "--construct-args",
-    default="simplify_ids:true"
-)
-@click.option(
-    "--renderer",
-    default="cwl"
-)
-@click.option(
-    "--renderer-args",
-    default=""
-)
-@click.option(
-    "--output",
-    default="-"
-)
+@click.option("--construct-args", default="simplify_ids:true")
+@click.option("--renderer", default="cwl")
+@click.option("--renderer-args", default="")
+@click.option("--output", default="-")
 @click.argument("workflow_py", type=click.Path(exists=True, path_type=Path))
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
@@ -112,12 +99,18 @@ def render(
     render_module: Path | ModuleType
     if mtch := re.match(r"^([a-z_0-9-.]+)$", renderer):
         render_module = importlib.import_module(f"dewret.renderers.{mtch.group(1)}")
-        if not isinstance(render_module, RawRenderModule) and not isinstance(render_module, StructuredRenderModule):
-            raise NotImplementedError("The imported render module does not seem to match the `RawRenderModule` or `StructuredRenderModule` protocols.")
+        if not isinstance(render_module, RawRenderModule) and not isinstance(
+            render_module, StructuredRenderModule
+        ):
+            raise NotImplementedError(
+                "The imported render module does not seem to match the `RawRenderModule` or `StructuredRenderModule` protocols."
+            )
     elif renderer.startswith("@"):
         render_module = Path(renderer[1:])
     else:
-        raise RuntimeError("Renderer argument should be a known dewret renderer, or '@FILENAME' where FILENAME is a renderer")
+        raise RuntimeError(
+            "Renderer argument should be a known dewret renderer, or '@FILENAME' where FILENAME is a renderer"
+        )
 
     if construct_args.startswith("@"):
         with Path(construct_args[1:]).open() as construct_args_f:
@@ -139,7 +132,8 @@ def render(
     if output == "-":
 
         @contextmanager
-        def _opener(key: str, _: str) -> Generator[IO[Any], None, None]:
+        # mode here is ignored
+        def _opener(key: str, mode: str) -> Generator[IO[Any], None, None]:
             print(" ------ ", key, " ------ ")
             yield sys.stdout
             print()
