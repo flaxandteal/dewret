@@ -11,9 +11,9 @@ class TaskConfig(TypedDict):
     """TypedDict for testing dewret @task() arguement validation."""
 
     foo: int
-    foo1: int
-    foo2: int
-    bar: NotRequired[float]
+    bar: int
+    baz: int
+    qux: NotRequired[float]
 
 
 @task()
@@ -24,28 +24,28 @@ def increment(**config: Unpack[TaskConfig]) -> dict[str, Any]:
 
 def test_valid_input() -> None:
     """Test that the task decorator works with TypedDict and NotRequired fields."""
-    result = increment(foo=3, foo1=4, foo2=5, bar=4.0)
+    result = increment(foo=3, bar=4, baz=5, qux=4.0)
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)["__root__"]
     assert rendered == yaml.safe_load("""
 class: Workflow
 cwlVersion: 1.2
 inputs:
-  increment-1-bar:
+  increment-1-qux:
     default: 4.0
-    label: bar
+    label: qux
     type: float
   increment-1-foo:
     default: 3
     label: foo
     type: int
-  increment-1-foo1:
+  increment-1-bar:
     default: 4
-    label: foo1
+    label: bar
     type: int
-  increment-1-foo2:
+  increment-1-baz:
     default: 5
-    label: foo2
+    label: baz
     type: int
 outputs:
   out:
@@ -55,14 +55,14 @@ outputs:
 steps:
   increment-1:
     in:
-      bar:
-        source: increment-1-bar
+      qux:
+        source: increment-1-qux
       foo:
         source: increment-1-foo
-      foo1:
-        source: increment-1-foo1
-      foo2:
-        source: increment-1-foo2
+      bar:
+        source: increment-1-bar
+      baz:
+        source: increment-1-baz
     out:
     - out
     run: increment
@@ -71,7 +71,7 @@ steps:
 
 def test_optional_field_missing() -> None:
     """Test that the task decorator works with optional fields missing."""
-    result = increment(foo=3, foo1=4, foo2=5)
+    result = increment(foo=3, bar=4, baz=5)
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)["__root__"]
     assert rendered == yaml.safe_load("""
@@ -82,13 +82,13 @@ inputs:
     default: 3
     label: foo
     type: int
-  increment-1-foo1:
+  increment-1-bar:
     default: 4
-    label: foo1
+    label: bar
     type: int
-  increment-1-foo2:
+  increment-1-baz:
     default: 5
-    label: foo2
+    label: baz
     type: int
 outputs:
   out:
@@ -100,10 +100,10 @@ steps:
     in:
       foo:
         source: increment-1-foo
-      foo1:
-        source: increment-1-foo1
-      foo2:
-        source: increment-1-foo2
+      bar:
+        source: increment-1-bar
+      baz:
+        source: increment-1-baz
     out:
     - out
     run: increment
@@ -112,17 +112,17 @@ steps:
 
 def test_required_field_missing() -> None:
     """Test that the task decorator throws an exception if a required field is missing."""
-    with pytest.raises(TaskException, match="missing required keyword arguments"):
-        increment(foo=1, bar=4.0)  # type: ignore
+    with pytest.raises(TaskException, match="missing required keyword argument"):
+        increment(foo=1, qux=4.0)  # type: ignore
 
 
 def test_invalid_input_for_required_field() -> None:
     """Test that the task decorator throws an exception if a required field is invalid."""
     with pytest.raises(TaskException, match="got invalid type for argument "):
-        increment(foo=1, foo1="string", foo2=4)  # type: ignore
+        increment(foo=1, bar="string", baz=4)  # type: ignore
 
 
-def test_invalid_input_for_optional_field() -> None:
+def test_invalid_input_for_NotRequired_field() -> None:
     """Test that the task decorator throws an exception if a optional field is invalid."""
     with pytest.raises(TaskException, match="got invalid type for argument "):
-        increment(foo=1, foo1=3, foo2=4, bar=4)
+        increment(foo=1, bar=3, baz=4, qux=4)
