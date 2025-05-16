@@ -35,7 +35,8 @@ import sys
 from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
-from typing import Any, ParamSpec, TypeVar, cast, Generator, Unpack, Literal
+from typing import get_args, get_origin, Unpack, Union, NotRequired
+from typing import Any, ParamSpec, TypeVar, cast, Generator, Literal
 from types import TracebackType
 from attrs import has as attrs_has
 from dataclasses import is_dataclass
@@ -446,70 +447,78 @@ def task(
                         positional_args[key] = True
                 sig.bind(**kwargs)
 
-                # Handling of TypedDicts
+                # Handle Unpack arguments
                 for p in sig.parameters.values():
-                    if p.kind == p.VAR_KEYWORD and hasattr(p.annotation, "__args__"):
+                    # You wouldn't be unpacking to something that doesn't have __annotations__.
+                    origin = get_origin(p.annotation)
+
+                    # Not sure if this check is necessary
+                    if origin is Unpack:
                         td_class = p.annotation.__args__[0]
-                        if hasattr(td_class, "__annotations__"):
-                            allowed_keys = td_class.__annotations__.keys()
-                            required_keys = td_class.__required_keys__
-                            # Check for unexpected keys
-                            for key in list(kwargs.keys()):
-                                if key not in allowed_keys:
-                                    raise TaskException(
-                                        fn,
-                                        declaration_tb,
-                                        __traceback__,
-                                        f"{fn.__name__}() got an unexpected keyword argument '{key}' "
-                                        f"(expected one of: {', '.join(allowed_keys)})",
-                                    )
-                            # Check for missing required keys
-                            missing_keys = required_keys - kwargs.keys()
-                            if missing_keys:
+                        allowed_keys = td_class.__annotations__.keys()
+                        # Check for unexpected keys
+                        for key in kwargs.keys():
+                            if key not in allowed_keys:
                                 raise TaskException(
                                     fn,
                                     declaration_tb,
                                     __traceback__,
-                                    f"{fn.__name__}() missing required keyword arguments: {', '.join(missing_keys)}",
+                                    f"{fn.__name__}() got an unexpected keyword argument '{key}' "
+                                    f"(expected one of: {', '.join(allowed_keys)})",
                                 )
 
-                            for key, expected_type in td_class.__annotations__.items():
-                                if key in kwargs:
-                                    value = kwargs[key]
+                            key_type = type(kwargs.get(key))
+                            expected_type = td_class.__annotations__.get(key)
 
-                                    BASIC_TYPES = (
-                                        int,
-                                        float,
-                                        str,
-                                        bool,
-                                        dict,
-                                        list,
-                                        set,
-                                        tuple,
-                                    )
-                                    # Is none a valid value?
-                                    if value is None:
-                                        continue
+                            if hasattr(expected_type, "__args__"):
+                                expected_types = get_args(expected_type)
+                            else:
+                                expected_types = (expected_type,)
 
-                                    arguments = getattr(expected_type, "__args__", ())
-                                    if (
-                                        expected_type is not None
-                                        and expected_type not in BASIC_TYPES
-                                    ):
-                                        expected_types = tuple(
-                                            t for t in arguments if t is not type(None)
-                                        )
-                                    else:
-                                        expected_types = expected_type
+                            # If the value of the key does not match the expected types
+                            if key_type not in expected_types:
+                                raise TaskException(
+                                    fn,
+                                    declaration_tb,
+                                    __traceback__,
+                                    f"{fn.__name__}() got invalid type for argument '{key}': "
+                                    f"expected {expected_types}, got {key_type.__name__}",
+                                )
 
-                                    if not isinstance(value, expected_types):
-                                        raise TaskException(
-                                            fn,
-                                            declaration_tb,
-                                            __traceback__,
-                                            f"{fn.__name__}() got invalid type for argument '{key}': "
-                                            f"expected {expected_type}, got {type(value).__name__}",
-                                        )
+                        # Check for missing required keys
+
+                        missing_keys = allowed_keys - kwargs.keys()
+                        for key in missing_keys:
+                            annotation = td_class.__annotations__.get(key)
+
+                            # If it's a NotRequired key, we can skip it
+                            if get_origin(annotation) is NotRequired:
+                                continue
+
+                            # This is an optional type or a Union type key we add the default value
+                            # if no default value is provided TaskException will be raised
+                            # A value to an Optional or Union type is always required
+                            # Even if it's a None value
+                            if get_origin(annotation) is Union:
+                                try:
+                                    val = td_class.__dict__[key]
+                                    kwargs[key] = val
+                                except Exception as exc:
+                                    raise TaskException(
+                                        fn,
+                                        declaration_tb,
+                                        __traceback__,
+                                        f"{fn.__name__}() missing a value for keyword argument: {key}"
+                                        f"expected a value for {key}",
+                                    ) from exc
+                            else:
+                                raise TaskException(
+                                    fn,
+                                    declaration_tb,
+                                    __traceback__,
+                                    f"{fn.__name__}() missing required keyword argument: {key}"
+                                    f"expected a value for {key}",
+                                )
 
                 def _to_param_ref(value: Any) -> ParameterReference[Any] | None:
                     if isinstance(value, Parameter):
