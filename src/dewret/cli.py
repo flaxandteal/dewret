@@ -19,27 +19,23 @@ more likely to use this tool programmatically, but for CI and toy examples,
 this may be of use.
 """
 
-import importlib
-import importlib.util
 from pathlib import Path
 from contextlib import contextmanager
 import sys
-import re
-import yaml
 from typing import Any, IO, Generator
-from types import ModuleType
 import click
-import json
 
 from .core import (
     set_configuration,
     set_render_configuration,
-    RawRenderModule,
-    StructuredRenderModule,
 )
-from .utils import load_module_or_package
+from .utils import (
+    load_module_or_package,
+    format_user_args,
+    get_json_args,
+    resolve_renderer,
+)
 from .render import get_render_method, write_rendered_output
-
 from .tasks import Backend, construct
 
 
@@ -50,6 +46,13 @@ from .tasks import Backend, construct
     show_default=True,
     default=False,
     help="Pretty-print output where possible.",
+)
+@click.option(
+    "--eager",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Eagerly evaluate tasks at render-time for debugging purposes.",
 )
 @click.option(
     "--backend",
@@ -70,6 +73,7 @@ def render(
     task: str,
     arguments: list[str],
     pretty: bool,
+    eager: bool,
     backend: Backend,
     construct_args: str,
     renderer: str,
@@ -83,61 +87,17 @@ def render(
     ARGUMENTS is zero or more pairs representing constant arguments to pass to the task, in the format `key:val` where val is a JSON basic type.
     """
     sys.path.append(str(workflow_py.parent))
-    kwargs = {}
-    for arg in arguments:
-        if ":" not in arg:
-            raise RuntimeError(
-                "Arguments should be specified as key:val, where val is a JSON representation of the argument"
-            )
-        key, val = arg.split(":", 1)
-        kwargs[key] = json.loads(val)
+    kwargs = get_json_args(arguments)
 
-    render_module: Path | ModuleType
-    if mtch := re.match(r"^([a-z_0-9-.]+)$", renderer):
-        try:
-            render_module = importlib.import_module(mtch.group(1))
-        except ModuleNotFoundError:
-            try:
-                render_module = importlib.import_module(
-                    f"dewret.renderers.{mtch.group(1)}"
-                )
-            except ModuleNotFoundError as err:
-                raise ModuleNotFoundError(
-                    f"Unable to find render module {mtch.group(1)} in PYTHONPATH or dewret.renderers."
-                ) from err
-        if not isinstance(render_module, RawRenderModule) and not isinstance(
-            render_module, StructuredRenderModule
-        ):
-            raise NotImplementedError(
-                "The imported render module does not seem to match the `RawRenderModule` or `StructuredRenderModule` protocols."
-            )
-    elif renderer.startswith("@"):
-        render_module = Path(renderer[1:])
-    else:
-        raise RuntimeError(
-            "Renderer argument should be a known dewret renderer, or '@FILENAME' where FILENAME is a renderer"
-        )
+    render_module = resolve_renderer(renderer)
 
-    if construct_args.startswith("@"):
-        with Path(construct_args[1:]).open() as construct_args_f:
-            construct_kwargs = yaml.safe_load(construct_args_f)
-    elif not construct_args:
-        construct_kwargs = {}
-    else:
-        construct_kwargs = dict(pair.split(":") for pair in construct_args.split(","))
-
-    renderer_kwargs: dict[str, Any]
-    if renderer_args.startswith("@"):
-        with Path(renderer_args[1:]).open() as renderer_args_f:
-            renderer_kwargs = yaml.safe_load(renderer_args_f)
-    elif not renderer_args:
-        renderer_kwargs = {}
-    else:
-        renderer_kwargs = dict(pair.split(":") for pair in renderer_args.split(","))
+    construct_kwargs = format_user_args(construct_args)
+    renderer_kwargs = format_user_args(renderer_args)
 
     if output == "-":
 
         @contextmanager
+        # mode here is ignored
         def _opener(key: str, mode: str) -> Generator[IO[Any], None, None]:
             print(" ------ ", key, " ------ ")
             yield sys.stdout
@@ -158,6 +118,13 @@ def render(
     pkg = "__workflow__"
     workflow = load_module_or_package(pkg, workflow_py)
     task_fn = getattr(workflow, task)
+
+    if eager:
+        construct_kwargs["eager"] = True
+        with set_configuration(**construct_kwargs):
+            output = task_fn(**kwargs)
+        print(output)
+        return
 
     try:
         with (
