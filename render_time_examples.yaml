@@ -1,0 +1,25 @@
+{
+  "cwlVersion": 1.2,
+  "class": "Workflow",
+  "inputs":
+    { "CONSTANT": { "label": "CONSTANT", "type": "int", "default": 1 } },
+  "outputs":
+    {
+      "out":
+        {
+          "label": "out",
+          "type": "array",
+          "items": "int",
+          "outputSource": "toy-1/out",
+        },
+    },
+  "steps":
+    {
+      "toy-1":
+        {
+          "run": "toy",
+          "in": { "CONSTANT": { "source": "CONSTANT" } },
+          "out": ["out"],
+        },
+    },
+}
