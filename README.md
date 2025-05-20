@@ -29,4 +29,14 @@ For further information, see the [documentation](https://flaxandteal.github.io/d
 
 ## Developer Set up
 
-For development with conda, run the relevant script in `.set_up`
+For development with conda, run the relevant script in `.set_up`:
+
+```powershell
+.set_up/dev_set_up.ps1 <env-name>
+```
+
+or
+
+```sh
+source .set_up/dev_set_up.sh <env-name>
+```
