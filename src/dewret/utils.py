@@ -22,6 +22,8 @@ import json
 import sys
 import importlib
 import importlib.util
+import yaml
+import re
 from types import FrameType, TracebackType, UnionType, ModuleType
 from typing import Any, cast, Protocol, ClassVar, Callable, Iterable, get_args, Hashable
 from pathlib import Path
@@ -29,7 +31,14 @@ from collections.abc import Sequence, Mapping
 from dataclasses import asdict, is_dataclass
 from sympy import Basic, Integer, Float, Rational
 
-from .core import Reference, RawType, FirmType, Raw
+from .core import (
+    Reference,
+    RawType,
+    FirmType,
+    Raw,
+    RawRenderModule,
+    StructuredRenderModule,
+)
 
 
 class Unset:
@@ -290,3 +299,83 @@ def hasher(construct: FirmType) -> str:
     hsh = hashlib.md5()
     hsh.update(construct_as_string.encode())
     return hsh.hexdigest()
+
+
+def format_user_args(args: str) -> dict[str, Any]:
+    """Format user arguments from the command line.
+
+    Supports:
+    - @filename: loads arguments from a YAML file
+    - empty string: returns an empty dict
+    - key1:val1,key2:val2: parses a comma-separated list into a dict
+    """
+    kwargs: dict[str, Any]
+    if args.startswith("@"):
+        with Path(args[1:]).open() as construct_args_f:
+            kwargs = yaml.safe_load(construct_args_f)
+    elif not args:
+        kwargs = {}
+    else:
+        kwargs = dict(pair.split(":") for pair in args.split(","))
+
+    return kwargs
+
+
+def get_json_args(args: list[str]) -> dict[str, Any]:
+    """Parse a sequence of key:val strings into a dictionary, where values are JSON-parsed.
+
+    Args:
+        args: A sequence of strings, each in the format 'key:val', where `val` is a JSON literal.
+
+    Returns:
+        A dictionary mapping keys to their corresponding parsed JSON values.
+
+    Raises:
+        RuntimeError: If any argument is not in the expected 'key:val' format.
+        json.JSONDecodeError: If a value is not valid JSON.
+    """
+    kwargs = {}
+    for arg in args:
+        if ":" not in arg:
+            raise RuntimeError(
+                "Arguments should be specified as key:val, where val is a JSON representation of the argument"
+            )
+        key, val = arg.split(":", 1)
+        kwargs[key] = json.loads(val)
+    return kwargs
+
+
+def resolve_renderer(renderer: str) -> Path | RawRenderModule | StructuredRenderModule:
+    """Resolve the renderer argument into either a module or a file path.
+
+    If the renderer is a known name, attempts to import it as a module from `dewret.renderers`.
+    If it starts with '@', treats the remainder as a file path.
+
+    Args:
+        renderer: The name of the renderer module or a file reference starting with '@'.
+
+    Returns:
+        A render module (imported) or a Path object to a renderer file.
+
+    Raises:
+        RuntimeError: If the renderer format is invalid.
+        NotImplementedError: If the imported module does not conform to expected interfaces.
+        ModuleNotFoundError: If the module cannot be imported.
+    """
+    render_module: Path | ModuleType
+    if mtch := re.match(r"^([a-z_0-9-.]+)$", renderer):
+        render_module = importlib.import_module(f"dewret.renderers.{mtch.group(1)}")
+        if not isinstance(render_module, RawRenderModule) and not isinstance(
+            render_module, StructuredRenderModule
+        ):
+            raise NotImplementedError(
+                "The imported render module does not seem to match the `RawRenderModule` or `StructuredRenderModule` protocols."
+            )
+    elif renderer.startswith("@"):
+        render_module = Path(renderer[1:])
+    else:
+        raise RuntimeError(
+            "Renderer argument should be a known dewret renderer, or '@FILENAME' where FILENAME is a renderer"
+        )
+
+    return render_module
