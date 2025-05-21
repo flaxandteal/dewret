@@ -139,3 +139,12 @@ left 13
 right 13
 output 26
 ```
+
+## Debugging with eager on VS code
+![100%](assets/eager/eager_execution.gif)
+
+![45%](assets/eager/eager_execution_resized.gif)
+
+![65%](<assets/eager/eager_execution-ezgif.com-resize (1).gif>)
+
+![85%](<assets/eager/eager_execution-ezgif.com-resize (2).gif>)
