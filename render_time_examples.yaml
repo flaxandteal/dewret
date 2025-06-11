@@ -1,25 +1,61 @@
 {
-  "cwlVersion": 1.2,
-  "class": "Workflow",
-  "inputs":
-    { "CONSTANT": { "label": "CONSTANT", "type": "int", "default": 1 } },
-  "outputs":
+  "__root__":
     {
-      "out":
+      "cwlVersion": 1.2,
+      "class": "Workflow",
+      "inputs":
+        { "CONSTANT": { "label": "CONSTANT", "type": "int", "default": 1 } },
+      "outputs":
         {
-          "label": "out",
-          "type": "array",
-          "items": "int",
-          "outputSource": "toy-1/out",
+          "out":
+            {
+              "label": "out",
+              "type": "array",
+              "items": "int",
+              "outputSource": "toy-1/out",
+            },
+        },
+      "steps":
+        {
+          "toy-1":
+            {
+              "run": "toy",
+              "in": { "CONSTANT": { "source": "CONSTANT" } },
+              "out": ["out"],
+            },
         },
     },
-  "steps":
+  "toy-1":
     {
-      "toy-1":
+      "cwlVersion": 1.2,
+      "class": "Workflow",
+      "inputs":
+        { "CONSTANT": { "label": "CONSTANT", "type": "int", "default": 1 } },
+      "outputs":
         {
-          "run": "toy",
-          "in": { "CONSTANT": { "source": "CONSTANT" } },
-          "out": ["out"],
+          "out":
+            {
+              "type": "float",
+              "label": "out",
+              "expression": "[1, two-be6e78cc127602d07225abb30a0d278d, 1, two-1e0c286e60534ba5831a2841f70d47c4, 1, 1, two-be6e78cc127602d07225abb30a0d278d]",
+              "source":
+                [
+                  "<dewret.workflow.Step object at 0x000001B91576FC50>",
+                  "<dewret.workflow.Step object at 0x000001B91767D810>",
+                  "<dewret.workflow.Step object at 0x000001B91767FCD0>",
+                ],
+            },
+        },
+      "steps":
+        {
+          "two-1-1":
+            {
+              "run": "two",
+              "in": { "arg": { "source": "CONSTANT" } },
+              "out": ["out"],
+            },
+          "two-1-2":
+            { "run": "two", "in": { "arg": { "default": 1 } }, "out": ["out"] },
         },
     },
 }

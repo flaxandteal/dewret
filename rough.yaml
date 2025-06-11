@@ -1,0 +1,58 @@
+{
+  "__root__":
+    {
+      "cwlVersion": 1.2,
+      "class": "Workflow",
+      "inputs": {},
+      "outputs":
+        {
+          "out":
+            {
+              "label": "out",
+              "type": "string",
+              "outputSource": "create_greeting_in_all_caps-1/out",
+            },
+        },
+      "steps":
+        {
+          "create_greeting_in_all_caps-1":
+            {
+              "run": "create_greeting_in_all_caps",
+              "in":
+                {
+                  "prefix": { "default": "Hello to " },
+                  "name": { "default": "John" },
+                },
+              "out": ["out"],
+            },
+        },
+    },
+  "create_greeting_in_all_caps-1":
+    {
+      "cwlVersion": 1.2,
+      "class": "Workflow",
+      "inputs": {},
+      "outputs":
+        {
+          "out":
+            {
+              "label": "out",
+              "type": "string",
+              "outputSource": "concat_strings-1-1/out",
+            },
+        },
+      "steps":
+        {
+          "concat_strings-1-1":
+            {
+              "run": "concat_strings",
+              "in":
+                {
+                  "str1": { "default": "Hello to " },
+                  "str2": { "default": "John" },
+                },
+              "out": ["out"],
+            },
+        },
+    },
+}

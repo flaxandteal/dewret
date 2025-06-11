@@ -1,3 +1,10 @@
+# render_time_function_to_import.py
+
+# CONSTANT: int = 1
+# def one(arg: int) -> int:
+#     return 1
+
+
 from dewret.renderers.cwl import render
 from dewret.tasks import task, construct, workflow
 
@@ -52,6 +59,6 @@ def toy() -> list[int]:
 result = toy()
 workflow = construct(result, simplify_ids=True)
 cwl = render(workflow)
-print(cwl["__root__"])
+print(cwl)
 
 # python render_time_examples.py > render_time_examples.yaml
