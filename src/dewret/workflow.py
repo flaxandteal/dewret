@@ -80,6 +80,9 @@ class Lazy(Protocol):
         ...
 
 
+N = 0
+
+
 class LazyEvaluation(Lazy, Generic[RetType]):
     """Tracks a single evaluation of a lazy function."""
 
@@ -90,8 +93,11 @@ class LazyEvaluation(Lazy, Generic[RetType]):
             fn: callable returning RetType, which this will return
                 also from it's __call__ method for consistency.
         """
+        global N
         self._fn: Callable[Param, RetType] = fn
         self.__name__ = fn.__name__
+        self.__sequence_num__ = N
+        N += 1
 
     def __call__(self, *args: Any, **kwargs: Any) -> RetType:
         """Wrapper around a lazy execution.
@@ -103,7 +109,9 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         is attempted.
         """
         tb = make_traceback()
-        result = self._fn(*args, **kwargs, __traceback__=tb)  # type: ignore[arg-type]
+        result = self._fn(
+            *args, **kwargs, __traceback__=tb, __sequence_num__=self.__sequence_num__
+        )
         return result
 
 
@@ -727,6 +735,7 @@ class Workflow:
         raw_as_parameter: bool = False,
         is_factory: bool = False,
         positional_args: dict[str, bool] | None = None,
+        __sequence_num__: int | None = None,
     ) -> StepReference[Any]:
         """Append a step.
 
@@ -742,7 +751,13 @@ class Workflow:
         """
         task = self.register_task(fn)
         step_maker = FactoryCall if is_factory else Step
-        step = step_maker(self, task, kwargs, raw_as_parameter=raw_as_parameter)
+        step = step_maker(
+            self,
+            task,
+            kwargs,
+            raw_as_parameter=raw_as_parameter,
+            __sequence_num__=__sequence_num__,
+        )
         if positional_args is not None:
             step.positional_args = positional_args
         self._steps.append(step)
@@ -1126,6 +1141,7 @@ class BaseStep(WorkflowComponent):
         task: Task | Workflow,
         arguments: Mapping[str, Reference[Any] | Raw],
         raw_as_parameter: bool = False,
+        __sequence_num__: int | None = None,
     ):
         """Initialize a step.
 
@@ -1138,6 +1154,7 @@ class BaseStep(WorkflowComponent):
         super().__init__(workflow=workflow)
         self.task = task
         self.arguments = {}
+        self.__sequence_num__ = __sequence_num__
         for key, value in arguments.items():
             if (
                 isinstance(value, FactoryCall)
@@ -1297,7 +1314,8 @@ class BaseStep(WorkflowComponent):
             sorted(components, key=lambda pair: pair[0])
         )
 
-        return f"{self.task}-{hasher(comp_tup)}"
+        print(f"{self.__sequence_num__}-{self.task}-{hasher(comp_tup)}")
+        return f"{self.__sequence_num__}-{self.task}-{hasher(comp_tup)}"
 
     def __call__(self, **additional_kwargs: Any) -> Any:
         """Evaluate this step eagerly.
