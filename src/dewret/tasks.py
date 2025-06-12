@@ -398,6 +398,7 @@ def task(
             *args: Any,
             __workflow__: Workflow | None = None,
             __traceback__: TracebackType | None = None,
+            __sequence_num__: int | None = None,
             **kwargs: Param.kwargs,
         ) -> RetType:
             configuration = None
@@ -631,6 +632,7 @@ def task(
                         raw_as_parameter=not is_in_nested_task(),
                         is_factory=is_factory,
                         positional_args=positional_args,
+                        __sequence_num__=__sequence_num__,
                     ),
                 )
                 return step
