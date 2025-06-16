@@ -1786,19 +1786,22 @@ class StepReference(FieldableMixin, Reference[U]):
         return self._.step.__workflow__
 
     @__workflow__.setter
-    def __workflow__(self, workflow: Workflow) -> None:
+    def __workflow__(self, workflow: WorkflowProtocol) -> None:
         """Sets related workflow.
 
         Args:
             workflow: workflow to update the step
         """
-        self._.step.set_workflow(workflow)
+        # TODO: Update WorkflowProtocol
+        if isinstance(workflow, Workflow):
+            self._.step.set_workflow(workflow)
 
     def __make_reference__(self, **kwargs: Any) -> "StepReference[U]":
         """Create a new reference for the same step."""
         if "workflow" not in kwargs:
             kwargs["workflow"] = self.__workflow__
         return self._.step.make_reference(**kwargs)
+
 
 def execute_step(task: Any, **kwargs: Any) -> Any:
     """Evaluate a single task for a known workflow.
@@ -1820,6 +1823,7 @@ def execute_step(task: Any, **kwargs: Any) -> Any:
     result = task._.step()
 
     return result
+
 
 class IterableStepReference(IterableMixin[U], StepReference[U]):
     """Iterable form of a step reference."""
