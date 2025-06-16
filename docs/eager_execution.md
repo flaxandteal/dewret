@@ -30,6 +30,7 @@ When using eager evaluation, dewret will evaluate and execute the workflow **imm
 Given the following workflow:
 
 ```python
+# eager_demo.py
 from dewret.tasks import (
     workflow,
     task,
@@ -58,7 +59,7 @@ def black_total(
 Run a single task via CLI:
 
 ```bash
-python -m dewret --eager t.py sum "left:10" "right:11"
+python -m dewret --eager eager_demo.py sum "left:10" "right:11"
 ```
 
 Output:
@@ -74,7 +75,7 @@ right 11
 Run the full workflow via CLI:
 
 ```bash
-python -m dewret --eager t.py black_total "hearts:10" "spades:11" "diamonds:12" "clubs:13"
+python -m dewret --eager eager_demo.py black_total "hearts:10" "spades:11" "diamonds:12" "clubs:13"
 ```
 
 Output:
