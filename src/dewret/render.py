@@ -31,7 +31,6 @@ from .core import (
     BaseRenderModule,
     RawRenderModule,
     StructuredRenderModule,
-    RenderConfiguration,
 )
 from .utils import load_module_or_package
 
@@ -83,7 +82,7 @@ def get_render_method(
             workflow: Workflow,
             render_module: StructuredRenderModule,
             pretty: bool = False,
-            **kwargs: RenderConfiguration,
+            **kwargs: RawType,
         ) -> dict[str, str]:
             rendered = render_module.render(workflow, **kwargs)
             return {
