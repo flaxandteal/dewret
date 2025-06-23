@@ -42,7 +42,7 @@ from typing import (
 )
 from contextlib import contextmanager
 from contextvars import ContextVar
-from sympy import Expr, Symbol, Basic
+from sympy import Symbol, Basic
 import copy
 
 BasicType = str | float | bool | bytes | int | None
@@ -404,10 +404,15 @@ class Reference(Generic[U], Symbol, WorkflowComponent):
         """Printable name of the reference."""
         return self.__name__
 
+    @name.setter
+    def name(self, name: str) -> None:
+        """Dummy method to ensure we can initialize the sympy object."""
+        if name:
+            raise AttributeError("Cannot set a name manually")
+
     def __new__(cls, *args: Any, **kwargs: Any) -> "Reference[U]":
         """As all references are sympy Expressions, the real returned object must be made with Expr."""
-        instance = Expr.__new__(cls)
-        instance._assumptions0 = {}
+        instance = Symbol.__xnew__(cls, "")
         return cast(Reference[U], instance)
 
     @property

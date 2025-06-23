@@ -66,14 +66,6 @@ def pi_hidden_by_math_2() -> float:
 
 
 @task()
-def pi_with_visible_module_task() -> float:
-    """Imported task that _will_ be spotted."""
-    from ._lib import extra
-
-    return extra.increment(2)
-
-
-@task()
 def pi_with_invisible_module_task() -> float:
     """Imported task that will _not_ be spotted."""
     from ._lib import extra
@@ -191,11 +183,15 @@ def test_nesting_does_not_identify_imports_as_nesting() -> None:
         pi,
         pi_exported_from_math,
         pi_with_invisible_module_task,
-        pi_with_visible_module_task,
         pi_hidden_by_math,
         pi_hidden_by_math_2,
     ]
     bad = [try_recursive]
+    # Previously we had a pi_with_visible_module_task that successfully errored
+    # when a task was imported and used inside another task. However, that only
+    # worked when the task name overlapped with a task in the module's own global
+    # namespace and was a side-effect of a Python inspect module bug.
+    # Bug not a feature.
     for tsk in bad:
         with pytest.raises(TaskException) as exc:
             tsk()
