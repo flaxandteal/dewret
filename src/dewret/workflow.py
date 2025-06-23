@@ -874,6 +874,11 @@ class FieldableProtocol(Protocol):
         """The name for the target, accounting for the field."""
         return "name"
 
+    @name.setter
+    def name(self, name: str) -> None:
+        """Dummy setter for the name, so that a subclass can override if it implements it."""
+        raise AttributeError("The name is unsettable on a fieldable")
+
     def __make_reference__(self, *args: Any, **kwargs: Any) -> Reference[Any]:
         """Create a reference with constructor arguments, usually to a subfield."""
         ...
@@ -1792,9 +1797,13 @@ class StepReference(FieldableMixin, Reference[U]):
         Args:
             workflow: workflow to update the step
         """
-        # TODO: Update WorkflowProtocol
-        if isinstance(workflow, Workflow):
-            self._.step.set_workflow(workflow)
+        if not isinstance(workflow, Workflow):
+            # This may not be necessary, strictly, but would likely
+            # need enough changes to ensure WorkflowProtocol ensures
+            # all behaviours of a Workflow, that it would defeat the
+            # clarity of a minimal forward definition.
+            raise TypeError("Only a real workflow can be use for steps")
+        self._.step.set_workflow(workflow)
 
     def __make_reference__(self, **kwargs: Any) -> "StepReference[U]":
         """Create a new reference for the same step."""

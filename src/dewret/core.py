@@ -24,6 +24,7 @@ import base64
 from attrs import define
 from functools import lru_cache
 from typing import (
+    Mapping,
     Generic,
     TypeVar,
     Protocol,
@@ -73,7 +74,7 @@ def strip_annotations(parent_type: type) -> tuple[type, tuple[str]]:
 
 
 # Generic type for configuration settings for the renderer
-RenderConfiguration = dict[str, RawType]
+RenderConfiguration = Mapping[str, RawType]
 
 
 class WorkflowProtocol(Protocol):
@@ -124,8 +125,8 @@ class RawRenderModule(BaseRenderModule, Protocol):
     """Render module that returns raw text."""
 
     def render_raw(
-        self, workflow: WorkflowProtocol, **kwargs: RenderConfiguration
-    ) -> dict[str, str]:
+        self, workflow: WorkflowProtocol, **kwargs: RawType
+    ) -> dict[str, RawType]:
         """Turn a workflow into flat strings.
 
         Returns: one or more subworkflows with a `__root__` key representing the outermost workflow, at least.
@@ -138,7 +139,7 @@ class StructuredRenderModule(BaseRenderModule, Protocol):
     """Render module that returns JSON/YAML-serializable structures."""
 
     def render(
-        self, workflow: WorkflowProtocol, **kwargs: RenderConfiguration
+        self, workflow: WorkflowProtocol, **kwargs: RawType
     ) -> dict[str, dict[str, RawType]]:
         """Turn a workflow into a serializable structure.
 
@@ -151,7 +152,7 @@ class RenderCall(Protocol):
     """Callable that will render out workflow(s)."""
 
     def __call__(
-        self, workflow: WorkflowProtocol, **kwargs: RenderConfiguration
+        self, workflow: WorkflowProtocol, **kwargs: RawType
     ) -> dict[str, str] | dict[str, RawType]:
         """Take a workflow and turn it into a set of serializable (sub)workflows.
 
@@ -238,7 +239,7 @@ def set_configuration(
 
 @contextmanager
 def set_render_configuration(
-    kwargs: dict[str, RawType],
+    kwargs: RenderConfiguration,
 ) -> Iterator[ContextVar[GlobalConfiguration]]:
     """Sets the render-time configuration.
 
@@ -261,7 +262,7 @@ def _set_configuration() -> Iterator[ContextVar[GlobalConfiguration]]:
         previous = CONFIGURATION.get()
     except LookupError:
         previous = GlobalConfiguration(
-            construct=ConstructConfiguration(), render=default_renderer_config()
+            construct=ConstructConfiguration(), render=dict(default_renderer_config())
         )
         CONFIGURATION.set(previous)
     previous = copy.deepcopy(previous)
