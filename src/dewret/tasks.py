@@ -145,7 +145,13 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy, ...], __workflow__: Workflow, thread_pool: ThreadPoolExecutor | None=None, **kwargs: Any) -> Any:
+    def evaluate(
+        self,
+        task: Lazy | list[Lazy] | tuple[Lazy, ...],
+        __workflow__: Workflow,
+        thread_pool: ThreadPoolExecutor | None = None,
+        **kwargs: Any,
+    ) -> Any:
         """Evaluate a single task for a known workflow.
 
         Args:
@@ -236,6 +242,7 @@ lazy = _manager.make_lazy
 ensure_lazy = _manager.ensure_lazy
 unwrap = _manager.unwrap
 
+
 def evaluate(task: Any, *args: Any, execute: bool = False, **kwargs: Any) -> Any:
     """Get a result of a task, either as a value or lazily.
 
@@ -252,6 +259,7 @@ def evaluate(task: Any, *args: Any, execute: bool = False, **kwargs: Any) -> Any
         return execute_step(task, *args, **kwargs)
     else:
         return _manager.evaluate(task, *args, **kwargs)
+
 
 """An alias pointing to an instance of the TaskManager class.
 Used for constructing a set of tasks into a dewret workflow instance.
@@ -446,10 +454,38 @@ def task(
                         """
                     )
 
-                # Ensure that the passed arguments are, at least, a Python-match for the signature.
                 sig = inspect.signature(fn)
                 positional_args = {key: False for key in kwargs}
-                for arg, (key, _) in zip(args, sig.parameters.items(), strict=False):
+
+                signature_has_unpack = has_signature_unpack(sig)
+                # print("t", signature_has_unpack)
+
+                actual_keys = []
+                if args and allow_positional_args and signature_has_unpack:
+                    actual_keys = get_actual_keys(sig)
+
+                # print(args)
+                # print(args)
+                # print(positional_args)
+                # print(positional_args)
+                for arg, (key, val) in zip(args, sig.parameters.items(), strict=False):
+                    # print("type of arg", type(arg))
+                    # print("type of key", type(key))
+                    # print("type of val", type(val))
+                    # print("arg", arg)
+                    # print("key", key)
+                    # print("val", val)
+                    if is_param_unpack(val):
+                        # print("test")
+                        unpack_vals_start = len(sig.parameters.values()) - 1
+                        for unpack_arg, key in zip(
+                            args[unpack_vals_start:], actual_keys, strict=False
+                        ):
+                            kwargs[key] = unpack_arg
+                            # print("unpack_arg", unpack_arg, key)
+
+                        continue
+
                     if isinstance(arg, IteratedGenerator):
                         for inner_arg, (key, _) in zip(
                             arg, sig.parameters.items(), strict=False
@@ -463,35 +499,54 @@ def task(
                         positional_args[key] = True
                 sig.bind(**kwargs)
 
-                # Handle Unpack arguments
-                for p in sig.parameters.values():
-                    # You wouldn't be unpacking to something that doesn't have __annotations__.
-                    origin = get_origin(p.annotation)
+                print(kwargs)
+                print(kwargs)
 
-                    # Not sure if this check is necessary
-                    if origin is Unpack:
-                        td_class = p.annotation.__args__[0]
-                        allowed_keys = td_class.__annotations__.keys()
-                        # Check for unexpected keys
-                        for key in kwargs.keys():
-                            if key not in allowed_keys:
+                # Handle Unpack arguments
+                if signature_has_unpack:
+                    unpack_idx = len(sig.parameters.values()) - 1
+                    unpack_p = list(sig.parameters.values())[unpack_idx]
+                    td_class = unpack_p.annotation.__args__[0]
+                    print(sig.parameters.keys())
+                    sig_keys = list(sig.parameters.keys())[:unpack_idx]
+                    print("sig_keys", sig_keys)
+                    allowed_keys = sig_keys + list(td_class.__annotations__.keys())
+                    print("allowed_keys", allowed_keys)
+
+                    # Check for unexpected keys
+                    for key in kwargs.keys():
+                        if key not in allowed_keys:
+                            raise TaskException(
+                                fn,
+                                declaration_tb,
+                                __traceback__,
+                                f"{fn.__name__}() got an unexpected keyword argument '{key}' "
+                                f"(expected one of: {', '.join(allowed_keys)})",
+                            )
+
+                        key_type = type(kwargs.get(key))
+                        expected_type = td_class.__annotations__.get(key)
+                        if expected_type is None:
+                            expected_type = sig.parameters[key].annotation
+
+                        if hasattr(expected_type, "__args__"):
+                            expected_types = get_args(expected_type)
+                        else:
+                            expected_types = (expected_type,)
+
+                        print(expected_types)
+                        # If the value of the key does not match the expected types
+                        if get_origin(expected_type) is Literal:
+                            allowed_values = get_args(expected_type)
+                            if kwargs[key] not in allowed_values:
                                 raise TaskException(
                                     fn,
                                     declaration_tb,
                                     __traceback__,
-                                    f"{fn.__name__}() got an unexpected keyword argument '{key}' "
-                                    f"(expected one of: {', '.join(allowed_keys)})",
+                                    f"{fn.__name__}() got invalid literal value for argument '{key}': "
+                                    f"expected one of {allowed_values}, got {kwargs[key]!r}",
                                 )
-
-                            key_type = type(kwargs.get(key))
-                            expected_type = td_class.__annotations__.get(key)
-
-                            if hasattr(expected_type, "__args__"):
-                                expected_types = get_args(expected_type)
-                            else:
-                                expected_types = (expected_type,)
-
-                            # If the value of the key does not match the expected types
+                        else:
                             if key_type not in expected_types:
                                 raise TaskException(
                                     fn,
@@ -501,40 +556,39 @@ def task(
                                     f"expected {expected_types}, got {key_type.__name__}",
                                 )
 
-                        # Check for missing required keys
+                    # Check for missing required keys
+                    missing_keys = allowed_keys - kwargs.keys()
+                    for key in missing_keys:
+                        annotation = td_class.__annotations__.get(key)
 
-                        missing_keys = allowed_keys - kwargs.keys()
-                        for key in missing_keys:
-                            annotation = td_class.__annotations__.get(key)
+                        # If it's a NotRequired key, we can skip it
+                        if get_origin(annotation) is NotRequired:
+                            continue
 
-                            # If it's a NotRequired key, we can skip it
-                            if get_origin(annotation) is NotRequired:
-                                continue
-
-                            # This is an optional type or a Union type key we add the default value
-                            # if no default value is provided TaskException will be raised
-                            # A value to an Optional or Union type is always required
-                            # Even if it's a None value
-                            if get_origin(annotation) is Union:
-                                try:
-                                    val = td_class.__dict__[key]
-                                    kwargs[key] = val
-                                except Exception as exc:
-                                    raise TaskException(
-                                        fn,
-                                        declaration_tb,
-                                        __traceback__,
-                                        f"{fn.__name__}() missing a value for keyword argument: {key}"
-                                        f"expected a value for {key}",
-                                    ) from exc
-                            else:
+                        # This is an optional type or a Union type key we add the default value
+                        # if no default value is provided TaskException will be raised
+                        # A value to an Optional or Union type is always required
+                        # Even if it's a None value
+                        if get_origin(annotation) is Union:
+                            try:
+                                val = td_class.__dict__[key]
+                                kwargs[key] = val
+                            except Exception as exc:
                                 raise TaskException(
                                     fn,
                                     declaration_tb,
                                     __traceback__,
-                                    f"{fn.__name__}() missing required keyword argument: {key}"
+                                    f"{fn.__name__}() missing a value for keyword argument: {key}"
                                     f"expected a value for {key}",
-                                )
+                                ) from exc
+                        else:
+                            raise TaskException(
+                                fn,
+                                declaration_tb,
+                                __traceback__,
+                                f"{fn.__name__}() missing required keyword argument: {key}"
+                                f"expected a value for {key}",
+                            )
 
                 def _to_param_ref(value: Any) -> ParameterReference[Any] | None:
                     if isinstance(value, Parameter):
@@ -732,6 +786,7 @@ def task(
                         positional_args=positional_args,
                     ),
                 )
+                print("huiq mi qnko kurvo")
                 return step
             except TaskException as exc:
                 raise exc
@@ -746,6 +801,9 @@ def task(
                 if configuration:
                     configuration.__exit__(None, None, None)
 
+        print("q387yh9h2784y58713y4573497852805")
+        print("q387yh9h2784y58713y4573497852805")
+        print("q387yh9h2784y58713y4573497852805")
         _fn.__step_expression__ = True  # type: ignore
         _fn.__original__ = fn  # type: ignore
         return LazyEvaluation(_fn)
@@ -789,3 +847,21 @@ def _workaround_check_value_is_task(
         for mod in list(fn.__code__.co_names) + list(fn.__code__.co_varnames)
         if mod in sys.modules
     )
+
+
+def is_param_unpack(param: inspect.Parameter) -> bool:
+    return get_origin(param.annotation) is Unpack
+
+
+def has_signature_unpack(sig: inspect.Signature) -> bool:
+    if not sig.parameters:
+        return False
+
+    last_param = list(sig.parameters.values())[len(sig.parameters.values()) - 1]
+    return is_param_unpack(last_param)
+
+
+def get_actual_keys(sig: inspect.Signature) -> bool:
+    val = list(sig.parameters.values())[len(sig.parameters.values()) - 1]
+    td_class = val.annotation.__args__[0]
+    return list(td_class.__annotations__.keys())
