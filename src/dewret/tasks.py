@@ -144,7 +144,13 @@ class TaskManager:
         """
         return self.backend.lazy
 
-    def evaluate(self, task: Lazy | list[Lazy] | tuple[Lazy, ...], __workflow__: Workflow, thread_pool: ThreadPoolExecutor | None=None, **kwargs: Any) -> Any:
+    def evaluate(
+        self,
+        task: Lazy | list[Lazy] | tuple[Lazy, ...],
+        __workflow__: Workflow,
+        thread_pool: ThreadPoolExecutor | None = None,
+        **kwargs: Any,
+    ) -> Any:
         """Evaluate a single task for a known workflow.
 
         Args:
@@ -235,6 +241,7 @@ lazy = _manager.make_lazy
 ensure_lazy = _manager.ensure_lazy
 unwrap = _manager.unwrap
 
+
 def evaluate(task: Any, *args: Any, execute: bool = False, **kwargs: Any) -> Any:
     """Get a result of a task, either as a value or lazily.
 
@@ -251,6 +258,7 @@ def evaluate(task: Any, *args: Any, execute: bool = False, **kwargs: Any) -> Any
         return execute_step(task, *args, **kwargs)
     else:
         return _manager.evaluate(task, *args, **kwargs)
+
 
 """An alias pointing to an instance of the TaskManager class.
 Used for constructing a set of tasks into a dewret workflow instance.

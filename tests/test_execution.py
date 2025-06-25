@@ -10,10 +10,8 @@ from dewret.tasks import (
     evaluate,
 )
 from dewret.core import set_configuration
-from ._lib.extra import (
-    pi,
-    PackResult
-)
+from ._lib.extra import pi, PackResult
+
 
 def test_basic_eager_execution() -> None:
     """Check whether we can run a simple flow without lazy-evaluation.
@@ -31,11 +29,13 @@ def test_basic_eager_execution() -> None:
 
     assert output == math.pi
 
+
 def test_eager_execution_of_a_workflow() -> None:
     """Check whether we can run a workflow without lazy-evaluation.
 
     Will skip dask delayeds and execute during construction.
     """
+
     @workflow()
     def pair_pi() -> tuple[float, float]:
         return pi(), pi()
