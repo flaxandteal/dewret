@@ -16,6 +16,7 @@ class PackResult:
     spades: int
     diamonds: int
 
+
 @workflow()
 def try_nothing() -> int:
     """Check that we can see AtRender in another module."""
@@ -82,5 +83,3 @@ def reverse_list(to_sort: list[int | float]) -> list[int | float]:
 @task()
 def max_list(lst: list[int | float]) -> int | float:
     return max(lst)
-
-
