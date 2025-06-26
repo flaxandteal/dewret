@@ -3,7 +3,7 @@
 import pytest
 import yaml
 from dewret.core import set_configuration
-from typing import TypedDict, NotRequired, Unpack, Any, Literal
+from typing import TypedDict, NotRequired, Unpack, Any, Union, Literal
 from dewret.tasks import task, construct, TaskException
 from dewret.renderers.cwl import render
 
@@ -131,38 +131,38 @@ def test_invalid_input_for_NotRequired_field() -> None:
 
 # --- Literal ---
 class LiteralConfig(TypedDict):
-    mode: Literal["fast", "slow"]
-    mode1: Literal["fast", "medium", "slow"]
+    baz: Literal["fast", "slow"]
+    qux: Literal["fast", "medium", "slow"]
 
 
 @task()
-def literal_task(t1: float, t2: int, **config: Unpack[LiteralConfig]) -> str:
-    return config["mode"]
+def literal_task(foo: float, bar: int, **config: Unpack[LiteralConfig]) -> str:
+    return config["baz"]
 
 
 def test_literal_valid() -> None:
-    result = literal_task(t1=3.14, t2=1, mode="fast", mode1="medium")
+    result = literal_task(foo=3.14, bar=1, baz="fast", qux="medium")
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)["__root__"]
     assert rendered == yaml.safe_load("""
 class: Workflow
 cwlVersion: 1.2
 inputs:
-  literal_task-1-mode:
+  literal_task-1-baz:
     default: fast
-    label: mode
+    label: baz
     type: string
-  literal_task-1-mode1:
+  literal_task-1-qux:
     default: medium
-    label: mode1
+    label: qux
     type: string
-  literal_task-1-t1:
+  literal_task-1-foo:
     default: 3.14
-    label: t1
+    label: foo
     type: float
-  literal_task-1-t2:
+  literal_task-1-bar:
     default: 1
-    label: t2
+    label: bar
     type: int
 outputs:
   out:
@@ -172,14 +172,14 @@ outputs:
 steps:
   literal_task-1:
     in:
-      mode:
-        source: literal_task-1-mode
-      mode1:
-        source: literal_task-1-mode1
-      t1:
-        source: literal_task-1-t1
-      t2:
-        source: literal_task-1-t2
+      baz:
+        source: literal_task-1-baz
+      qux:
+        source: literal_task-1-qux
+      foo:
+        source: literal_task-1-foo
+      bar:
+        source: literal_task-1-bar
     out:
       - out
     run: literal_task
@@ -196,21 +196,21 @@ def test_literal_valid_with_positional_args_true() -> None:
 class: Workflow
 cwlVersion: 1.2
 inputs:
-  literal_task-1-mode:
+  literal_task-1-baz:
     default: fast
-    label: mode
+    label: baz
     type: string
-  literal_task-1-mode1:
+  literal_task-1-qux:
     default: medium
-    label: mode1
+    label: qux
     type: string
-  literal_task-1-t1:
+  literal_task-1-foo:
     default: 3.14
-    label: t1
+    label: foo
     type: float
-  literal_task-1-t2:
+  literal_task-1-bar:
     default: 1
-    label: t2
+    label: bar
     type: int
 outputs:
   out:
@@ -220,14 +220,14 @@ outputs:
 steps:
   literal_task-1:
     in:
-      mode:
-        source: literal_task-1-mode
-      mode1:
-        source: literal_task-1-mode1
-      t1:
-        source: literal_task-1-t1
-      t2:
-        source: literal_task-1-t2
+      baz:
+        source: literal_task-1-baz
+      qux:
+        source: literal_task-1-qux
+      foo:
+        source: literal_task-1-foo
+      bar:
+        source: literal_task-1-bar
     out:
       - out
     run: literal_task
@@ -236,62 +236,133 @@ steps:
 
 
 def test_literal_invalid() -> None:
-    with pytest.raises(TaskException, match="missing a required argument: 't1'"):
-        literal_task(mode="medium")  # type: ignore
+    with pytest.raises(TaskException, match="missing a required argument: 'foo'"):
+        literal_task(baz="medium")  # type: ignore
     with pytest.raises(
         TaskException,
-        match="got invalid literal value for argument 'mode': expected one of \\('fast', 'slow'\\), got 'medium'",
+        match="got invalid type for argument 'baz': expected \\('fast', 'slow'\\), got str or medium",
     ):
-        literal_task(t1=4.1, t2=3, mode="medium", mode1="test")  # type: ignore
+        literal_task(foo=4.1, bar=3, baz="medium", qux="test")  # type: ignore
     with pytest.raises(
         TaskException, match="Calling literal_task: Arguments must _always_ be named"
     ):
         literal_task(4.1, 3, "medium", "test")  # type: ignore
-    with pytest.raises(TaskException, match="missing a required argument: 't1'"):
+    with pytest.raises(TaskException, match="missing a required argument: 'foo'"):
         literal_task()  # type: ignore
-    with set_configuration(allow_positional_args=True) and pytest.raises(
-        TaskException, match="missing a required argument: 't1'"
+    with (
+        set_configuration(allow_positional_args=True),
+        pytest.raises(TaskException, match="got invalid type for argument 'foo'"),
     ):
-        literal_task(3.14, 1, "fast", "medium")  # type: ignore
+        literal_task(1, "fast", "medium")  # type: ignore
 
 
-def test_literal_invalid2() -> None:
-    with pytest.raises(
-        TaskException, match="Calling literal_task: Arguments must _always_ be named"
-    ):
-        # Ignoring type checking here since we're testing invalid input
-        literal_task("medium")  # type: ignore
+# --- Union ---
+class UnionConfig(TypedDict):
+    """TypedDict for testing dewret @task() argument validation with Union."""
+
+    foo: Union[int, str]
+    bar: Union[str, None]
+    baz: Union[int, Literal["fast", "slow"]]
 
 
-def test_literal_invalid3() -> None:
+@task()
+def union_task(**config: Unpack[UnionConfig]) -> dict[str, Any]:
+    return {**config}
+
+
+def test_union_valid() -> None:
+    result = union_task(foo=42, bar="hello", baz="fast")
+    wf = construct(result, simplify_ids=True)
+    rendered = render(wf)["__root__"]
+    assert rendered == yaml.safe_load("""
+class: Workflow
+cwlVersion: 1.2
+inputs:
+  union_task-1-bar:
+    default: hello
+    label: bar
+    type: string
+  union_task-1-baz:
+    default: fast
+    label: baz
+    type: string
+  union_task-1-foo:
+    default: 42
+    label: foo
+    type: int
+outputs:
+  out:
+    label: out
+    outputSource: union_task-1/out
+    type: record
+steps:
+  union_task-1:
+    in:
+      bar:
+        source: union_task-1-bar
+      baz:
+        source: union_task-1-baz
+      foo:
+        source: union_task-1-foo
+    out:
+    - out
+    run: union_task
+    """)
+
+
+def test_union_valid_with_positional_args_true() -> None:
     with set_configuration(allow_positional_args=True):
-        # Ignoring type checking here since we're testing invalid input
-        literal_task(4.14, 2, "fast", "fast", "slow", "fast", "fast")  # type: ignore
-        assert 3 == 4
+        result = union_task(42, "hello", "fast")
+        wf = construct(result, simplify_ids=True)
+        rendered = render(wf)["__root__"]
+        assert rendered == yaml.safe_load("""
+class: Workflow
+cwlVersion: 1.2
+inputs:
+  union_task-1-bar:
+    default: hello
+    label: bar
+    type: string
+  union_task-1-baz:
+    default: fast
+    label: baz
+    type: string
+  union_task-1-foo:
+    default: 42
+    label: foo
+    type: int
+outputs:
+  out:
+    label: out
+    outputSource: union_task-1/out
+    type: record
+steps:
+  union_task-1:
+    in:
+      bar:
+        source: union_task-1-bar
+      baz:
+        source: union_task-1-baz
+      foo:
+        source: union_task-1-foo
+    out:
+    - out
+    run: union_task
+    """)
 
 
-def test_literal_invalid4() -> None:
-    with set_configuration(eager=True):
-        # Ignoring type checking here since we're testing invalid input
-        literal_task(mode=1, mode1=2, mode2=3, mode3=4, mode4=5)  # type: ignore
-        assert 3 == 4
+def test_union_invalid_str() -> None:
+    with pytest.raises(
+        TaskException,
+        match="got invalid type for argument 'bar': expected \\(<class 'str'>, <class 'NoneType'>\\), got int or 123",
+    ):
+        union_task(foo=42, bar=123, baz="fast")
+    with pytest.raises(
+        TaskException,
+        match="missing a value for keyword argument: bar expected a value for bar",
+    ):
+        union_task(foo=42, baz="fast")
 
-
-# # --- Union ---
-# class UnionConfig(TypedDict):
-#     value: Union[int, str]
-
-# @task()
-# def union_task(**config: Unpack[UnionConfig]) -> Union[int, str]:
-#     return config["value"]
-
-# def test_union_valid_int() -> None:
-#     with set_configuration(eager=True):
-#       assert union_task(value=5) == 5
-
-# def test_union_valid_str() -> None:
-#     with set_configuration(eager=True):
-#       assert union_task(value="hello") == "hello"
 
 # def test_union_invalid_type() -> None:
 #     with set_configuration(eager=True) and pytest.raises(TaskException, match="got invalid type for argument 'value'"):
