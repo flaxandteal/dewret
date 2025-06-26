@@ -35,8 +35,21 @@ import sys
 from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
-from typing import get_args, get_origin, Unpack, Union, NotRequired, Tuple, Dict
-from typing import Any, ParamSpec, TypeVar, cast, Generator, Literal
+from typing import (
+    get_args,
+    get_origin,
+    Unpack,
+    Union,
+    NotRequired,
+    Tuple,
+    Dict,
+    Any,
+    ParamSpec,
+    TypeVar,
+    cast,
+    Generator,
+    Literal,
+)
 from types import TracebackType
 from attrs import has as attrs_has
 from dataclasses import is_dataclass
@@ -441,7 +454,6 @@ def task(
                 # Ensure that all arguments are passed as keyword args and prevent positional args.
                 # passed at all.
                 if args and not allow_positional_args:
-                    print("allow_positional_args", allow_positional_args)
                     raise TypeError(
                         f"""
                         Calling {fn.__name__}: Arguments must _always_ be named,
@@ -457,80 +469,22 @@ def task(
 
                 sig = inspect.signature(fn)
                 positional_args = {key: False for key in kwargs}
-                
+
                 signature_has_unpack = has_signature_unpack(sig)
 
-                kwargs, positional_args = _normalize_args(sig, args, kwargs, positional_args, allow_positional_args, signature_has_unpack)
+                kwargs, positional_args = _normalize_args(
+                    sig,
+                    args,
+                    kwargs,
+                    positional_args,
+                    allow_positional_args,
+                    signature_has_unpack,
+                )
 
                 sig.bind(**kwargs)
 
                 # Handle Unpack arguments
-                if signature_has_unpack:
-                    unpack_idx = len(sig.parameters.values()) - 1
-                    unpack_p = list(sig.parameters.values())[unpack_idx]
-                    td_class = unpack_p.annotation.__args__[0]
-
-                    sig_keys = list(sig.parameters.keys())[:unpack_idx]
-                    allowed_keys = sig_keys + list(td_class.__annotations__.keys())
-
-                    # Check for unexpected keys
-                    for key in kwargs.keys():
-                        if key not in allowed_keys:
-                            raise TaskException(
-                                fn,
-                                declaration_tb,
-                                __traceback__,
-                                f"{fn.__name__}() got an unexpected keyword argument '{key}' "
-                                f"(expected one of: {', '.join(allowed_keys)})",
-                            )
-
-                        value_type = type(kwargs.get(key))
-                        expected_types = get_expected_types(td_class, sig, key)
-                        if (
-                            value_type not in expected_types
-                            and kwargs.get(key) not in expected_types
-                        ):
-                            raise TaskException(
-                                fn,
-                                declaration_tb,
-                                __traceback__,
-                                f"{fn.__name__}() got invalid type for argument '{key}': "
-                                f"expected {expected_types}, got {value_type.__name__} or {kwargs.get(key)}",
-                            )
-
-                    # Check for missing required keys
-                    missing_keys = allowed_keys - kwargs.keys()
-                    for key in missing_keys:
-                        annotation = td_class.__annotations__.get(key)
-
-                        # If it's a NotRequired key, we can skip it
-                        if get_origin(annotation) is NotRequired:
-                            continue
-
-                        # This is an optional type or a Union type key we add the default value
-                        # if no default value is provided TaskException will be raised
-                        # A value to an Optional or Union type is always required
-                        # Even if it's a None value
-                        if get_origin(annotation) is Union:
-                            try:
-                                val = td_class.__dict__[key]
-                                kwargs[key] = val
-                            except Exception as exc:
-                                raise TaskException(
-                                    fn,
-                                    declaration_tb,
-                                    __traceback__,
-                                    f"{fn.__name__}() missing a value for keyword argument: {key} "
-                                    f"expected a value for {key}",
-                                ) from exc
-                        else:
-                            raise TaskException(
-                                fn,
-                                declaration_tb,
-                                __traceback__,
-                                f"{fn.__name__}() missing required keyword argument: {key}"
-                                f"expected a value for {key}",
-                            )
+                _validate_unpack_args(fn, kwargs, sig, declaration_tb, __traceback__)
 
                 def _to_param_ref(value: Any) -> ParameterReference[Any] | None:
                     if isinstance(value, Parameter):
@@ -795,10 +749,23 @@ def _normalize_args(
     allow_positional_args: bool,
     signature_has_unpack: bool,
 ) -> Tuple[Dict[str, Any], Dict[str, bool]]:
-    """Merge `args` into `kwargs`, enforcing:
-    - positional args only if allowed
-    - signature unpack (`*params`)
-    - IteratedGenerator expansion
+    """Normalize `args` and `kwargs` into a complete keyword argument mapping.
+
+    This function merges positional arguments into `kwargs`, optionally supporting:
+      - Regular positional arguments (if allowed),
+      - `Unpack[TypedDict]` expansion when present in the function signature,
+      - IteratedGenerator inputs, which may yield multiple positional values.
+
+    Args:
+        sig: The target function's signature.
+        args: Tuple of positional arguments passed in.
+        kwargs: Initial keyword argument dictionary (will be augmented).
+        positional_args: A dict tracking which parameters were filled positionally.
+        allow_positional_args: Whether to allow positional arguments at all.
+        signature_has_unpack: Whether the function ends in an `Unpack[...]` param.
+
+    Returns:
+        Tuple containing the updated `kwargs` and `positional_args`.
     """
     positional_args = {key: False for key in kwargs}
     actual_keys = []
@@ -806,8 +773,8 @@ def _normalize_args(
         actual_keys = get_actual_keys(sig)
 
     # zip positional args into kwargs
-    for arg, (name, param) in zip(args, sig.parameters.items(), strict=False):
-        if is_param_unpack(param):
+    for arg, (name, p) in zip(args, sig.parameters.items(), strict=False):
+        if is_param_unpack(p):
             # handle *TypedDict unpack
             unpack_start = len(sig.parameters) - 1
             for unpack_val, key in zip(args[unpack_start:], actual_keys, strict=False):
@@ -826,51 +793,223 @@ def _normalize_args(
     return kwargs, positional_args
 
 
+def _validate_unpack_args(
+    fn: Callable[..., Any],
+    kwargs: Dict[str, Any],
+    sig: inspect.Signature,
+    declaration_tb: TracebackType | None = None,
+    runtime_tb: TracebackType | None = None,
+) -> None:
+    """Validate keyword arguments against a function's `Unpack[TypedDict]` parameter, if one exists.
+
+    If the function signature contains an `Unpack[...]` parameter, this function ensures:
+      - All provided keys are expected (either regular parameters or TypedDict fields),
+      - All provided values match the expected types defined in the annotations,
+      - All required fields from the TypedDict are present (with defaults applied where possible).
+
+    Args:
+        fn: The original function being validated.
+        kwargs: Keyword arguments passed to the function.
+        sig: The function’s signature.
+        declaration_tb: Traceback from the task declaration (used for context in error reporting).
+        runtime_tb: Traceback from the task call site (optional, for chaining errors).
+
+    Raises:
+        TaskException: If any validation check fails (unexpected keys, type mismatch, or missing required fields).
+    """
+    if not has_signature_unpack(sig):
+        return
+
+    # Identify the unpack param and its TypedDict class
+    params = list(sig.parameters.values())
+    unpack_param = params[-1]
+    td_class = get_args(unpack_param.annotation)[0]
+
+    # Compute allowed keys: all named params except the last, plus TD fields
+    regular_keys = [p.name for p in params[:-1]]
+    td_fields = list(td_class.__annotations__.keys())
+    allowed_keys = set(regular_keys) | set(td_fields)
+
+    # Check for unexpected keys and type‐check provided ones
+    for key, val in list(kwargs.items()):
+        if key not in allowed_keys:
+            raise TaskException(
+                fn,
+                declaration_tb,
+                runtime_tb,
+                f"{fn.__name__}() got an unexpected keyword argument '{key}' "
+                f"(expected one of: {', '.join(sorted(allowed_keys))})",
+            )
+
+        annotation = (
+            td_class.__annotations__[key]
+            if td_class.__annotations__.get(key)
+            else sig.parameters[key].annotation
+        )
+        expected = get_expected_types(
+            annotation
+        )  # Also gets the underline types of Literal, Union, etc.
+
+        val_type = type(val)
+        if val_type not in expected and val not in expected:
+            raise TaskException(
+                fn,
+                declaration_tb,
+                runtime_tb,
+                f"{fn.__name__}() got invalid type for argument '{key}': "
+                f"expected {expected}, got {val_type.__name__} or {val!r}",
+            )
+    missing = allowed_keys - kwargs.keys()
+
+    for key in missing:
+        ann = td_class.__annotations__[key]
+
+        # skip NotRequired fields
+        # NotRequired fields are not required, while Optional fields are required
+        # and could just be `AnyType` or `NoneType`
+        if get_origin(ann) is NotRequired:
+            continue
+
+        # Optional/Union ‒ try to find class-level default first
+        if get_origin(ann) is Union:
+            _MISSING = object()
+            default = td_class.__dict__.get(key, _MISSING)  # sentinel
+            if default is not _MISSING:
+                kwargs[key] = default
+                continue
+
+            expected = get_expected_types(ann)
+
+            # Optional type is essential Union[T, NoneType]
+            # If the annotation is Optional, it must have a value, even if it is None.]
+            # if get_origin(ann) is Union and type(None) in get_args(ann):
+            if "typing.Optional" in str(ann):  # TODO: Which If is more professional?
+                raise TaskException(
+                    fn,
+                    declaration_tb,
+                    runtime_tb,
+                    f"{fn.__name__}() missing a value for keyword argument: '{key}' "
+                    f"'{key}' is an Optional argument, but no default value provided. "
+                    f"Optional arguments are required to have a value (It could be None)."
+                    f"NotRequired fields could be completely omitted, but Optional fields must have a value ",
+                )
+
+            raise TaskException(
+                fn,
+                declaration_tb,
+                runtime_tb,
+                f"{fn.__name__}() missing a value for keyword argument: '{key}' "
+                f"expected {expected}",
+            )
+
+        # Plain required field → error
+        raise TaskException(
+            fn,
+            declaration_tb,
+            runtime_tb,
+            f"{fn.__name__}() missing required keyword argument: '{key}'",
+        )
+
+
 def is_param_unpack(param: inspect.Parameter) -> bool:
+    """Determine whether the given parameter is annotated with `Unpack[...]`.
+
+    This is used to identify parameters intended to unpack a TypedDict
+    or similar structure.
+
+    Args:
+        param: A function parameter to inspect.
+
+    Returns:
+        True if the parameter annotation originates from `typing.Unpack`, else False.
+    """
     return get_origin(param.annotation) is Unpack
 
 
 def has_signature_unpack(sig: inspect.Signature) -> bool:
-    if not sig.parameters:
-        return False
+    """Check whether a function signature ends with an **`Unpack[...]`**.
 
-    last_param = list(sig.parameters.values())[len(sig.parameters.values()) - 1]
-    return is_param_unpack(last_param)
+    `Unpack` parameters are syntactically required to be **the final
+    parameter** in a function definition; therefore this helper just inspects
+    the last element in `sig.parameters`.
 
+    Parameters
+    ----------
+    sig : inspect.Signature
+        The signature to analyse.
 
-def get_actual_keys(sig: inspect.Signature) -> bool:
-    val = list(sig.parameters.values())[len(sig.parameters.values()) - 1]
-    td_class = val.annotation.__args__[0]
-    return list(td_class.__annotations__.keys())
-
-
-def flatten_expected_types(expected_types: Tuple[Any, ...]) -> Tuple[Any, ...]:
-    """If any type in expected_types has parameters (get_args non-empty),
-    extract those args and append them to the tuple.
+    Returns:
+    -------
+    bool
+        ``True`` if the last parameter’s annotation originates from
+        `typing.Unpack`, otherwise ``False``.
     """
-    args = tuple(arg for t in expected_types for arg in get_args(t))
-    if args:
-        expected_types = expected_types + args
+    return bool(sig.parameters) and is_param_unpack(list(sig.parameters.values())[-1])
 
-    return expected_types
+
+def get_actual_keys(sig: inspect.Signature) -> list[str]:
+    """Extract the actual field names from a TypedDict used in an `Unpack[...]` annotation.
+
+    Assumes the last parameter in the signature is annotated with `Unpack[SomeTypedDict]`.
+
+    Args:
+        sig: Function signature to inspect.
+
+    Returns:
+        List of keys defined in the referenced TypedDict.
+    """
+    last = list(sig.parameters.values())[-1]
+    td = get_args(last.annotation)[0]
+    return list(td.__annotations__.keys())
+
+
+def flatten_expected_types(types: Tuple[Any, ...]) -> Tuple[Any, ...]:
+    """Recursively flatten nested typing constructs.
+
+    Recursively flatten a tuple of potentially nested typing constructs
+    (e.g., Union, Optional, Literal) into a flat tuple of concrete basic types.
+
+    Composite types with `get_args()` are expanded, and duplicates are removed
+    while preserving order.
+
+    Args:
+        types: A tuple of types.
+
+    Returns:
+        A flat tuple containing only concrete (basic) types.
+    """
+    out: list[Any] = []
+
+    for t in types:
+        inner = get_args(t)
+        if inner:  # composite → recurse into its args
+            out.extend(flatten_expected_types(inner))
+        else:  # simple / basic type
+            out.append(t)
+
+    # optional: deduplicate while preserving order
+    seen = dict.fromkeys(out)
+    return tuple(seen)
 
 
 def get_expected_types(
-    td_class: Any, sig: inspect.Signature, key: str
+    ann: Any,
 ) -> Tuple[Any, ...]:
-    """If any type in expected_types has parameters (get_args non-empty),
-    extract those args and append them to the tuple.
+    """Expand a single annotation into its expected concrete types.
+
+    If the annotation is a generic typing construct (e.g., `Optional[str]`,
+    `Union[int, Literal["x"]]`), its inner types are extracted and flattened
+    recursively to return only the concrete basic types.
+
+    Args:
+        ann: A type annotation to analyze.
+
+    Returns:
+        A flat tuple of expected types or literal values.
     """
-    expected_type = td_class.__annotations__.get(key)
-    if expected_type is None:
-        expected_type = sig.parameters[key].annotation
-
-    if hasattr(expected_type, "__args__"):
-        expected_types = get_args(expected_type)
+    origin = get_origin(ann)
+    if origin is not None:
+        base = get_args(ann)
     else:
-        expected_types = (expected_type,)
-
-    print("get_expected_types", expected_types)
-    expected_types = flatten_expected_types(expected_types)
-
-    return expected_types
+        base = (ann,)
+    return flatten_expected_types(base)
