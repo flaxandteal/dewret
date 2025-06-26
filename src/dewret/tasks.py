@@ -457,34 +457,11 @@ def task(
 
                 sig = inspect.signature(fn)
                 positional_args = {key: False for key in kwargs}
-
+                
                 signature_has_unpack = has_signature_unpack(sig)
 
-                actual_keys = []
-                if args and allow_positional_args and signature_has_unpack:
-                    actual_keys = get_actual_keys(sig)
+                kwargs, positional_args = _normalize_args(sig, args, kwargs, positional_args, allow_positional_args, signature_has_unpack)
 
-                for arg, (key, val) in zip(args, sig.parameters.items(), strict=False):
-                    if is_param_unpack(val):
-                        unpack_vals_start = len(sig.parameters.values()) - 1
-                        for unpack_arg, key in zip(
-                            args[unpack_vals_start:], actual_keys, strict=False
-                        ):
-                            kwargs[key] = unpack_arg
-
-                        continue
-
-                    if isinstance(arg, IteratedGenerator):
-                        for inner_arg, (key, _) in zip(
-                            arg, sig.parameters.items(), strict=False
-                        ):
-                            if key in positional_args:
-                                continue
-                            kwargs[key] = inner_arg
-                            positional_args[key] = True
-                    else:
-                        kwargs[key] = arg
-                        positional_args[key] = True
                 sig.bind(**kwargs)
 
                 # Handle Unpack arguments
@@ -509,7 +486,10 @@ def task(
 
                         value_type = type(kwargs.get(key))
                         expected_types = get_expected_types(td_class, sig, key)
-                        if value_type not in expected_types and kwargs.get(key) not in expected_types:
+                        if (
+                            value_type not in expected_types
+                            and kwargs.get(key) not in expected_types
+                        ):
                             raise TaskException(
                                 fn,
                                 declaration_tb,
@@ -518,9 +498,6 @@ def task(
                                 f"expected {expected_types}, got {value_type.__name__} or {kwargs.get(key)}",
                             )
 
-                    print("test")
-                    print("test")
-                    print("test")
                     # Check for missing required keys
                     missing_keys = allowed_keys - kwargs.keys()
                     for key in missing_keys:
@@ -809,21 +786,21 @@ def _workaround_check_value_is_task(
         if mod in sys.modules
     )
 
+
 def _normalize_args(
-    fn: Callable,
+    sig: inspect.Signature,
     args: Tuple[Any, ...],
     kwargs: Dict[str, Any],
-    allow_positional_args: bool
-) -> Dict[str, Any]:
+    positional_args: Dict[str, bool],
+    allow_positional_args: bool,
+    signature_has_unpack: bool,
+) -> Tuple[Dict[str, Any], Dict[str, bool]]:
+    """Merge `args` into `kwargs`, enforcing:
+    - positional args only if allowed
+    - signature unpack (`*params`)
+    - IteratedGenerator expansion
     """
-    Merge `args` into `kwargs`, enforcing:
-      - positional args only if allowed
-      - signature unpack (`*params`)
-      - IteratedGenerator expansion
-    """
-    sig = inspect.signature(fn)
-    positional_used = {key: False for key in kwargs}
-    signature_has_unpack = has_signature_unpack(sig)
+    positional_args = {key: False for key in kwargs}
     actual_keys = []
     if args and allow_positional_args and signature_has_unpack:
         actual_keys = get_actual_keys(sig)
@@ -839,14 +816,15 @@ def _normalize_args(
 
         if isinstance(arg, IteratedGenerator):
             for inner, (name, _) in zip(arg, sig.parameters.items(), strict=False):
-                if not positional_used.get(name, False):
+                if not positional_args.get(name, False):
                     kwargs[name] = inner
-                    positional_used[name] = True
+                    positional_args[name] = True
         else:
             kwargs[name] = arg
-            positional_used[name] = True
+            positional_args[name] = True
 
-    return kwargs
+    return kwargs, positional_args
+
 
 def is_param_unpack(param: inspect.Parameter) -> bool:
     return get_origin(param.annotation) is Unpack
@@ -867,8 +845,7 @@ def get_actual_keys(sig: inspect.Signature) -> bool:
 
 
 def flatten_expected_types(expected_types: Tuple[Any, ...]) -> Tuple[Any, ...]:
-    """
-    If any type in expected_types has parameters (get_args non-empty),
+    """If any type in expected_types has parameters (get_args non-empty),
     extract those args and append them to the tuple.
     """
     args = tuple(arg for t in expected_types for arg in get_args(t))
@@ -878,9 +855,10 @@ def flatten_expected_types(expected_types: Tuple[Any, ...]) -> Tuple[Any, ...]:
     return expected_types
 
 
-def get_expected_types(td_class: Any, sig: inspect.Signature, key: str) -> Tuple[Any, ...]:
-    """
-    If any type in expected_types has parameters (get_args non-empty),
+def get_expected_types(
+    td_class: Any, sig: inspect.Signature, key: str
+) -> Tuple[Any, ...]:
+    """If any type in expected_types has parameters (get_args non-empty),
     extract those args and append them to the tuple.
     """
     expected_type = td_class.__annotations__.get(key)
@@ -896,4 +874,3 @@ def get_expected_types(td_class: Any, sig: inspect.Signature, key: str) -> Tuple
     expected_types = flatten_expected_types(expected_types)
 
     return expected_types
-
