@@ -23,8 +23,8 @@ import importlib
 import base64
 from attrs import define
 from functools import lru_cache
+from collections.abc import Mapping, Callable
 from typing import (
-    Mapping,
     Generic,
     TypeVar,
     Protocol,
@@ -37,7 +37,6 @@ from typing import (
     get_args,
     get_origin,
     Annotated,
-    Callable,
     cast,
     runtime_checkable,
 )
