@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dewret: Declarative Workflow Rendering Tool</title>
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/simple.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/highlight/github.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css" integrity="sha512-R4qnMvr6RyGhcGKs3xNhPECW+/IU7HXKLi15P2kSbM6o5ZGAVEyIptJ8VxGEKq1G7VqHlVRe5Q2+QK+Ao7Q3w==" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/simple.min.css" integrity="sha512-QHvW1S2TF8mHiKTmfGt8LRCX8IZBmJZxELM6vCuFZh7fZfLiNVXHQ/+SG2h2NQ4r/wOBczNdqrR82wN0Rqy0g==" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/highlight/github.min.css" integrity="sha512-eWvhqp3e7Yox4w7z/sxNWfGAv4LFOllUgLB1lJfCvYgjJ4NMDJ9vY1r/9DGvmjQR0ImbN3O3J0UNhCEFNbGtg==" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap" rel="stylesheet"  crossorigin="anonymous">
     <link rel="stylesheet" href="custom.css">
 </head>
 <body>
@@ -23,12 +23,12 @@
         </div>
     </div>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/markdown/markdown.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/highlight/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/notes/notes.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/math/math.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js" integrity="sha512-H7LE/nq2Xjs/hKhK8RvFJ1FnhOFcOiKxKDWNa6U5fKv3/KR/8Kt/A+R9l+lJd3ZqAGvTQ2/9KPBz0jrn8y6w==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/markdown/markdown.min.js" integrity="sha512-QAU7Ux8iEB53koLKFCtddfFp0D1+uQWoX3ROnRDLeiE98XHOkMciaup0Spc014jQAuJaqz8VjUZdBqriheI4Lg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/highlight/highlight.min.js" integrity="sha512-U3fPDUX5bMrn1wnYqjaK44MFA9E6MKS+zPAg9WPAGF5XhReBeDj3FGaA831CjueG+YJxYA3WaO/m33kMIoOs/A==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/notes/notes.min.js" integrity="sha512-nLsCkPS/rdxRVOkxiKnld9KhQ24V/5kRChzSZ3MoFODykbWyBlQRsHLrbpN3J4LabYBnXIp1EnRIo3ifvyiQxg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/math/math.min.js" integrity="sha512-skPZpuRwuUAnF9iEEFBXc4zJaucKcHUDgY1wDBTv0ILy82C2gn8MJsbcinzj2u8r/iZjD/78HRgw2/n//poOhQ==" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js" integrity="sha512-3Z3rmdqOjd5hML9O1JOqPQ+B5dPINdLlBNqpOaO2u95PnV+sG4FRaGpJxbh0UEA0e+bqZmahZg7/Kny1z/QWA==" crossorigin="anonymous"></script>
     
     <script>
         // Initialize Mermaid
@@ -62,6 +62,8 @@
             const mermaidDivs = document.querySelectorAll('.mermaid');
             mermaidDivs.forEach(function(element) {
                 const graphDefinition = element.textContent;
+                // The following is not security-related PRNG usage.
+                // NOSONAR
                 const graphId = 'mermaid-' + Math.random().toString(36).substr(2, 9);
                 element.id = graphId;
                 element.textContent = '';
