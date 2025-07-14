@@ -57,18 +57,21 @@ steps:
 - **Rich Type System**: Leverage Python's type hints for automatic workflow validation
 - **Debugging Support**: Test and debug workflows locally before deployment
 - **Code Reuse**: Integrate with existing Python libraries and frameworks
+- **IDE Support**: Type-hinting and eager execution simplify step debugging in IDEs
 
 ### **For Operations Teams**
+
 - **Multi-Platform Execution**: Deploy to multiple environment types
 - **Performance Optimization**: Enable workflow engines to optimize execution plans
 - **Container Support**: Automatic integration with containerized environments
 - **Resource Management**: Leverage workflow engine capabilities for scheduling and scaling
 
 ### **For Organizations**
+
 - **Vendor Independence**: Avoid lock-in to specific workflow platforms
 - **Standards Compliance**: Generate workflows compatible with chosen industry standards
 - **Cost Optimization**: Test locally, optimize workflows before expensive HPC runs
-- **Audit Trail**: Git-versionable static workflows provide complete reproducibility
+- **Audit Trail**: Git-versionable static workflows enhance reproducibility and issue bisection
 
 ## Technical Architecture
 
