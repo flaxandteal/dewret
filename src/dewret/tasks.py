@@ -31,6 +31,7 @@ Typical usage example:
 
 import inspect
 import importlib
+import os
 import sys
 from enum import Enum
 from functools import cached_property
@@ -70,6 +71,8 @@ from .core import (
     ConstructConfigurationTypedDict,
     Reference,
 )
+
+EXECUTION_TIME = os.environ.get("DEWRET_EXECUTION_TIME", "") == "1"
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
@@ -430,7 +433,7 @@ def task(
             __traceback__: TracebackType | None = None,
             **kwargs: Any,
         ) -> RetType:
-            if get_configuration("eager"):
+            if EXECUTION_TIME or get_configuration("eager"):
                 return fn(*args, **kwargs)
 
             configuration = None

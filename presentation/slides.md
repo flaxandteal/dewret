@@ -1,29 +1,15 @@
 # Dewret: Declarative Workflow Rendering Tool
 
-*Bridging Dynamic Python and Static Workflows*
+*Write workflows in Python, render to any format, execute anywhere*
 
 ---
 
-## The Challenge: Writing Workflows Today
+## The Problem
 
-- **Dynamic Approach** (Dask, Python)
-  - ✅ Flexible and expressive
-  - ✅ Familiar programming model
-  - ❌ Not portable across execution systems
-  - ❌ Hard to version and reproduce
+**Dynamic workflows** (Python/Dask): Flexible but not portable  
+**Static workflows** (CWL/Snakemake): Portable but verbose
 
-- **Static Approach** (CWL, Snakemake)
-  - ✅ Portable and reproducible
-  - ✅ Optimizable by workflow engines
-  - ✅ Generic checkpointing easier
-  - ❌ Verbose and restrictive
-  - ❌ Steep learning curve
-
----
-
-## Introduction
-
-### Write Once, Render Anywhere
+**Solution**: Write once in Python, render to any workflow language
 
 ```python
 @task()
@@ -36,234 +22,100 @@ def analysis_pipeline(data_file: str):
     return analyze(df)
 ```
 
-Renders to CWL, Snakemake, or custom formats
+→ Renders to CWL, Snakemake, or custom formats
 
 ---
 
-## Core Design Principles
-
-### Lazy Evaluation
-Built on Dask's delayed execution to construct workflow graphs before rendering
-
-### Separation of Concerns
-- Workflow logic vs. execution environment
-- One codebase, multiple targets
-- Heterogeneous containers
-
-### Python-First Approach
-- No new DSLs to learn
-- Use your existing code
-
----
-
-## Architecture Overview
+## Core Design & Architecture
 
 <div class="mermaid">
-graph TD
-    A[Python Code] --> B[Task Decorators]
-    B --> C[Lazy Evaluation]
-    C --> D[Workflow Graph]
-    D --> E[Renderer]
-    E --> F[CWL]
-    E --> G[Snakemake]
-    E --> H[Custom Format]
+graph LR
+    A[Python Code] --> B[Lazy Evaluation<br/>(Dask Backend)]
+    B --> C[Workflow Graph]
+    C --> D[Renderer]
+    D --> E[CWL/Snakemake/<br/>Custom Format]
 </div>
 
-
----
-
-## Comparison with Other Tools
-
-### Dewret vs. Dask
-
-| Aspect | Dask | Dewret |
-|--------|------|--------|
-| **Focus** | Parallel execution | Workflow rendering |
-| **Output** | Computed results | Static workflows |
-| **Use Case** | Data processing | Workflow portability |
-
-**Note**: Dewret uses Dask as its lazy evaluation backend, enabling execution in Dask environments.
-
---
-
-### Dewret vs. Kubeflow
-
-| Aspect | Kubeflow | Dewret |
-|--------|----------|--------|
-| **Scope** | Full ML platform | Workflow definition |
-| **Target** | Kubernetes | Any workflow engine |
-| **Complexity** | Enterprise-scale | Lightweight |
-
-**Note**: Dewret can render workflows for execution on Kubeflow.
+**Key Principles:**
+- **Lazy evaluation** for workflow construction
+- **Separation of concerns** (logic vs. execution)
+- **Python-first** (no new DSLs)
 
 ---
 
 ## Key Features
 
-### Complex Data Structures
-
+### Complex Data Structures & Nested Workflows
 ```python
 @dataclass
 class Results:
     accuracy: float
     model: str
-    metrics: dict
-
-@task()
-def train_model(data: pd.DataFrame) -> Results:
-    # Training logic here
-    return Results(accuracy=0.95, 
-                   model="rf", 
-                   metrics={...})
-```
-
---
-
-### Nested Workflows
-
-```python
-@workflow()
-def preprocessing(raw_data: str) -> pd.DataFrame:
-    # Preprocessing steps
-    return cleaned_data
 
 @workflow()
-def main_pipeline(data_path: str):
-    clean_data = preprocessing(data_path)
-    results = analyze(clean_data)
-    return results
+def preprocessing(raw: str) -> pd.DataFrame:
+    return clean_data
+
+@workflow()
+def ml_pipeline(data_path: str):
+    clean = preprocessing(data_path)
+    return train_model(clean)
 ```
 
---
-
-### Eager Evaluation Mode
-
-```bash
-# Debug your workflow interactively
-dewret run pipeline.py --eager
-
-# Render to static format
-dewret render pipeline.py --format cwl
-```
-
-Ideal for development and debugging workflows before rendering.
+### Advanced Capabilities
+- **Eager evaluation** for debugging and IDE: `dewret run --eager`
+- **Field access**: `result.accuracy`
+- **Automatic deduplication** of identical tasks via dask graph-pruning
 
 ---
 
-## Real-World Benefits
+## Real-World Impact
 
-### Early Error Detection
-- Catch workflow bugs before HPC time
-- Validate DAG structure immediately
+### Benefits
+- **Early error detection** before expensive HPC runs
+- **True reproducibility** with git-versioned workflows
+- **Easy uploading** from local testing
+- **Fully mypy-compatible** for comprehensive type-checking
 
-### True Reproducibility
-- Git-version your workflows
-- Exact same execution across time
-
-### Cost Efficiency
-- Test without cluster resources
-- Optimize before deployment
-
-
-## Use Cases
-
-### Scientific Computing
-
+### Use Cases
 ```python
+# Scientific Computing
 @workflow()
-def finite_element_pipeline(settings: FESettingsDataclass):
-    m = build_mesh(...)
-    a, L = assemble_meshfree_matrices(...)
-    solver = construct_solver(settings)
-    result = solver.solve(a, L, m)
-    return result
-```
+def finite_element_pipeline(settings) -> SolverResult:
+    mesh: Mesh = build_mesh(...)
+    return solver.solve(...)
 
---
-
-### Machine Learning
-```python
+# Machine Learning
 @workflow()
-def ml_experiment(config: dict):
-    data = load_dataset(config["dataset"])
-    features = engineer_features(data)
-    model = train_model(features, config["params"])
-    return evaluate(model)
-```
-
---
-
-### Data Processing
-```python
-@workflow()
-def etl_pipeline(source: str):
-    raw = extract(source)
-    transformed = transform(raw)
-    load(transformed, destination)
-    return transformed
+def ml_experiment(**config: Unpack[MLConfig]) -> list[float]:
+    features= engineer_features(generate_data_workflow())
+    model = train_model(features, config)
+    return model.evaluate()
 ```
 
 ---
 
 ## Getting Started
 
+### Quick Start
 ```bash
 pip install dewret
 ```
 
----
-
-## Advanced Features
-
-### Factory Functions
 ```python
+# workflow.py
+from dewret.tasks import task
+
 @task()
-def create_model(config: dict) -> Model:
-    return Model(**config)
-
-# Handles complex initialization
-model = create_model({"layers": [64, 32], 
-                     "dropout": 0.2})
+def my_task(input: str) -> str:
+    return f"Processed: {input}"
 ```
 
---
-
-### Field Access
-```python
-@task()
-def process() -> Results:
-    return Results(score=0.9, data=[1,2,3])
-
-# Access specific fields
-score = process().score
-data = process().data
+```bash
+python -m dewret workflow.py my_task input:'"value"' --pretty > workflow.cwl
+# Create a my_tool CWL tool to run Python
+python -m cwltool workflow.cwl
 ```
 
---
-
-### Automatic Deduplication
-```python
-# These create only one task node
-result1 = expensive_computation(data)
-result2 = expensive_computation(data)  # Same
-```
-
-
-## Roadmap
-
-### Current Features
-- CWL & Snakemake renderers
-- Dask backend integration
-- Complex data structure support
-
-### Future Development
-- Additional renderers (Nextflow, WDL)
-- Alternative backends
-- Workflow optimization passes
-- Visual workflow editor
-
----
-
-## Summary
-
-**Write** workflows in Python → **Debug** with eager evaluation → **Render** to any format → **Execute** anywhere
+### Summary
+**Write** in Python → **Debug** locally → **Render** to any format → **Execute** anywhere

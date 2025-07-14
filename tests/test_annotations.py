@@ -98,7 +98,7 @@ def test_at_render() -> None:
     subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           increment-1-num:
@@ -136,7 +136,7 @@ def test_at_render() -> None:
     subworkflows = render(wkflw, allow_complex_types=True)
     rendered = subworkflows["__root__"]
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           increment-1-num:
@@ -198,7 +198,7 @@ def test_can_loop_over_fixed_length() -> None:
     rendered = subworkflows["__root__"]
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs: {}
         outputs:
           out:

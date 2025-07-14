@@ -67,7 +67,7 @@ In code, this would be:
 >>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs:
   increment-1-num:
     default: 23
@@ -150,7 +150,7 @@ This duplication can be avoided by explicitly indicating that the parameters are
 >>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs:
   num:
     default: 3
@@ -225,7 +225,7 @@ For example:
 >>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs:
   INPUT_NUM:
     default: 3
@@ -293,7 +293,7 @@ As code:
 ...     cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs:
   INPUT_NUM:
     default: 3
@@ -404,7 +404,7 @@ As code:
 >>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs:
   shuffle-1-max_cards_per_suit:
     default: 13
@@ -483,7 +483,7 @@ Here, we show the same example with `dataclasses`.
 >>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs:
   shuffle-1-max_cards_per_suit:
     default: 13
@@ -575,7 +575,7 @@ dewret will produce multiple output workflows that reference each other.
 >>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs: {}
 outputs:
   out:
@@ -653,7 +653,7 @@ as a second term.
 >>> cwl = render(wkflw)
 >>> yaml.dump(cwl["red_total-1"], sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs: {}
 outputs:
   out:
@@ -731,7 +731,7 @@ Below is the default output, treating `Pack` as a task.
 >>> cwl = render(wkflw)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs:
   PackResult-1-clubs:
     default: 13
@@ -821,7 +821,7 @@ types are allowed.
 >>> cwl = render(wkflw, allow_complex_types=True, factories_as_params=True)["black_total-1"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs:
   pack:
     label: pack

@@ -49,7 +49,7 @@ def test_basic_cwl() -> None:
     hsh = hasher(("pi",))
 
     assert rendered == yaml.safe_load(f"""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs: {{}}
         outputs:
@@ -83,7 +83,7 @@ def test_input_factories() -> None:
     ]
 
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           days_in_future-1-num:
@@ -112,7 +112,7 @@ def test_input_factories() -> None:
     rendered = render(workflow, allow_complex_types=True)["__root__"]
 
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           days_in_future-1-num:
@@ -153,7 +153,7 @@ def test_cwl_with_parameter() -> None:
     hsh = hasher(("increment", ("num", f"int|:param:{num_param._.unique_name}")))
 
     assert rendered == yaml.safe_load(f"""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           increment-{hsh}-num:
@@ -191,7 +191,7 @@ def test_cwl_with_positional_parameter() -> None:
     hsh = hasher(("increment", ("num", f"int|:param:{num_param._.unique_name}")))
 
     assert rendered == yaml.safe_load(f"""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           increment-{hsh}-num:
@@ -226,7 +226,7 @@ def test_cwl_without_default() -> None:
     hsh = hasher(("increment", ("num", "int|:param:my_param")))
 
     assert rendered == yaml.safe_load(f"""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           my_param:
@@ -262,7 +262,7 @@ def test_cwl_with_subworkflow() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -301,7 +301,7 @@ def test_cwl_with_subworkflow() -> None:
 
     assert subworkflow == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -357,7 +357,7 @@ def test_cwl_references() -> None:
     hsh_double = hasher(("double", ("num", f"increment-{hsh_increment}")))
 
     assert rendered == yaml.safe_load(f"""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           increment-{hsh_increment}-num:
@@ -397,7 +397,7 @@ def test_complex_cwl_references() -> None:
     rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           increment-1-num:
@@ -456,7 +456,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -501,7 +501,7 @@ def test_cwl_with_subworkflow_and_raw_params() -> None:
 
     assert subworkflow == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -554,7 +554,7 @@ def test_tuple_floats() -> None:
     workflow = construct(result, simplify_ids=True)
     rendered = render(workflow)["__root__"]
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs: {}
         outputs:

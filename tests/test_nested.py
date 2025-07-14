@@ -24,7 +24,7 @@ def test_can_supply_nested_raw() -> None:
     rendered = render(workflow)["__root__"]
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           pi:
             default: 3.141592653589793

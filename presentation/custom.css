@@ -143,3 +143,43 @@
   color: #212121;
 }
 
+/* Title slide with centered logo */
+.reveal .slides section:first-child {
+  text-align: center;
+  background-image: url('dewret-logo.svg');
+  background-repeat: no-repeat;
+  background-position: center 1em;
+  background-size: 120px auto;
+  padding-top: 10em;
+}
+
+.reveal .slides section:first-child h1 {
+  margin-bottom: 0.3em;
+}
+
+.reveal .slides section:first-child em {
+  font-size: 1.2em;
+  color: #666;
+  font-style: italic;
+  margin-top: 1em;
+  display: block;
+}
+
+/* Separator prefixes for slides 2-6 */
+.reveal .slides section:nth-child(2) h2::before,
+.reveal .slides section:nth-child(3) h2::before,
+.reveal .slides section:nth-child(4) h2::before,
+.reveal .slides section:nth-child(5) h2::before,
+.reveal .slides section:nth-child(6) h2::before {
+  content: '';
+  display: inline-block;
+  width: 60px;
+  height: 24px;
+  background-image: url('separator.svg');
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  margin-right: 0.5em;
+  vertical-align: middle;
+  opacity: 0.6;
+}
