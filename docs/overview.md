@@ -125,8 +125,8 @@ Proof-of-concept work that can be extended to full features:
 - **Proven Foundation**: Built on mature technologies (Dask, established workflow standards)
 - **Active Ecosystem**: Integration with existing Python scientific computing stack
 
-### **ROI Drivers**
-- **Reduced Development Time**: 60-80% faster workflow development vs. native YAML
+### **Return on Investment Drivers**
+- **Reduced Development Time**: Far faster workflow development vs. native YAML
 - **Improved Reliability**: Early error detection prevents costly HPC failures
 - **Enhanced Portability**: Single codebase runs across multiple execution environments
 - **Team Efficiency**: Leverage existing Python expertise instead of learning new DSLs
