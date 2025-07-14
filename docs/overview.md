@@ -66,7 +66,7 @@ steps:
 
 ### **For Organizations**
 - **Vendor Independence**: Avoid lock-in to specific workflow platforms
-- **Standards Compliance**: Generate workflows compatible with GA4GH, NIH, and other standards
+- **Standards Compliance**: Generate workflows compatible with chosen industry standards
 - **Cost Optimization**: Test locally, optimize workflows before expensive HPC runs
 - **Audit Trail**: Git-versionable static workflows provide complete reproducibility
 
