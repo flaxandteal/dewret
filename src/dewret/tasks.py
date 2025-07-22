@@ -665,7 +665,6 @@ def task(
                         raw_as_parameter=not is_in_nested_task(),
                         is_factory=is_factory,
                         positional_args=positional_args,
-                        __sequence_num__=__sequence_num__,
                     ),
                 )
                 return step

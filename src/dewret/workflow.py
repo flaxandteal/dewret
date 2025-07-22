@@ -96,8 +96,6 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         global N
         self._fn: Callable[Param, RetType] = fn
         self.__name__ = fn.__name__
-        self.__sequence_num__ = N
-        N += 1
 
     def __call__(self, *args: Any, **kwargs: Any) -> RetType:
         """Wrapper around a lazy execution.
@@ -110,7 +108,7 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         """
         tb = make_traceback()
         result = self._fn(
-            *args, **kwargs, __traceback__=tb, __sequence_num__=self.__sequence_num__
+            *args, **kwargs, __traceback__=tb
         )
         return result
 
@@ -735,7 +733,6 @@ class Workflow:
         raw_as_parameter: bool = False,
         is_factory: bool = False,
         positional_args: dict[str, bool] | None = None,
-        __sequence_num__: int | None = None,
     ) -> StepReference[Any]:
         """Append a step.
 
@@ -756,7 +753,6 @@ class Workflow:
             task,
             kwargs,
             raw_as_parameter=raw_as_parameter,
-            __sequence_num__=__sequence_num__,
         )
         if positional_args is not None:
             step.positional_args = positional_args
@@ -1134,6 +1130,7 @@ class BaseStep(WorkflowComponent):
     arguments: Mapping[str, Basic | Reference[Any] | Raw]
     workflow: Workflow
     positional_args: dict[str, bool] | None = None
+    __sequence_num__: int | None = None
 
     def __init__(
         self,
@@ -1141,7 +1138,6 @@ class BaseStep(WorkflowComponent):
         task: Task | Workflow,
         arguments: Mapping[str, Reference[Any] | Raw],
         raw_as_parameter: bool = False,
-        __sequence_num__: int | None = None,
     ):
         """Initialize a step.
 
@@ -1151,10 +1147,12 @@ class BaseStep(WorkflowComponent):
             arguments: key-value pairs to pass to the function.
             raw_as_parameter: whether to turn any raw-type arguments into workflow parameters (or just keep them as default argument values).
         """
+        global N
         super().__init__(workflow=workflow)
         self.task = task
         self.arguments = {}
-        self.__sequence_num__ = __sequence_num__
+        self.__sequence_num__ = N
+        N += 1
         for key, value in arguments.items():
             if (
                 isinstance(value, FactoryCall)
