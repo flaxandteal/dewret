@@ -559,6 +559,13 @@ class Workflow:
 
         j
         """
+        # Capture the order of the workflows first
+        # f: w.id -> n
+        # Alpha
+        workflow_seq = {}
+        for n, workflow in enumerate(workflow_args):
+            workflow_seq.setdefault(workflow.id, n)
+
         workflows = sorted((w for w in set(workflow_args)), key=lambda w: w.id)
         base = workflows[0]
 
@@ -570,9 +577,11 @@ class Workflow:
 
         # left_steps = left._indexed_steps
         # right_steps = right._indexed_steps
+        # Beta
         all_steps = sorted(
             sum((list(w.indexed_steps.items()) for w in workflows), []),
-            key=lambda s: s[0],
+            # Sort the combined steps by their ID and, for ones that have the same ID, they should appear in order of workflow, then seq num inside that workflow
+            key=lambda s: (s[0], workflow_seq[s[1].__workflow__.id], s[1].__sequence_num__),
         )
 
         for _, step in all_steps:
@@ -580,6 +589,7 @@ class Workflow:
             step.set_workflow(base)
 
         indexed_steps: dict[str, BaseStep] = {}
+        # Gamma
         for step_id, step in all_steps:
             indexed_steps.setdefault(step_id, step)
             if step != indexed_steps[step_id]:
@@ -597,6 +607,9 @@ class Workflow:
                 )
 
         base._steps = sorted(indexed_steps.values(), key=lambda s: s.id)
+        # Delta
+        for n, step in enumerate(base._steps):
+            step.__sequence_num__ = n
         base.tasks = indexed_tasks
 
         for step in base.steps:
