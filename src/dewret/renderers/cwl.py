@@ -702,7 +702,7 @@ class WorkflowDefinition:
 
     @classmethod
     def from_workflow(
-        cls, workflow: Workflow, name: None | str = None
+        cls, workflow: Workflow, name: None | str = None, sort_steps: bool = False
     ) -> "WorkflowDefinition":
         """Build from a `Workflow`.
 
@@ -721,10 +721,13 @@ class WorkflowDefinition:
         )
         if get_render_configuration("factories_as_params"):
             parameters += list(workflow.find_factories().values())
+
+        steps_source = workflow.sequenced_steps if sort_steps else workflow.indexed_steps
+
         return cls(
             steps=[
                 StepDefinition.from_step(step)
-                for step in workflow.indexed_steps.values()
+                for step in steps_source.values()
                 if not (
                     isinstance(step, FactoryCall)
                     and get_render_configuration("factories_as_params")
@@ -770,10 +773,13 @@ def render(
         Reduced form as a native Python dict structure for
         serialization.
     """
+
+    sort_steps = kwargs.get("sort_steps", False)
+
     # TODO: Again, convincing mypy that a TypedDict has RawType values.
     with set_render_configuration(kwargs):  # type: ignore
         rendered = base_render(
             workflow,
-            lambda workflow: WorkflowDefinition.from_workflow(workflow).render(),
+            lambda workflow: WorkflowDefinition.from_workflow(workflow, sort_steps=sort_steps).render(),
         )
     return rendered
