@@ -540,6 +540,22 @@ class Workflow:
         return OrderedDict(
             sorted(((step.id, step) for step in self.steps), key=lambda x: x[0])
         )
+    
+    @property
+    def sequenced_steps(self) -> dict[str, BaseStep]:
+        """Steps mapped by ID, sorted by sequence number.
+
+        Forces generation of IDs and sorts steps by their `__sequence_num__`.
+
+        Returns:
+            Mapping of steps by sequence number.
+        """
+        return OrderedDict(
+            sorted(
+                ((step.id, step) for step in self.steps),
+                key=lambda x: x[1].__sequence_num__ if x[1].__sequence_num__ is not None else -1
+            )
+        )
 
     @classmethod
     def assimilate(cls, *workflow_args: Workflow) -> "Workflow":
@@ -730,6 +746,7 @@ class Workflow:
         raw_as_parameter: bool = False,
         is_factory: bool = False,
         positional_args: dict[str, bool] | None = None,
+        __sequence_num__: int | None = None
     ) -> StepReference[Any]:
         """Append a step.
 
@@ -750,6 +767,7 @@ class Workflow:
             task,
             kwargs,
             raw_as_parameter=raw_as_parameter,
+            __sequence_num__= __sequence_num__
         )
         if positional_args is not None:
             step.positional_args = positional_args
@@ -1130,6 +1148,7 @@ class BaseStep(WorkflowComponent):
         task: Task | Workflow,
         arguments: Mapping[str, Reference[Any] | Raw],
         raw_as_parameter: bool = False,
+        __sequence_num__ : int | None = None
     ):
         """Initialize a step.
 
@@ -1139,12 +1158,10 @@ class BaseStep(WorkflowComponent):
             arguments: key-value pairs to pass to the function.
             raw_as_parameter: whether to turn any raw-type arguments into workflow parameters (or just keep them as default argument values).
         """
-        global N
         super().__init__(workflow=workflow)
         self.task = task
         self.arguments = {}
-        self.__sequence_num__ = N
-        N += 1
+        self.__sequence_num__ = __sequence_num__
         for key, value in arguments.items():
             if (
                 isinstance(value, FactoryCall)
@@ -1304,8 +1321,7 @@ class BaseStep(WorkflowComponent):
             sorted(components, key=lambda pair: pair[0])
         )
 
-        print(f"{self.__sequence_num__}-{self.task}-{hasher(comp_tup)}")
-        return f"{self.__sequence_num__}-{self.task}-{hasher(comp_tup)}"
+        return f"{self.task}-{hasher(comp_tup)}"
 
 
 class NestedStep(BaseStep):
@@ -1379,6 +1395,7 @@ class FactoryCall(Step):
         task: Task | Workflow,
         arguments: Mapping[str, Reference[Any] | Raw],
         raw_as_parameter: bool = False,
+        __sequence_num__: int | None = None
     ):
         """Initialize a step.
 
@@ -1404,6 +1421,7 @@ class FactoryCall(Step):
             task=task,
             arguments=arguments,
             raw_as_parameter=raw_as_parameter,
+            __sequence_num__= __sequence_num__
         )
 
     @property

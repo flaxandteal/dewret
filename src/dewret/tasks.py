@@ -94,6 +94,18 @@ class TaskManager:
     """
 
     _backend: Backend | None = None
+    _sequence_num: int = 0
+    @classmethod
+    def get_sequence_num(cls) -> int:
+        """Retireves and then increments the sequence number"""
+        current_sequence_number = cls._sequence_num
+        cls._sequence_num += 1
+        return current_sequence_number
+    
+    @classmethod
+    def reset_sequence_num(cls) -> None:
+        print("Resetting sequence number to 0")
+        cls._sequence_num = 0
 
     def set_backend(self, backend: Backend) -> Backend:
         """Choose a backend.
@@ -165,6 +177,8 @@ class TaskManager:
 
         # Then we set the result to be the whole thing
         collected_workflow.set_result(new_result)
+
+        self.reset_sequence_num()
         return collected_workflow.result
 
     def unwrap(self, task: Lazy) -> Target:
@@ -631,6 +645,7 @@ def task(
                         raw_as_parameter=not is_in_nested_task(),
                         is_factory=is_factory,
                         positional_args=positional_args,
+                        __sequence_num__ = _manager.get_sequence_num()
                     ),
                 )
                 return step
