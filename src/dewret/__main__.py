@@ -61,6 +61,13 @@ from .tasks import Backend, construct
 @click.option("--renderer", default="cwl")
 @click.option("--renderer-args", default="")
 @click.option("--output", default="-")
+@click.option(
+    "--sort-steps",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Sort steps by sequence number in the renderer.",
+)
 @click.argument("workflow_py", type=click.Path(exists=True, path_type=Path))
 @click.argument("task")
 @click.argument("arguments", nargs=-1)
@@ -74,6 +81,7 @@ def render(
     renderer: str,
     renderer_args: str,
     output: str,
+    sort_steps: bool
 ) -> None:
     """Render a workflow.
 
@@ -123,7 +131,7 @@ def render(
         renderer_kwargs = {}
     else:
         renderer_kwargs = dict(pair.split(":") for pair in renderer_args.split(","))
-
+    renderer_kwargs['sort_steps'] = sort_steps
     if output == "-":
 
         @contextmanager
