@@ -177,8 +177,10 @@ class TaskManager:
 
         # Then we set the result to be the whole thing
         collected_workflow.set_result(new_result)
-
-        self.reset_sequence_num()
+        
+        # When the workflow has no name everything has been processed
+        if __workflow__._name == None:
+            self.reset_sequence_num()
         return collected_workflow.result
 
     def unwrap(self, task: Lazy) -> Target:
@@ -631,6 +633,7 @@ def task(
                             analyser.return_type,
                             original_kwargs,
                             positional_args,
+                            __sequence_num__ = _manager.get_sequence_num()
                         )
                     if is_expr(step_reference):
                         return cast(RetType, step_reference)

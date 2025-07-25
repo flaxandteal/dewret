@@ -162,6 +162,7 @@ class CWLRendererConfiguration(TypedDict):
 
     allow_complex_types: NotRequired[bool]
     factories_as_params: NotRequired[bool]
+    sort_steps: NotRequired[bool]
 
 
 def default_config() -> CWLRendererConfiguration:
@@ -176,6 +177,7 @@ def default_config() -> CWLRendererConfiguration:
     return {
         "allow_complex_types": False,
         "factories_as_params": False,
+        "sort_steps": False
     }
 
 
