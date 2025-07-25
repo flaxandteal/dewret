@@ -37,7 +37,7 @@ from .utils import load_module_or_package
 T = TypeVar("T")
 
 
-def structured_to_raw(rendered: RawType, pretty: bool = False) -> str:
+def structured_to_raw(rendered: RawType, pretty: bool = False, sort_steps: bool = False) -> str:
     """Serialize a serializable structure to a string.
 
     Args:
@@ -47,7 +47,7 @@ def structured_to_raw(rendered: RawType, pretty: bool = False) -> str:
     Returns: YAML/stringified version of the structure.
     """
     if pretty:
-        output = yaml.safe_dump(rendered, indent=2)
+        output = yaml.safe_dump(rendered, indent=2, sort_keys=not sort_steps)
     else:
         output = str(rendered)
     return output
@@ -84,9 +84,10 @@ def get_render_method(
             pretty: bool = False,
             **kwargs: RawType,
         ) -> dict[str, str]:
+            sort_steps = bool(kwargs.get('sort_steps', False))
             rendered = render_module.render(workflow, **kwargs)
             return {
-                key: structured_to_raw(value, pretty=pretty)
+                key: structured_to_raw(value, pretty=pretty, sort_steps=sort_steps)
                 for key, value in rendered.items()
             }
 

@@ -719,6 +719,7 @@ class Workflow:
         return_type: type | None,
         kwargs: dict[str, Any],
         positional_args: dict[str, bool] | None = None,
+        __sequence_num__: int | None = None
     ) -> StepReference[Any]:
         """Append a nested step.
 
@@ -734,6 +735,7 @@ class Workflow:
         Returns: a reference to the step that calls out to a new workflow.
         """
         step = NestedStep(self, name, subworkflow, kwargs)
+        step.__sequence_num__ = __sequence_num__
         if positional_args is not None:
             step.positional_args = positional_args
         self._steps.append(step)
