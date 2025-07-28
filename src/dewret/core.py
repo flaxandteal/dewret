@@ -236,7 +236,7 @@ def set_configuration(
 
 @contextmanager
 def set_render_configuration(
-    kwargs: dict[str, RawType],
+    kwargs: dict[str, Any],
 ) -> Iterator[ContextVar[GlobalConfiguration]]:
     """Sets the render-time configuration.
 

@@ -26,7 +26,7 @@ from contextlib import contextmanager
 import sys
 import re
 import yaml
-from typing import Any, IO, Generator
+from typing import Any, IO, Generator, cast
 from types import ModuleType
 import click
 import json
@@ -130,7 +130,7 @@ def render(
     elif not renderer_args:
         renderer_kwargs = {}
     else:
-        renderer_kwargs = dict(pair.split(":") for pair in renderer_args.split(","))
+        renderer_kwargs = cast(dict[str, Any], dict(pair.split(":") for pair in renderer_args.split(",")))
     renderer_kwargs['sort_steps'] = sort_steps
     if output == "-":
 
@@ -171,6 +171,5 @@ def render(
         traceback.print_exc()
     else:
         write_rendered_output(rendered, output, opener)
-
 
 render()

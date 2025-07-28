@@ -1789,12 +1789,14 @@ class StepReference(FieldableMixin, Reference[U]):
         return self._.step.__workflow__
 
     @__workflow__.setter
-    def __workflow__(self, workflow: Workflow) -> None:
+    def __workflow__(self, workflow: WorkflowProtocol) -> None:
         """Sets related workflow.
 
         Args:
             workflow: workflow to update the step
         """
+        if not isinstance(workflow, Workflow):
+            raise TypeError("Can only set a workflow with a Workflow instance")
         self._.step.set_workflow(workflow)
 
     def __make_reference__(self, **kwargs: Any) -> "StepReference[U]":

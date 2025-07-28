@@ -44,7 +44,7 @@ def long_workflow() -> int:
     step8 = increment(num=step7)
     return step8
 
-def output():
+def output() -> int:
     """A function to run several tasks without a workflow."""
     step1 = increment(num=1)
     step2 = increment(num=5)
@@ -61,7 +61,7 @@ def combined_workflow() -> int:
     step3 = sum(left=step1, right=step2)
     return step3
 
-def check_sequence_numbers_in_sequence(sequenced_steps: dict[str, BaseStep]) -> tuple[bool, list]:
+def check_sequence_numbers_in_sequence(sequenced_steps: dict[str, BaseStep]) -> tuple[bool, list[BaseStep]]:
     """Check if sequence numbers are not None and are incrementing correctly."""
     steps = list(sequenced_steps.values())
 
@@ -77,7 +77,7 @@ def check_sequence_numbers_in_sequence(sequenced_steps: dict[str, BaseStep]) -> 
 
     return (True, steps)
 
-def test_sequence_numbers_are_sequential_in_example_workflow():
+def test_sequence_numbers_are_sequential_in_example_workflow() -> None:
     """Test to check if the sequence numbers are correctly ordered in the example workflow."""
     workflow = construct(example_workflow(), simplify_ids=True)
 
@@ -93,7 +93,7 @@ def test_sequence_numbers_are_sequential_in_example_workflow():
 
     assert in_sequence[0] == True, f"The step sequence numbers did not iterate sequentially {in_sequence[1]}"
 
-def test_sequence_number_in_linear_workflow():
+def test_sequence_number_in_linear_workflow() -> None:
     """Test to check if sequence numbers are correctly ordered in the linear workflow."""
     workflow = construct(linear_workflow(), simplify_ids=True)
 
@@ -109,7 +109,7 @@ def test_sequence_number_in_linear_workflow():
 
     assert in_sequence[0] == True, f"The step sequence numbers did not iterate sequentially {in_sequence[1]}"
 
-def test_sequence_number_in_long_workflow():
+def test_sequence_number_in_long_workflow() -> None:
     """Test to check if sequence numbers are correctly ordered in the long workflow."""
     workflow = construct(long_workflow(), simplify_ids=True)
 
@@ -125,7 +125,7 @@ def test_sequence_number_in_long_workflow():
 
     assert in_sequence[0] == True, f"The step sequence numbers did not iterate sequentially {in_sequence[1]}"
 
-def test_sequence_number_in_combined_workflow():
+def test_sequence_number_in_combined_workflow() -> None:
     """Test to check if sequence numbers are correctly ordered in the long workflow."""
     workflow = construct(combined_workflow(), simplify_ids=True)
 
@@ -141,7 +141,7 @@ def test_sequence_number_in_combined_workflow():
 
     assert in_sequence[0] == True, f"The step sequence numbers did not iterate sequentially {in_sequence[1]}"
 
-def test_render_outputs_list_in_order_for_example_workflow():
+def test_render_outputs_list_in_order_for_example_workflow() -> None:
     """Test to see if the yaml renders with the list in the correct order."""
     workflow = construct(example_workflow(), simplify_ids=True)
 
@@ -182,7 +182,7 @@ def test_render_outputs_list_in_order_for_example_workflow():
         }
     """)
 
-def test_render_linear_outputs_list_in_order():
+def test_render_linear_outputs_list_in_order() -> None:
     """Test to see if the yaml renders the linear task list in the correct order."""
     workflow = construct(linear_workflow(), simplify_ids=True)
 
@@ -222,7 +222,7 @@ def test_render_linear_outputs_list_in_order():
         }
     """)    
 
-def test_render_long_workflow_outputs_list_in_order():
+def test_render_long_workflow_outputs_list_in_order() -> None:
     """Test to see if the yaml renders the linear task list in the correct order."""
     workflow = construct(long_workflow(), simplify_ids=True)
 
@@ -300,7 +300,7 @@ def test_render_long_workflow_outputs_list_in_order():
         }
     """)    
 
-def test_render_nested_workflow_outputs_list_in_order():
+def test_render_nested_workflow_outputs_list_in_order() -> None:
     """Test to see if the yaml renders the linear task list in the correct order."""
     workflow = construct(combined_workflow(), simplify_ids=True)
 
@@ -446,5 +446,5 @@ def test_render_nested_workflow_outputs_list_in_order():
                 },
             },
         }
-    """)    
+    """)
 

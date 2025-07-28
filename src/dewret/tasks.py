@@ -414,7 +414,7 @@ def task(
             *args: Any,
             __workflow__: Workflow | None = None,
             __traceback__: TracebackType | None = None,
-            **kwargs: Param.kwargs,
+            **kwargs: Any,
         ) -> RetType:
             configuration = None
             allow_positional_args = bool(get_configuration("allow_positional_args"))
@@ -599,7 +599,7 @@ def task(
                         step_reference = output
                     else:
                         nested_workflow = Workflow(name=fn.__name__)
-                        nested_globals: Param.kwargs = {
+                        nested_globals: dict[str, Any] = {
                             var: cast(
                                 Parameter[Any],
                                 param(
