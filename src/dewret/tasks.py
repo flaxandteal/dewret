@@ -99,13 +99,14 @@ class TaskManager:
 
     _backend: Backend | None = None
     _sequence_num: int = 0
+
     @classmethod
     def get_sequence_num(cls) -> int:
         """Retrieves and then increments the sequence number."""
         current_sequence_number = cls._sequence_num
         cls._sequence_num += 1
         return current_sequence_number
-    
+
     @classmethod
     def reset_sequence_num(cls) -> None:
         """Resets the sequence number to 0."""
@@ -181,7 +182,7 @@ class TaskManager:
 
         # Then we set the result to be the whole thing
         collected_workflow.set_result(new_result)
-        
+
         # When the workflow has no name everything has been processed
         if __workflow__._name == None:
             self.reset_sequence_num()
@@ -219,7 +220,7 @@ class TaskManager:
         Returns:
             Original task, cast to a Lazy, or None.
         """
-        #if isinstance(task, LazyEvaluation):
+        # if isinstance(task, LazyEvaluation):
         #    return self.ensure_lazy(task._fn)
         return task if self.backend.is_lazy(task) else None
 
@@ -546,7 +547,7 @@ def task(
                 fn_globals = analyser.globals
 
                 for var, value in fn_globals.items():
-                    print(var, value, type(value), 'glb')
+                    print(var, value, type(value), "glb")
                     # This error is redundant as it triggers a SyntaxError in Python.
                     # Note: the following test duplicates a syntax error.
                     #   if var in kwargs:
@@ -671,7 +672,7 @@ def task(
                             analyser.return_type,
                             original_kwargs,
                             positional_args,
-                            __sequence_num__ = _manager.get_sequence_num()
+                            __sequence_num__=_manager.get_sequence_num(),
                         )
                     if is_expr(step_reference):
                         return cast(RetType, step_reference)
@@ -686,7 +687,7 @@ def task(
                         raw_as_parameter=not is_in_nested_task(),
                         is_factory=is_factory,
                         positional_args=positional_args,
-                        __sequence_num__ = _manager.get_sequence_num()
+                        __sequence_num__=_manager.get_sequence_num(),
                     ),
                 )
                 return step

@@ -177,7 +177,7 @@ def default_config() -> CWLRendererConfiguration:
     return {
         "allow_complex_types": False,
         "factories_as_params": False,
-        "sort_steps": False
+        "sort_steps": False,
     }
 
 
@@ -307,12 +307,7 @@ class StepDefinition:
             name=step.name,
             run=step.task.name,
             out=out,
-            in_={
-                key: (
-                    _to_ref(param)
-                )
-                for key, param in step.arguments.items()
-            },
+            in_={key: (_to_ref(param)) for key, param in step.arguments.items()},
         )
 
     def render(self) -> dict[str, RawType]:
@@ -322,6 +317,7 @@ class StepDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
+
         def _render(ref):
             return (
                 ref.render()
@@ -332,12 +328,10 @@ class StepDefinition:
                 if hasattr(ref, "value")
                 else render_expression(ref).render()
             )
+
         return {
             "run": self.run,
-            "in": {
-                key: _render(ref)
-                for key, ref in self.in_.items()
-            },
+            "in": {key: _render(ref) for key, ref in self.in_.items()},
             "out": crawl_raw(self.out),
         }
 
@@ -732,7 +726,9 @@ class WorkflowDefinition:
         if get_render_configuration("factories_as_params"):
             parameters += list(workflow.find_factories().values())
 
-        steps_source = workflow.sequenced_steps if sort_steps else workflow.indexed_steps
+        steps_source = (
+            workflow.sequenced_steps if sort_steps else workflow.indexed_steps
+        )
         print([s for s in steps_source])
 
         return cls(
@@ -767,7 +763,9 @@ class WorkflowDefinition:
             "class": "Workflow",
             "inputs": self.inputs.render(),
             "outputs": self.outputs.render(),
-            "steps": TransparentOrderedDict([(step.name, step.render()) for step in self.steps]),
+            "steps": TransparentOrderedDict(
+                [(step.name, step.render()) for step in self.steps]
+            ),
         }
 
 
@@ -790,6 +788,8 @@ def render(
     with set_render_configuration(kwargs):  # type: ignore
         rendered = base_render(
             workflow,
-            lambda workflow: WorkflowDefinition.from_workflow(workflow, sort_steps=sort_steps).render(),
+            lambda workflow: WorkflowDefinition.from_workflow(
+                workflow, sort_steps=sort_steps
+            ).render(),
         )
     return rendered
