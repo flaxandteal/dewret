@@ -713,6 +713,8 @@ class WorkflowDefinition:
         Args:
             workflow: workflow to convert.
             name: name of this workflow, if it should have one.
+            sort_steps: whether to sort the steps based on the sequence number. If True, steps are ordered
+            via the sequence number.
         """
         parameters: list[ParameterReference[Any] | FactoryCall] = list(
             workflow.find_parameters(
@@ -775,7 +777,6 @@ def render(
         Reduced form as a native Python dict structure for
         serialization.
     """
-
     sort_steps = kwargs.get("sort_steps", False)
 
     # TODO: Again, convincing mypy that a TypedDict has RawType values.

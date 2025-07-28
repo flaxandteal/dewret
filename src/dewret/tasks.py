@@ -97,14 +97,14 @@ class TaskManager:
     _sequence_num: int = 0
     @classmethod
     def get_sequence_num(cls) -> int:
-        """Retireves and then increments the sequence number"""
+        """Retrieves and then increments the sequence number."""
         current_sequence_number = cls._sequence_num
         cls._sequence_num += 1
         return current_sequence_number
     
     @classmethod
     def reset_sequence_num(cls) -> None:
-        print("Resetting sequence number to 0")
+        """Resets the sequence number to 0."""
         cls._sequence_num = 0
 
     def set_backend(self, backend: Backend) -> Backend:

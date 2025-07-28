@@ -44,6 +44,8 @@ def structured_to_raw(rendered: RawType, pretty: bool = False, sort_steps: bool 
     Args:
         rendered: a possibly-nested, static basic Python structure.
         pretty: whether to attempt YAML dumping with an indent of 2.
+        sort_steps: whether to sort the steps based on the sequence number. If True, steps are ordered
+        via the sequence number.
 
     Returns: YAML/stringified version of the structure.
     """
