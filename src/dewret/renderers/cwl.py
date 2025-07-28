@@ -57,7 +57,7 @@ from dewret.utils import (
     flatten_if_set,
     Unset,
 )
-from dewret.render import base_render
+from dewret.render import base_render, TransparentOrderedDict
 from dewret.core import Reference, get_render_configuration, set_render_configuration
 
 
@@ -297,15 +297,19 @@ class StepDefinition:
             out = to_output_schema("out", step.return_type)["fields"]
         else:
             out = ["out"]
+
+        def _to_ref(param):
+            if isinstance(param, Reference):
+                return ReferenceDefinition.from_reference(param)
+            return param
+
         return cls(
             name=step.name,
             run=step.task.name,
             out=out,
             in_={
                 key: (
-                    ReferenceDefinition.from_reference(param)
-                    if isinstance(param, Reference)
-                    else param
+                    _to_ref(param)
                 )
                 for key, param in step.arguments.items()
             },
@@ -318,18 +322,20 @@ class StepDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
+        def _render(ref):
+            return (
+                ref.render()
+                if isinstance(ref, ReferenceDefinition)
+                else render_expression(ref).render()
+                if isinstance(ref, Basic)
+                else {"default": firm_to_raw(ref.value)}
+                if hasattr(ref, "value")
+                else render_expression(ref).render()
+            )
         return {
             "run": self.run,
             "in": {
-                key: (
-                    ref.render()
-                    if isinstance(ref, ReferenceDefinition)
-                    else render_expression(ref).render()
-                    if isinstance(ref, Basic)
-                    else {"default": firm_to_raw(ref.value)}
-                    if hasattr(ref, "value")
-                    else render_expression(ref).render()
-                )
+                key: _render(ref)
                 for key, ref in self.in_.items()
             },
             "out": crawl_raw(self.out),
@@ -727,6 +733,7 @@ class WorkflowDefinition:
             parameters += list(workflow.find_factories().values())
 
         steps_source = workflow.sequenced_steps if sort_steps else workflow.indexed_steps
+        print([s for s in steps_source])
 
         return cls(
             steps=[
@@ -760,7 +767,7 @@ class WorkflowDefinition:
             "class": "Workflow",
             "inputs": self.inputs.render(),
             "outputs": self.outputs.render(),
-            "steps": {step.name: step.render() for step in self.steps},
+            "steps": TransparentOrderedDict([(step.name, step.render()) for step in self.steps]),
         }
 
 
