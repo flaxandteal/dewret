@@ -240,6 +240,8 @@ def test_can_iterate() -> None:
     def test_iterated() -> int:
         """Workflow that tests task iteration over a list."""
         # We ignore the type as mypy cannot confirm that the length and types match the args.
+
+        # TODO: work out how to deal with fact dask does not accept unbounded iteration
         return test_task(*test_list())  # type: ignore
 
     with set_configuration(allow_positional_args=True, flatten_all_nested=True):

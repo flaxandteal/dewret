@@ -73,7 +73,7 @@ def unwrap(task: Lazy) -> Target:
         RuntimeError: if the task is not a wrapped function.
     """
     if not isinstance(task, DelayedLeaf):
-        raise RuntimeError("Task is not for this backend")
+        raise RuntimeError(f"Task {task} {type(task)} is not for this backend")
     if not callable(task):
         raise RuntimeError("Task is not actually a callable")
     return cast(Target, task._obj)
@@ -96,12 +96,14 @@ def is_lazy(task: Any) -> bool:
 lazy = delayed
 
 
+VIZ = 0
 def run(
     workflow: Workflow | None,
     task: Lazy | list[Lazy] | tuple[Lazy],
     thread_pool: ThreadPoolExecutor | None = None,
     **kwargs: Any,
 ) -> Any:
+    global VIZ
     """Execute a task as the output of a workflow.
 
     Runs a task with dask.
@@ -120,4 +122,7 @@ def run(
         computable = delayed(task)
     config["pool"] = thread_pool
     result = computable.compute(__workflow__=workflow)
+    computable.visualize(filename=f'transpose-{VIZ}')
+    print(computable.__dask_graph__())
+    VIZ = VIZ + 1
     return result

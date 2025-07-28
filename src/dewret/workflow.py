@@ -19,6 +19,7 @@ Basic constructs for describing a workflow.
 
 from __future__ import annotations
 import inspect
+from dask import delayed
 from collections.abc import Mapping, MutableMapping, Callable
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
@@ -107,6 +108,7 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         result = self._fn(
             *args, **kwargs, __traceback__=tb
         )
+        print(result, type(result))
         return result
 
 
@@ -627,8 +629,8 @@ class Workflow:
             if result is None:
                 return ""
             if isinstance(result, StepReference):
-                return result.id
-            return "|".join(r for r in result)
+                return result._.step.id
+            return "|".join(r._.step.id for r in result)
 
         results = sorted(
             set({w.result for w in hashable_workflows if w.has_result}),
@@ -1832,7 +1834,7 @@ def is_task(task: Lazy) -> bool:
     Returns:
         True if `task` is indeed a task.
     """
-    return isinstance(task, LazyEvaluation)
+    return (hasattr(task, '_obj') and isinstance(task._obj, LazyEvaluation)) or isinstance(task, LazyEvaluation)
 
 
 def expr_to_references(

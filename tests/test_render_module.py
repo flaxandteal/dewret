@@ -1,5 +1,6 @@
 """Check renderers can be imported live."""
 
+import yaml
 import pytest
 from pathlib import Path
 from dewret.tasks import construct
@@ -51,7 +52,9 @@ def test_can_load_cwl_render_module() -> None:
 
     frender_py = Path(__file__).parent.parent / "src/dewret/renderers/cwl.py"
     render = get_render_method(frender_py)
-    assert render(workflow) == {
+    normalized_workflow = yaml.safe_load(yaml.dump(render(workflow)))
+    print(normalized_workflow)
+    assert normalized_workflow == {
         "__root__": "{'cwlVersion': 1.2, 'class': 'Workflow', 'inputs': {'increment-1-num': {'label': 'num', 'type': 'int', 'default': 3}}, 'outputs': {'out': {'label': 'out', 'type': ['int', 'float'], 'outputSource': 'triple_and_one-1/out'}}, 'steps': {'increment-1': {'run': 'increment', 'in': {'num': {'source': 'increment-1-num'}}, 'out': ['out']}, 'triple_and_one-1': {'run': 'triple_and_one', 'in': {'num': {'source': 'increment-1/out'}}, 'out': ['out']}}}",
         "triple_and_one-1": "{'cwlVersion': 1.2, 'class': 'Workflow', 'inputs': {'num': {'label': 'num', 'type': 'int'}}, 'outputs': {'out': {'label': 'out', 'type': ['int', 'float'], 'outputSource': 'sum-1-1/out'}}, 'steps': {'double-1-1': {'run': 'double', 'in': {'num': {'source': 'num'}}, 'out': ['out']}, 'sum-1-1': {'run': 'sum', 'in': {'left': {'source': 'sum-1-2/out'}, 'right': {'default': 1}}, 'out': ['out']}, 'sum-1-2': {'run': 'sum', 'in': {'left': {'source': 'double-1-1/out'}, 'right': {'source': 'num'}}, 'out': ['out']}}}",
     }

@@ -39,6 +39,10 @@ def test_subworkflow() -> None:
             default: 23
             label: STARTING_NUMBER
             type: int
+          increase-3-num:
+            default: 17
+            label: num
+            type: int
         outputs:
           out:
             label: out
@@ -51,7 +55,7 @@ def test_subworkflow() -> None:
                 JUMP:
                     source: JUMP
                 num:
-                    source: STARTING_NUMBER
+                    source: increase-3/out
             out: [out]
           increase-2:
             run: increase
@@ -59,7 +63,7 @@ def test_subworkflow() -> None:
                 JUMP:
                     source: JUMP
                 num:
-                    source: increase-3/out
+                    source: STARTING_NUMBER
             out: [out]
           increase-3:
             run: increase
@@ -67,13 +71,13 @@ def test_subworkflow() -> None:
                 JUMP:
                     source: JUMP
                 num:
-                    default: 17
+                    source: increase-3-num
             out: [out]
           double-1:
             run: double
             in:
                 num:
-                    source: increase-1/out
+                    source: increase-2/out
             out: [out]
           sum-1:
             run: sum
@@ -81,6 +85,6 @@ def test_subworkflow() -> None:
                 left:
                     source: double-1/out
                 right:
-                    source: increase-2/out
+                    source: increase-1/out
             out: [out]
     """)

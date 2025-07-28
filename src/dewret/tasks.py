@@ -73,6 +73,8 @@ from .core import (
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
 
+VERY_EAGER = False
+
 
 class Backend(Enum):
     """Stringy enum representing available backends."""
@@ -203,6 +205,7 @@ class TaskManager:
 
     def ensure_lazy(self, task: Any) -> Lazy | None:
         """Evaluate a single task for a known workflow.
+        # TODO: wrong docstring
 
         As we mask our lazy-evaluable functions to appear as their original
         types to the type system (see `dewret.tasks.task`), we must cast them
@@ -214,8 +217,8 @@ class TaskManager:
         Returns:
             Original task, cast to a Lazy, or None.
         """
-        if isinstance(task, LazyEvaluation):
-            return self.ensure_lazy(task._fn)
+        #if isinstance(task, LazyEvaluation):
+        #    return self.ensure_lazy(task._fn)
         return task if self.backend.is_lazy(task) else None
 
     def __call__(
@@ -509,6 +512,7 @@ def task(
                 fn_globals = analyser.globals
 
                 for var, value in fn_globals.items():
+                    print(var, value, type(value), 'glb')
                     # This error is redundant as it triggers a SyntaxError in Python.
                     # Note: the following test duplicates a syntax error.
                     #   if var in kwargs:
@@ -667,7 +671,15 @@ def task(
 
         _fn.__step_expression__ = True  # type: ignore
         _fn.__original__ = fn  # type: ignore
-        return LazyEvaluation(_fn)
+        # TODO: find a better name for this. It's really just serving to capture
+        # the traceback.
+        lz = LazyEvaluation(_fn)
+        if is_factory:
+            # We don't need to lazify a factory
+            return lz
+        if VERY_EAGER:
+            return lz
+        return lazy()(lz)
 
     return _task
 

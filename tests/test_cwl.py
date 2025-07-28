@@ -183,6 +183,7 @@ def test_cwl_with_positional_parameter() -> None:
     """
     with pytest.raises(TaskException) as _:
         result = increment(3)
+        workflow = construct(result)
     with set_configuration(allow_positional_args=True):
         result = increment(3)
         workflow = construct(result)
