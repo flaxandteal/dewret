@@ -97,6 +97,8 @@ lazy = delayed
 
 
 VIZ = 0
+
+
 def run(
     workflow: Workflow | None,
     task: Lazy | list[Lazy] | tuple[Lazy],
@@ -122,7 +124,7 @@ def run(
         computable = delayed(task)
     config["pool"] = thread_pool
     result = computable.compute(__workflow__=workflow)
-    computable.visualize(filename=f'transpose-{VIZ}')
+    computable.visualize(filename=f"transpose-{VIZ}")
     print(computable.__dask_graph__())
     VIZ = VIZ + 1
     return result

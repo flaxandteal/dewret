@@ -39,6 +39,7 @@ from .utils import load_module_or_package
 T = TypeVar("T")
 U = TypeVar("U")
 
+
 class TransparentOrderedDict(OrderedDict[T, U]):
     """Convenience class to keep dict ordering without appearing in stringified output."""
 
@@ -50,16 +51,21 @@ class TransparentOrderedDict(OrderedDict[T, U]):
         """Get OrderedDict repr as if it were a dict."""
         return repr(dict(self))
 
+
 # We wnat to retain ordering until the last moment, where it should end up
 # correctly in the YAML. By definition, YAML maps are unordered, but this
 # simplifies file diffing and versioning.
 yaml.SafeDumper.add_representer(
     TransparentOrderedDict,
-    lambda dumper, data: dumper.represent_mapping(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, data.items())
+    lambda dumper, data: dumper.represent_mapping(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, data.items()
+    ),
 )
 
 
-def structured_to_raw(rendered: RawType, pretty: bool = False, sort_steps: bool = False) -> str:
+def structured_to_raw(
+    rendered: RawType, pretty: bool = False, sort_steps: bool = False
+) -> str:
     """Serialize a serializable structure to a string.
 
     Args:
@@ -108,7 +114,7 @@ def get_render_method(
             pretty: bool = False,
             **kwargs: RenderConfiguration,
         ) -> dict[str, str]:
-            sort_steps = bool(kwargs.get('sort_steps', False))
+            sort_steps = bool(kwargs.get("sort_steps", False))
             rendered = render_module.render(workflow, **kwargs)
             return {
                 key: structured_to_raw(value, pretty=pretty, sort_steps=sort_steps)

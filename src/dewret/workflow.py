@@ -19,7 +19,6 @@ Basic constructs for describing a workflow.
 
 from __future__ import annotations
 import inspect
-from dask import delayed
 from collections.abc import Mapping, MutableMapping, Callable
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
@@ -105,9 +104,7 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         is attempted.
         """
         tb = make_traceback()
-        result = self._fn(
-            *args, **kwargs, __traceback__=tb
-        )
+        result = self._fn(*args, **kwargs, __traceback__=tb)
         print(result, type(result))
         return result
 
@@ -542,7 +539,7 @@ class Workflow:
         return OrderedDict(
             sorted(((step.id, step) for step in self.steps), key=lambda x: x[0])
         )
-    
+
     @property
     def sequenced_steps(self) -> dict[str, BaseStep]:
         """Steps mapped by ID, sorted by sequence number.
@@ -555,7 +552,9 @@ class Workflow:
         return OrderedDict(
             sorted(
                 ((step.id, step) for step in self.steps),
-                key=lambda x: x[1].__sequence_num__ if x[1].__sequence_num__ is not None else -1
+                key=lambda x: x[1].__sequence_num__
+                if x[1].__sequence_num__ is not None
+                else -1,
             )
         )
 
@@ -718,7 +717,7 @@ class Workflow:
         return_type: type | None,
         kwargs: dict[str, Any],
         positional_args: dict[str, bool] | None = None,
-        __sequence_num__: int | None = None
+        __sequence_num__: int | None = None,
     ) -> StepReference[Any]:
         """Append a nested step.
 
@@ -750,7 +749,7 @@ class Workflow:
         raw_as_parameter: bool = False,
         is_factory: bool = False,
         positional_args: dict[str, bool] | None = None,
-        __sequence_num__: int | None = None
+        __sequence_num__: int | None = None,
     ) -> StepReference[Any]:
         """Append a step.
 
@@ -771,7 +770,7 @@ class Workflow:
             task,
             kwargs,
             raw_as_parameter=raw_as_parameter,
-            __sequence_num__= __sequence_num__
+            __sequence_num__=__sequence_num__,
         )
         if positional_args is not None:
             step.positional_args = positional_args
@@ -1152,7 +1151,7 @@ class BaseStep(WorkflowComponent):
         task: Task | Workflow,
         arguments: Mapping[str, Reference[Any] | Raw],
         raw_as_parameter: bool = False,
-        __sequence_num__ : int | None = None
+        __sequence_num__: int | None = None,
     ):
         """Initialize a step.
 
@@ -1399,7 +1398,7 @@ class FactoryCall(Step):
         task: Task | Workflow,
         arguments: Mapping[str, Reference[Any] | Raw],
         raw_as_parameter: bool = False,
-        __sequence_num__: int | None = None
+        __sequence_num__: int | None = None,
     ):
         """Initialize a step.
 
@@ -1425,7 +1424,7 @@ class FactoryCall(Step):
             task=task,
             arguments=arguments,
             raw_as_parameter=raw_as_parameter,
-            __sequence_num__= __sequence_num__
+            __sequence_num__=__sequence_num__,
         )
 
     @property
@@ -1834,7 +1833,9 @@ def is_task(task: Lazy) -> bool:
     Returns:
         True if `task` is indeed a task.
     """
-    return (hasattr(task, '_obj') and isinstance(task._obj, LazyEvaluation)) or isinstance(task, LazyEvaluation)
+    return (
+        hasattr(task, "_obj") and isinstance(task._obj, LazyEvaluation)
+    ) or isinstance(task, LazyEvaluation)
 
 
 def expr_to_references(
