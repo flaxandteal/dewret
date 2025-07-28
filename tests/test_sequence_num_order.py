@@ -1,7 +1,5 @@
-"""Check sequential numbers are added in task order"""
+"""Check sequential numbers are added in task order."""
 
-from typing import OrderedDict
-import pytest
 import yaml
 from dewret.tasks import construct, task, workflow
 from dewret.renderers.cwl import render
@@ -9,17 +7,17 @@ from dewret.workflow import NestedStep, BaseStep
 
 @task()
 def increment(num: int) -> int:
-    """Simple task to increment a number"""
+    """Simple task to increment a number."""
     return num + 1
 
 @task()
 def sum(left: int, right:int) -> int:
-    """A task to add two numbers"""
+    """A task to add two numbers."""
     return left + right
 
 @workflow()
 def example_workflow() -> int:
-    """Test workflow with multiple tasks"""
+    """Test workflow with multiple tasks."""
     step1 = increment(num=1)
     step2 = increment(num=5)
     step3 = sum(left=step1, right=step2)
@@ -27,6 +25,7 @@ def example_workflow() -> int:
 
 @workflow()
 def linear_workflow() -> int:
+    """A workflow where each step is reliant upon the last."""
     step1 = increment(num=1)
     step2 = increment(num=step1)
     step3 = increment(num=step2)
@@ -34,7 +33,7 @@ def linear_workflow() -> int:
 
 @workflow()
 def long_workflow() -> int:
-    """A longer workflow with several steps to test ordering"""
+    """A longer workflow with several steps to test ordering."""
     step1 = increment(num=1)
     step2 = increment(num=step1)
     step3 = increment(num=step2)
@@ -46,7 +45,7 @@ def long_workflow() -> int:
     return step8
 
 def output():
-    """A function to run several tasks without a workflow"""
+    """A function to run several tasks without a workflow."""
     step1 = increment(num=1)
     step2 = increment(num=5)
     step3 = increment(num=7)
@@ -56,6 +55,7 @@ def output():
 
 @workflow()
 def combined_workflow() -> int:
+    """A workflow to test nested workflows."""
     step1 = linear_workflow()
     step2 = long_workflow()
     step3 = sum(left=step1, right=step2)
@@ -78,7 +78,7 @@ def check_sequence_numbers_in_sequence(sequenced_steps: dict[str, BaseStep]) -> 
     return (True, steps)
 
 def test_sequence_numbers_are_sequential_in_example_workflow():
-    """Test to check if the sequence numbers are correctly ordered in the example workflow"""
+    """Test to check if the sequence numbers are correctly ordered in the example workflow."""
     workflow = construct(example_workflow(), simplify_ids=True)
 
     nested_step = list(workflow.steps)[0]
@@ -94,7 +94,7 @@ def test_sequence_numbers_are_sequential_in_example_workflow():
     assert in_sequence[0] == True, f"The step sequence numbers did not iterate sequentially {in_sequence[1]}"
 
 def test_sequence_number_in_linear_workflow():
-    """Test to check if sequence numbers are correctly ordered in the linear workflow"""
+    """Test to check if sequence numbers are correctly ordered in the linear workflow."""
     workflow = construct(linear_workflow(), simplify_ids=True)
 
     nested_step = list(workflow.steps)[0]
@@ -110,7 +110,7 @@ def test_sequence_number_in_linear_workflow():
     assert in_sequence[0] == True, f"The step sequence numbers did not iterate sequentially {in_sequence[1]}"
 
 def test_sequence_number_in_long_workflow():
-    """Test to check if sequence numbers are correctly ordered in the long workflow"""
+    """Test to check if sequence numbers are correctly ordered in the long workflow."""
     workflow = construct(long_workflow(), simplify_ids=True)
 
     nested_step = list(workflow.steps)[0]
@@ -126,7 +126,7 @@ def test_sequence_number_in_long_workflow():
     assert in_sequence[0] == True, f"The step sequence numbers did not iterate sequentially {in_sequence[1]}"
 
 def test_sequence_number_in_combined_workflow():
-    """Test to check if sequence numbers are correctly ordered in the long workflow"""
+    """Test to check if sequence numbers are correctly ordered in the long workflow."""
     workflow = construct(combined_workflow(), simplify_ids=True)
 
     nested_step = list(workflow.steps)[0]
@@ -142,8 +142,7 @@ def test_sequence_number_in_combined_workflow():
     assert in_sequence[0] == True, f"The step sequence numbers did not iterate sequentially {in_sequence[1]}"
 
 def test_render_outputs_list_in_order_for_example_workflow():
-    """Test to see if the yaml renders with the list in the correct order"""
-
+    """Test to see if the yaml renders with the list in the correct order."""
     workflow = construct(example_workflow(), simplify_ids=True)
 
     rendered = render(workflow, sort_steps=True)["example_workflow-1"]
@@ -184,8 +183,7 @@ def test_render_outputs_list_in_order_for_example_workflow():
     """)
 
 def test_render_linear_outputs_list_in_order():
-    """Test to see if the yaml renders the linear task list in the correct order"""
-
+    """Test to see if the yaml renders the linear task list in the correct order."""
     workflow = construct(linear_workflow(), simplify_ids=True)
 
     rendered = render(workflow, sort_steps=True)["linear_workflow-1"]
@@ -225,8 +223,7 @@ def test_render_linear_outputs_list_in_order():
     """)    
 
 def test_render_long_workflow_outputs_list_in_order():
-    """Test to see if the yaml renders the linear task list in the correct order"""
-
+    """Test to see if the yaml renders the linear task list in the correct order."""
     workflow = construct(long_workflow(), simplify_ids=True)
 
     rendered = render(workflow, sort_steps=True)["long_workflow-1"]
@@ -304,8 +301,7 @@ def test_render_long_workflow_outputs_list_in_order():
     """)    
 
 def test_render_nested_workflow_outputs_list_in_order():
-    """Test to see if the yaml renders the linear task list in the correct order"""
-
+    """Test to see if the yaml renders the linear task list in the correct order."""
     workflow = construct(combined_workflow(), simplify_ids=True)
 
     rendered_combined = render(workflow, sort_steps=True)["combined_workflow-1"]
