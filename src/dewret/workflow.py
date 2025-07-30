@@ -93,6 +93,7 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         """
         self._fn: Callable[..., RetType] = fn
         self.__name__ = fn.__name__
+        self._after = None
 
     def __call__(self, *args: Any, **kwargs: Any) -> RetType:
         """Wrapper around a lazy execution.
@@ -104,9 +105,16 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         is attempted.
         """
         tb = make_traceback()
-        result = self._fn(*args, **kwargs, __traceback__=tb)
-        print(result, type(result))
+        from .tasks import join
+        if self._after is not None:
+            presult = self._fn(*args, **kwargs, __traceback__=tb)
+            result = join._obj(args=presult, after=self._after._obj(inp=presult))
+        else:
+            result = self._fn(*args, **kwargs, __traceback__=tb)
         return result
+
+    def after(self, other_task) -> str:
+        self._after = other_task
 
 
 Target = Callable[..., Any]

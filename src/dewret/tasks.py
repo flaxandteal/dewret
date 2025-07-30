@@ -678,6 +678,7 @@ def task(
         if is_factory:
             # We don't need to lazify a factory
             return lz
+        # Task or workflow
         if VERY_EAGER:
             return lz
         return lazy()(lz)
@@ -717,3 +718,7 @@ def _workaround_check_value_is_task(
         for mod in list(fn.__code__.co_names) + list(fn.__code__.co_varnames)
         if mod in sys.modules
     )
+
+@task()
+def join(args: str, after: str) -> str:
+    return args

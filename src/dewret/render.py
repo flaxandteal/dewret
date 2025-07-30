@@ -45,17 +45,17 @@ class TransparentOrderedDict(OrderedDict[T, U]):
 
     def __str__(self) -> str:
         """Get OrderedDict str as if it were a dict."""
-        return str(dict(self))
+        return str(dict(self)) # TODO: we lose guaranteed ordering here
 
     def __repr__(self) -> str:
         """Get OrderedDict repr as if it were a dict."""
-        return repr(dict(self))
+        return repr(dict(self)) # TODO: we lose guaranteed ordering here
 
 
-# We wnat to retain ordering until the last moment, where it should end up
+# We want to retain ordering until the last moment, where it should end up
 # correctly in the YAML. By definition, YAML maps are unordered, but this
 # simplifies file diffing and versioning.
-yaml.SafeDumper.add_representer(
+yaml.Dumper.add_representer(
     TransparentOrderedDict,
     lambda dumper, data: dumper.represent_mapping(
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, data.items()
