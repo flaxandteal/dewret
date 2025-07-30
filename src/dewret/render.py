@@ -45,11 +45,11 @@ class TransparentOrderedDict(OrderedDict[T, U]):
 
     def __str__(self) -> str:
         """Get OrderedDict str as if it were a dict."""
-        return str(dict(self)) # TODO: we lose guaranteed ordering here
+        return str(dict(self))  # TODO: we lose guaranteed ordering here
 
     def __repr__(self) -> str:
         """Get OrderedDict repr as if it were a dict."""
-        return repr(dict(self)) # TODO: we lose guaranteed ordering here
+        return repr(dict(self))  # TODO: we lose guaranteed ordering here
 
 
 # We want to retain ordering until the last moment, where it should end up

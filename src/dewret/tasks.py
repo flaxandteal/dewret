@@ -719,6 +719,7 @@ def _workaround_check_value_is_task(
         if mod in sys.modules
     )
 
+
 @task()
 def join(args: str, after: str) -> str:
     return args

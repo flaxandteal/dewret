@@ -106,6 +106,7 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         """
         tb = make_traceback()
         from .tasks import join
+
         if self._after is not None:
             presult = self._fn(*args, **kwargs, __traceback__=tb)
             result = join._obj(args=presult, after=self._after._obj(inp=presult))
