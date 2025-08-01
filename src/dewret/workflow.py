@@ -19,6 +19,8 @@ Basic constructs for describing a workflow.
 
 from __future__ import annotations
 import inspect
+from dask import delayed
+from dask.delayed import DelayedLeaf
 from collections.abc import Mapping, MutableMapping, Callable
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
@@ -83,7 +85,7 @@ class Lazy(Protocol):
 N = 0
 
 
-class LazyEvaluation(Lazy, Generic[RetType]):
+class TaskWrapper(DelayedLeaf, Generic[RetType]):
     """Tracks a single evaluation of a lazy function."""
 
     def __init__(self, fn: Callable[Param, RetType]):
@@ -94,8 +96,12 @@ class LazyEvaluation(Lazy, Generic[RetType]):
                 also from it's __call__ method for consistency.
         """
         global N
-        self._fn: Callable[Param, RetType] = fn
-        self.__name__ = fn.__name__
+        self.__callable__: Callable[Param, RetType] = delayed(fn) if lazy else fn
+        self._fn = fn
+
+    @property
+    def __name__(self) -> str:
+        return self._fn.__name__
 
     def __call__(self, *args: Any, **kwargs: Any) -> RetType:
         """Wrapper around a lazy execution.
@@ -107,8 +113,7 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         is attempted.
         """
         tb = make_traceback()
-        result = self._fn(*args, **kwargs, __traceback__=tb)
-        print(result, type(result))
+        result = self.__callable__(*args, **kwargs, __traceback__=tb)
         return result
 
 
@@ -1900,8 +1905,8 @@ def is_task(task: Lazy) -> bool:
         True if `task` is indeed a task.
     """
     return (
-        hasattr(task, "_obj") and isinstance(task._obj, LazyEvaluation)
-    ) or isinstance(task, LazyEvaluation)
+        hasattr(task, "_obj") and isinstance(task._obj, TaskWrapper)
+    ) or isinstance(task, TaskWrapper)
 
 
 def expr_to_references(

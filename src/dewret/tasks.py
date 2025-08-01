@@ -52,7 +52,7 @@ from .workflow import (
     UNSET,
     Workflow,
     Lazy,
-    LazyEvaluation,
+    TaskWrapper,
     Target,
     LazyFactory,
     Parameter,
@@ -220,7 +220,7 @@ class TaskManager:
         Returns:
             Original task, cast to a Lazy, or None.
         """
-        # if isinstance(task, LazyEvaluation):
+        # if isinstance(task, TaskWrapper):
         #    return self.ensure_lazy(task._fn)
         return task if self.backend.is_lazy(task) else None
 
@@ -547,7 +547,6 @@ def task(
                 fn_globals = analyser.globals
 
                 for var, value in fn_globals.items():
-                    print(var, value, type(value), "glb")
                     # This error is redundant as it triggers a SyntaxError in Python.
                     # Note: the following test duplicates a syntax error.
                     #   if var in kwargs:
@@ -706,15 +705,9 @@ def task(
 
         _fn.__step_expression__ = True  # type: ignore
         _fn.__original__ = fn  # type: ignore
-        # TODO: find a better name for this. It's really just serving to capture
-        # the traceback.
-        lz = LazyEvaluation(_fn)
-        if is_factory:
-            # We don't need to lazify a factory
-            return lz
-        if VERY_EAGER:
-            return lz
-        return lazy()(lz)
+        # i.e. any task or workflow (except a factory) is lazy
+        lz = TaskWrapper(_fn, lazy=not (is_factory or VERY_EAGER))
+        return lz
 
     return _task
 
