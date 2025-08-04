@@ -21,7 +21,8 @@ from dask.delayed import delayed, DelayedLeaf
 from dask.config import config
 from typing import Protocol, runtime_checkable, Any, cast
 from concurrent.futures import ThreadPoolExecutor
-from dewret.workflow import Workflow, Lazy, StepReference, Target, sequence_context
+from dewret.workflow import Workflow, Lazy, StepReference, Target, _SEQUENCE_NUM
+from dewret.core import SequenceManager
 
 
 @runtime_checkable
@@ -123,8 +124,9 @@ def run(
     else:
         computable = delayed(task)
     config["pool"] = thread_pool
-    with sequence_context():
+    with SequenceManager.sequence_context(_SEQUENCE_NUM):
         result = computable.compute(__workflow__=workflow)
+        SequenceManager.reset_sequence_num(_SEQUENCE_NUM)
     computable.visualize(filename=f"transpose-{VIZ}")
     print(computable.__dask_graph__())
     VIZ = VIZ + 1

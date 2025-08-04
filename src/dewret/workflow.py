@@ -62,6 +62,7 @@ from .core import (
     WorkflowProtocol,
     WorkflowComponent,
     ExprType,
+    SequenceManager
 )
 from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
 
@@ -75,24 +76,6 @@ AVAILABLE_TYPES = {"int": int, "str": str}
 
 _SEQUENCE_NUM: ContextVar[int] = ContextVar('sequence_num', default=0)
 
-def get_sequence_num() -> int:
-    """Thread-safe sequence number within current context"""
-    current = _SEQUENCE_NUM.get()
-    _SEQUENCE_NUM.set(current + 1)
-    return current
-
-def reset_sequence_num() -> None:
-    """Reset sequence for current context."""
-    _SEQUENCE_NUM.set(0)
-
-@contextmanager
-def sequence_context() -> Generator[None, None, None]:
-    """Create a fresh sequence context for workflow execution."""
-    token = _SEQUENCE_NUM.set(0) 
-    try:
-        yield
-    finally:
-        _SEQUENCE_NUM.reset(token)
 class Lazy(Protocol):
     """Requirements for a lazy-evaluatable function."""
 
@@ -110,6 +93,7 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
         Args:
             fn: callable returning RetType, which this will return
                 also from it's __call__ method for consistency.
+            lazy: bool to determine whether the task is lazy loaded
         """
         global N
         self.__callable__: Union[Callable[Param, RetType], DelayedLeaf, Delayed] = delayed(fn) if lazy else fn
@@ -117,6 +101,7 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
 
     @property
     def __name__(self) -> str:
+        """Return the name of the task."""
         return self._fn.__name__
 
     def __call__(self, *args: Any, **kwargs: Any) -> RetType | Delayed | DelayedLeaf:
@@ -128,7 +113,7 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
         dask distributed to break, if running outside a single process
         is attempted.
         """
-        sequence_num = get_sequence_num()
+        sequence_num = SequenceManager.get_sequence_num(_SEQUENCE_NUM)
         tb = make_traceback()
         result = self.__callable__(*args, **kwargs, __traceback__=tb, __sequence_number__=sequence_num)
         return result
@@ -439,13 +424,14 @@ class Workflow:
     _remapping: dict[str, str] | None
     _name: str | None
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, name: str | None = None, sequence_number: int | None = None) -> None:
         """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
         self._steps = []
         self.tasks = {}
         self.result: StepReference[Any] | None = None
         self._remapping = None
         self._name = name
+        self.__sequence_number__: int | None = sequence_number
 
     @property
     def steps(self) -> set[BaseStep]:

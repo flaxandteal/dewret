@@ -69,6 +69,7 @@ from .core import (
     IteratedGenerator,
     ConstructConfigurationTypedDict,
     Reference,
+    SequenceManager
 )
 
 Param = ParamSpec("Param")
@@ -86,7 +87,7 @@ class Backend(Enum):
 
 DEFAULT_BACKEND = Backend.DASK
 
-
+_WORKFLOW_SEQUENCE_NUM: ContextVar[int] = ContextVar("workflow_sequence", default=0)
 class TaskManager:
     """Overarching backend-agnostic task manager.
 
@@ -98,19 +99,16 @@ class TaskManager:
     """
 
     _backend: Backend | None = None
-    _sequence_num: int = 0
 
-    @classmethod
-    def get_sequence_num(cls) -> int:
-        """Retrieves and then increments the sequence number."""
-        current_sequence_number = cls._sequence_num
-        cls._sequence_num += 1
-        return current_sequence_number
-
-    @classmethod
-    def reset_sequence_num(cls) -> None:
-        """Resets the sequence number to 0."""
-        cls._sequence_num = 0
+    def __init__(self) -> None:
+        """Initialise the TaskManager with its own sequence number context."""
+        self._sequence_context = SequenceManager.sequence_context(_WORKFLOW_SEQUENCE_NUM)
+        self._sequence_context.__enter__()
+    
+    @property
+    def current_sequence_num(self) -> int:
+        """Dynamically retrieve and increment the current sequence number."""
+        return SequenceManager.get_sequence_num(_WORKFLOW_SEQUENCE_NUM)
 
     def set_backend(self, backend: Backend) -> Backend:
         """Choose a backend.
@@ -183,9 +181,6 @@ class TaskManager:
         # Then we set the result to be the whole thing
         collected_workflow.set_result(new_result)
 
-        # When the workflow has no name everything has been processed
-        if __workflow__._name == None:
-            self.reset_sequence_num()
         return collected_workflow.result
 
     def unwrap(self, task: Lazy) -> Target:
@@ -440,9 +435,10 @@ def task(
         TypeError: if arguments are missing or incorrect, in line with usual
             Python behaviour.
     """
-
     def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
+        
         declaration_tb = make_traceback()
+        __workflow_sequence_num__: int | None = None
 
         def _fn(
             *args: Any,
@@ -636,7 +632,7 @@ def task(
                             # )
                         step_reference = output
                     else:
-                        nested_workflow = Workflow(name=fn.__name__)
+                        nested_workflow = Workflow(name=fn.__name__, sequence_number =__workflow_sequence_num__)
                         nested_globals: dict[str, Any] = {
                             var: cast(
                                 Parameter[Any],
@@ -705,6 +701,8 @@ def task(
 
         _fn.__step_expression__ = True  # type: ignore
         _fn.__original__ = fn  # type: ignore
+        if nested and fn.__name__ != None:
+            __workflow_sequence_num__ = _manager.current_sequence_num
         # i.e. any task or workflow (except a factory) is lazy
         lz = TaskWrapper(_fn, lazy=not (is_factory or VERY_EAGER))
         return lz
