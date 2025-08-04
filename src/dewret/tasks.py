@@ -671,7 +671,7 @@ def task(
                             analyser.return_type,
                             original_kwargs,
                             positional_args,
-                            __sequence_num__=_manager.get_sequence_num(),
+                            __sequence_num__=__sequence_number__,
                         )
                     if is_expr(step_reference):
                         return cast(RetType, step_reference)
@@ -686,7 +686,7 @@ def task(
                         raw_as_parameter=not is_in_nested_task(),
                         is_factory=is_factory,
                         positional_args=positional_args,
-                        __sequence_num__=_manager.get_sequence_num(),
+                        __sequence_num__=__sequence_number__,
                     ),
                 )
                 return step

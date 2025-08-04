@@ -18,9 +18,10 @@ Basic constructs for describing a workflow.
 """
 
 from __future__ import annotations
+from contextlib import contextmanager
+from contextvars import ContextVar
 import inspect
-from dask import delayed
-from dask.delayed import DelayedLeaf
+from dask.delayed import DelayedLeaf, Delayed, delayed
 from collections.abc import Mapping, MutableMapping, Callable
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
@@ -31,6 +32,7 @@ from typing import (
     ParamSpec,
     TypeVar,
     Generic,
+    Union,
     cast,
     Literal,
     Iterable,
@@ -71,7 +73,26 @@ Param = ParamSpec("Param")
 CHECK_IDS = False
 AVAILABLE_TYPES = {"int": int, "str": str}
 
+_SEQUENCE_NUM: ContextVar[int] = ContextVar('sequence_num', default=0)
 
+def get_sequence_num() -> int:
+    """Thread-safe sequence number within current context"""
+    current = _SEQUENCE_NUM.get()
+    _SEQUENCE_NUM.set(current + 1)
+    return current
+
+def reset_sequence_num() -> None:
+    """Reset sequence for current context."""
+    _SEQUENCE_NUM.set(0)
+
+@contextmanager
+def sequence_context() -> Generator[None, None, None]:
+    """Create a fresh sequence context for workflow execution."""
+    token = _SEQUENCE_NUM.set(0) 
+    try:
+        yield
+    finally:
+        _SEQUENCE_NUM.reset(token)
 class Lazy(Protocol):
     """Requirements for a lazy-evaluatable function."""
 
@@ -79,12 +100,7 @@ class Lazy(Protocol):
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """When called this should return a reference."""
-        ...
-
-
-N = 0
-
-
+        ... 
 class TaskWrapper(DelayedLeaf, Generic[RetType]):
     """Tracks a single evaluation of a lazy function."""
 
@@ -96,14 +112,14 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
                 also from it's __call__ method for consistency.
         """
         global N
-        self.__callable__: Callable[Param, RetType] = delayed(fn) if lazy else fn
+        self.__callable__: Union[Callable[Param, RetType], DelayedLeaf, Delayed] = delayed(fn) if lazy else fn
         self._fn = fn
 
     @property
     def __name__(self) -> str:
         return self._fn.__name__
 
-    def __call__(self, *args: Any, **kwargs: Any) -> RetType:
+    def __call__(self, *args: Any, **kwargs: Any) -> RetType | Delayed | DelayedLeaf:
         """Wrapper around a lazy execution.
 
         Captures a traceback, for debugging if this does not work.
@@ -112,8 +128,9 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
         dask distributed to break, if running outside a single process
         is attempted.
         """
+        sequence_num = get_sequence_num()
         tb = make_traceback()
-        result = self.__callable__(*args, **kwargs, __traceback__=tb)
+        result = self.__callable__(*args, **kwargs, __traceback__=tb, __sequence_number__=sequence_num)
         return result
 
 
