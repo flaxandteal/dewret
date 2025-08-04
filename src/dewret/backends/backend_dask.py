@@ -126,7 +126,6 @@ def run(
     config["pool"] = thread_pool
     with SequenceManager.sequence_context(_SEQUENCE_NUM):
         result = computable.compute(__workflow__=workflow)
-        SequenceManager.reset_sequence_num(_SEQUENCE_NUM)
     computable.visualize(filename=f"transpose-{VIZ}")
     print(computable.__dask_graph__())
     VIZ = VIZ + 1
