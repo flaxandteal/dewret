@@ -97,16 +97,14 @@ def is_lazy(task: Any) -> bool:
 lazy = delayed
 
 
-VIZ = 0
-
 
 def run(
     workflow: Workflow | None,
     task: Lazy | list[Lazy] | tuple[Lazy, ...],
     thread_pool: ThreadPoolExecutor | None = None,
+    in_nested_task: bool = False,
     **kwargs: Any,
 ) -> Any:
-    global VIZ
     """Execute a task as the output of a workflow.
 
     Runs a task with dask.
@@ -125,8 +123,5 @@ def run(
         computable = delayed(task)
     config["pool"] = thread_pool
     with SequenceManager.sequence_context(_SEQUENCE_NUM):
-        result = computable.compute(__workflow__=workflow)
-    computable.visualize(filename=f"transpose-{VIZ}")
-    print(computable.__dask_graph__())
-    VIZ = VIZ + 1
+        result = computable.compute(__workflow__=workflow, __in_nested_task__=in_nested_task)
     return result

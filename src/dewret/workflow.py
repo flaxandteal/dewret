@@ -18,6 +18,8 @@ Basic constructs for describing a workflow.
 """
 
 from __future__ import annotations
+import threading
+THREADS = {}
 from contextlib import contextmanager
 from contextvars import ContextVar
 import inspect
@@ -76,6 +78,48 @@ AVAILABLE_TYPES = {"int": int, "str": str}
 
 _SEQUENCE_NUM: ContextVar[int] = ContextVar('sequence_num', default=0)
 
+_IN_NESTED_TASK: ContextVar[bool] = ContextVar("in_nested_task")
+_IN_NESTED_TASK.set(False)
+_ACTIVE_THREAD_POOL: ContextVar[bool] = ContextVar("active_thread_pool")
+_ACTIVE_THREAD_POOL.set(None)
+
+
+def get_active_thread_pool() -> bool:
+    try:
+        return _ACTIVE_THREAD_POOL.get()
+    except LookupError:
+        return None
+
+def set_active_thread_pool(thread_pool) -> Generator[None, None, None]:
+    _ACTIVE_THREAD_POOL.set(thread_pool)
+
+def is_in_nested_task() -> bool:
+    """Check if we are within a nested task.
+
+    Used, for example, to see if discovered parameters should be
+    treated as "local" (i.e. should take a default to the step) or
+    global (i.e. should be turned into a workflow parameter) if we
+    are inside or outside a subworkflow, respectively.
+    """
+    try:
+        return _IN_NESTED_TASK.get()
+    except LookupError:
+        return False
+
+@contextmanager
+def in_nested_task() -> Generator[None, None, None]:
+    """Informs the builder that we are within a nested task.
+
+    This is only really relevant in the subworkflow context.
+
+    TODO: check impact of ContextVar being thread-sensitive on build.
+    """
+    try:
+        tok = _IN_NESTED_TASK.set(True)
+        yield
+    finally:
+        _IN_NESTED_TASK.reset(tok)
+
 class Lazy(Protocol):
     """Requirements for a lazy-evaluatable function."""
 
@@ -87,7 +131,7 @@ class Lazy(Protocol):
 class TaskWrapper(DelayedLeaf, Generic[RetType]):
     """Tracks a single evaluation of a lazy function."""
 
-    def __init__(self, fn: Callable[Param, RetType]):
+    def __init__(self, fn: Callable[Param, RetType], lazy: bool = True):
         """Initialize an evaluation.
 
         Args:
@@ -115,7 +159,13 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
         """
         sequence_num = SequenceManager.get_sequence_num(_SEQUENCE_NUM)
         tb = make_traceback()
-        result = self.__callable__(*args, **kwargs, __traceback__=tb, __sequence_number__=sequence_num)
+        result = self.__callable__(
+            *args,
+            **kwargs,
+            __traceback__=tb,
+            __sequence_number__=sequence_num,
+            __in_nested_task__=is_in_nested_task(),
+        )
         return result
 
 
@@ -433,6 +483,10 @@ class Workflow:
         self._name = name
         self.__sequence_number__: int | None = sequence_number
 
+    def stringify_in_sequence(self) -> str:
+        for step in sorted(self._steps, key=lambda s: s.__sequence_num__):
+            yield step
+
     @property
     def steps(self) -> set[BaseStep]:
         """Get deduplicated steps.
@@ -570,7 +624,7 @@ class Workflow:
         )
 
     @classmethod
-    def assimilate(cls, *workflow_args: Workflow) -> "Workflow":
+    def assimilate(cls, *workflow_args: tuple[Workflow, int]) -> "Workflow":
         """Combine two Workflows into one Workflow.
 
         Takes two workflows and unifies them by combining steps
@@ -584,7 +638,9 @@ class Workflow:
 
         j
         """
-        workflows = sorted((w for w in set(workflow_args)), key=lambda w: w.id)
+        sequence_order = {w.id: n for w, n in workflow_args}
+        #print(sequence_order)
+        workflows = sorted((w[0] for w in set(workflow_args)), key=lambda w: w.id)
         base = workflows[0]
 
         if len(workflows) == 1:
@@ -600,6 +656,15 @@ class Workflow:
             key=lambda s: s[0],
         )
 
+        step_sequence = {}
+        for step_id, step in all_steps:
+            step_order = (sequence_order[step.__workflow__.id], step.__sequence_num__)
+            was = step_sequence.get(step_id)
+            if was is None or was > step_order:
+                step_sequence[step_id] = step_order
+                #print(step.__sequence_num__, step_sequence[step_id], step.id)
+        step_sequence = {step_id: n for (n, (step_id, _)) in enumerate(sorted(step_sequence.items(), key=lambda s: s[1]))}
+
         for _, step in all_steps:
             # for step in list(left_steps.values()) + list(right_steps.values()):
             step.set_workflow(base)
@@ -607,6 +672,10 @@ class Workflow:
         indexed_steps: dict[str, BaseStep] = {}
         for step_id, step in all_steps:
             indexed_steps.setdefault(step_id, step)
+            #print(step.__sequence_num__, step_sequence[step_id], step.id)
+            # Here is the sequence rekeying that ensures we have
+            # a consistent order, despite dask parallel processing of subworkflows
+            step.__sequence_num__ = step_sequence[step_id]
             if step != indexed_steps[step_id]:
                 raise RuntimeError(
                     f"Two steps have same ID but do not match: {step_id}"
@@ -1160,6 +1229,9 @@ class BaseStep(WorkflowComponent):
     workflow: Workflow
     positional_args: dict[str, bool] | None = None
     __sequence_num__: int | None = None
+
+    def __str__(self):
+        return " ".join([self.id, " = ", str(self.task), "(", " ".join(f"{k}={v}" for k, v in self.arguments.items()), ")"])
 
     def __init__(
         self,
@@ -1907,9 +1979,9 @@ def is_task(task: Lazy) -> bool:
     Returns:
         True if `task` is indeed a task.
     """
-    return (
-        hasattr(task, "_obj") and isinstance(task._obj, TaskWrapper)
-    ) or isinstance(task, TaskWrapper)
+    return (hasattr(task, "_obj") and isinstance(task._obj, TaskWrapper)) or isinstance(
+        task, TaskWrapper
+    )
 
 
 def expr_to_references(
@@ -2022,7 +2094,7 @@ def unify_workflows(
                 and new_workflow
             ):
                 collected_workflow = Workflow.assimilate(
-                    collected_workflow, new_workflow
+                    (collected_workflow, 0), (new_workflow, 1)
                 )
 
     # Make sure all the results share it

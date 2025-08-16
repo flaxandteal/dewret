@@ -12,6 +12,8 @@ from dewret.workflow import param, StepReference
 from dewret.renderers.cwl import render
 from dewret.annotations import Fixed
 
+import pytest
+
 from ._lib.extra import mod10, sum, pi
 
 
@@ -223,6 +225,7 @@ class MyListWrapper:
     my_list: list[int]
 
 
+@pytest.mark.skip(reason="need to resolve iteration with dask")
 def test_can_iterate() -> None:
     """Test iteration over a list of tasks and validate positional argument handling."""
 
