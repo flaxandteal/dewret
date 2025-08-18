@@ -148,7 +148,7 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
         """Return the name of the task."""
         return self._fn.__name__
 
-    def __call__(self, *args: Any, **kwargs: Any) -> RetType | Delayed | DelayedLeaf:
+    def __call__(self, *args: Any, **kwargs: Any) -> RetType | Delayed:
         """Wrapper around a lazy execution.
 
         Captures a traceback, for debugging if this does not work.
@@ -159,13 +159,18 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
         """
         sequence_num = SequenceManager.get_sequence_num(_SEQUENCE_NUM)
         tb = make_traceback()
-        result = self.__callable__(
-            *args,
-            **kwargs,
-            __traceback__=tb,
-            __sequence_num__=sequence_num,
-            __in_nested_task__=is_in_nested_task(),
-        )
+        call_kwargs = {
+            "__traceback__": tb,
+            "__sequence_num__": sequence_num,
+            "__in_nested_task__": is_in_nested_task(),
+            **kwargs
+        }
+
+        if get_configuration("eager"):
+            # If eager will call the _fn directly so that a delayed is not returned
+            result = self._fn(*args, **call_kwargs)
+        else:
+            result = self.__callable__(*args, **call_kwargs)
         return result
 
 
@@ -1936,10 +1941,13 @@ def execute_step(task: Any, **kwargs: Any) -> Any:
         task: the task to evaluate.
         **kwargs: any arguments to pass to the task.
     """
+    from dask.base import is_dask_collection
     if isinstance(task, list):
         return [execute_step(t, **kwargs) for t in task]
     elif isinstance(task, tuple):
         return tuple(execute_step(t, **kwargs) for t in task)
+    elif is_dask_collection(task):
+        task = task.compute()
 
     if not isinstance(task, StepReference):
         raise TypeError(
