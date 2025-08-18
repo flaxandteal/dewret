@@ -620,7 +620,7 @@ def task(
                             # )
                         step_reference = output
                     else:
-                        nested_workflow = Workflow(name=fn.__name__, sequence_number =__workflow_sequence_num__)
+                        nested_workflow = Workflow(name=fn.__name__, sequence_num =__workflow_sequence_num__)
                         nested_globals: dict[str, Any] = {
                             var: cast(
                                 Parameter[Any],
@@ -657,7 +657,7 @@ def task(
                             analyser.return_type,
                             original_kwargs,
                             positional_args,
-                            __sequence_num__=__sequence_number__,
+                            __sequence_num__=__sequence_num__,
                         )
                     if is_expr(step_reference):
                         return cast(RetType, step_reference)
@@ -672,7 +672,7 @@ def task(
                         raw_as_parameter=not __in_nested_task__,
                         is_factory=is_factory,
                         positional_args=positional_args,
-                        __sequence_num__=__sequence_number__,
+                        __sequence_num__=__sequence_num__,
                     ),
                 )
                 return step

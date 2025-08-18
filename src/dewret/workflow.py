@@ -163,7 +163,7 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
             *args,
             **kwargs,
             __traceback__=tb,
-            __sequence_number__=sequence_num,
+            __sequence_num__=sequence_num,
             __in_nested_task__=is_in_nested_task(),
         )
         return result
@@ -474,14 +474,14 @@ class Workflow:
     _remapping: dict[str, str] | None
     _name: str | None
 
-    def __init__(self, name: str | None = None, sequence_number: int | None = None) -> None:
+    def __init__(self, name: str | None = None, sequence_num: int | None = None) -> None:
         """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
         self._steps = []
         self.tasks = {}
         self.result: StepReference[Any] | None = None
         self._remapping = None
         self._name = name
-        self.__sequence_number__: int | None = sequence_number
+        self.__sequence_num__: int | None = sequence_num
 
     def stringify_in_sequence(self) -> str:
         for step in sorted(self._steps, key=lambda s: s.__sequence_num__):
