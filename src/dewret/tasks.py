@@ -81,9 +81,6 @@ Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
 T = TypeVar("T")
 
-VERY_EAGER = False
-
-
 class Backend(Enum):
     """Stringy enum representing available backends."""
 
@@ -694,7 +691,7 @@ def task(
         if nested and fn.__name__ != None:
             __workflow_sequence_num__ = _manager.current_sequence_num
         # i.e. any task or workflow (except a factory) is lazy
-        lz = TaskWrapper(_fn, lazy=not (is_factory or VERY_EAGER))
+        lz = TaskWrapper(_fn, lazy=not is_factory)
         return lz
 
     return _task
