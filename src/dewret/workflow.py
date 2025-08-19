@@ -139,7 +139,6 @@ class TaskWrapper(DelayedLeaf, Generic[RetType]):
                 also from it's __call__ method for consistency.
             lazy: bool to determine whether the task is lazy loaded
         """
-        global N
         self.__callable__: Union[Callable[Param, RetType], DelayedLeaf, Delayed] = delayed(fn) if lazy else fn
         self._fn = fn
 
