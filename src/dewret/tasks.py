@@ -417,7 +417,7 @@ def task(
         TypeError: if arguments are missing or incorrect, in line with usual
             Python behaviour.
     """
-    def _task(fn: Callable[Param, RetType]) -> TaskWrapper[RetType]:
+    def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
         
         declaration_tb = make_traceback()
         __workflow_sequence_num__: int | None = None
@@ -693,7 +693,7 @@ def task(
             __workflow_sequence_num__ = _manager.current_sequence_num
         # i.e. any task or workflow (except a factory) is lazy
         lz = TaskWrapper(_fn, lazy=not is_factory)
-        return lz
+        return cast(Callable[Param, RetType], lz)
 
     return _task
 
