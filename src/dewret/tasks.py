@@ -43,7 +43,7 @@ from attrs import has as attrs_has
 from dataclasses import is_dataclass
 import traceback
 from concurrent.futures import ThreadPoolExecutor
-from contextvars import ContextVar, copy_context
+from contextvars import Context, ContextVar, copy_context
 from contextlib import contextmanager
 
 from .utils import is_firm, make_traceback, is_expr
@@ -173,9 +173,11 @@ class TaskManager:
             task: the task to evaluate.
             __workflow__: workflow within which this exists.
             thread_pool: existing pool of threads to run this in, or None.
+            in_nested_task: is the task part of a nested task tree.
+            reuse_thread_pool: bool to define if the thread pool can be used.
             **kwargs: any arguments to pass to the task.
         """
-        def _initializer(context) -> None:
+        def _initializer(context: Context) -> None:
             for var, value in context.items():
                 if var.name != 'sequence_num':
                     var.set(value)
@@ -199,7 +201,8 @@ class TaskManager:
             raise RuntimeError("A new workflow could not be found")
 
         # Then we set the result to be the whole thing
-        collected_workflow.set_result(new_result)
+        if new_result is not None:
+            collected_workflow.set_result(new_result)
 
         return collected_workflow.result
 
@@ -222,21 +225,17 @@ class TaskManager:
         return self.backend.unwrap(task)
 
     def ensure_lazy(self, task: Any) -> Lazy | None:
-        """Evaluate a single task for a known workflow.
-        # TODO: wrong docstring
+        """Ensure that a task is lazy-evaluable.
 
-        As we mask our lazy-evaluable functions to appear as their original
-        types to the type system (see `dewret.tasks.task`), we must cast them
-        back, to allow the type-checker to comb the remainder of the code.
+        This function checks if the given task is lazy-evaluable. If the task is 
+        already lazy, it is returned as-is. Otherwise, it returns `None`.
 
         Args:
-            task: the suspected task to check.
+            task: The task to check for laziness.
 
         Returns:
-            Original task, cast to a Lazy, or None.
+            The task cast to a Lazy type if it is lazy, or `None` if it is not.
         """
-        # if isinstance(task, TaskWrapper):
-        #    return self.ensure_lazy(task._fn)
         return task if self.backend.is_lazy(task) else None
 
     def __call__(
@@ -248,10 +247,12 @@ class TaskManager:
     ) -> Workflow:
         """Execute the lazy evalution.
 
-        Arguments:
-            task: the task to evaluate.
-            simplify_ids: when we finish running, make nicer step names?
-            **kwargs: any arguments to pass to the task.
+        Args:
+            task: The task to evaluate.
+            __workflow__: The workflow within which the task exists. If not provided, 
+                a new workflow is created.
+            in_nested_task: Whether the task is part of a nested task tree.
+            **kwargs: Additional configuration options for the workflow.
 
         Returns:
             A reusable reference to this individual step.
@@ -483,7 +484,7 @@ def task(
                     refs += kw_refs
                     kwargs[key] = val
                 # Not realistically going to be other than Workflow.
-                workflows: list[(Workflow, int)] = [
+                workflows: list[tuple[Workflow, int]] = [
                     (cast(Workflow, reference.__workflow__), reference._.step.__sequence_num__ if hasattr(reference._, 'step') else 0)
                     for reference in refs
                     if hasattr(reference, "__workflow__")

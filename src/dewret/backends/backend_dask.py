@@ -41,7 +41,7 @@ class Delayed(Protocol):
         """Retrieve the dask graph."""
         ...
 
-    def compute(self, __workflow__: Workflow | None) -> StepReference[Any]:
+    def compute(self, __workflow__: Workflow | None, __in_nested_task__: bool = False) -> StepReference[Any]:
         """Evaluate this `dask.delayed`.
 
         Evaluate a delayed (dask lazy-evaluated) function. dewret

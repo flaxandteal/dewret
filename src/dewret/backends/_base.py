@@ -40,6 +40,7 @@ class BackendModule(Protocol):
         workflow: Workflow | None,
         task: Lazy | list[Lazy] | tuple[Lazy, ...],
         thread_pool: ThreadPoolExecutor | None = None,
+        in_nested_task: bool = False
     ) -> StepReference[Any] | list[StepReference[Any]] | tuple[StepReference[Any]]:
         """Execute a lazy task for this `Workflow`.
 

@@ -18,8 +18,6 @@ Basic constructs for describing a workflow.
 """
 
 from __future__ import annotations
-import threading
-THREADS = {}
 from contextlib import contextmanager
 from contextvars import ContextVar
 import inspect
@@ -28,6 +26,7 @@ from collections.abc import Mapping, MutableMapping, Callable
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter, OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from typing import (
     Protocol,
     Any,
@@ -80,17 +79,18 @@ _SEQUENCE_NUM: ContextVar[int] = ContextVar('sequence_num', default=0)
 
 _IN_NESTED_TASK: ContextVar[bool] = ContextVar("in_nested_task")
 _IN_NESTED_TASK.set(False)
-_ACTIVE_THREAD_POOL: ContextVar[bool] = ContextVar("active_thread_pool")
-_ACTIVE_THREAD_POOL.set(None)
+_ACTIVE_THREAD_POOL: ContextVar[ThreadPoolExecutor] = ContextVar("active_thread_pool")
 
 
-def get_active_thread_pool() -> bool:
+def get_active_thread_pool() -> ThreadPoolExecutor | None:
+    """Gets the current thread pool executer."""
     try:
         return _ACTIVE_THREAD_POOL.get()
     except LookupError:
         return None
 
-def set_active_thread_pool(thread_pool) -> Generator[None, None, None]:
+def set_active_thread_pool(thread_pool: ThreadPoolExecutor) -> None:
+    """Set the active thread pool."""
     _ACTIVE_THREAD_POOL.set(thread_pool)
 
 def is_in_nested_task() -> bool:
@@ -488,10 +488,6 @@ class Workflow:
         self._name = name
         self.__sequence_num__: int | None = sequence_num
 
-    def stringify_in_sequence(self) -> str:
-        for step in sorted(self._steps, key=lambda s: s.__sequence_num__):
-            yield step
-
     @property
     def steps(self) -> set[BaseStep]:
         """Get deduplicated steps.
@@ -652,7 +648,7 @@ class Workflow:
             return base
 
         names = sorted({w._name for w in workflows if w._name})
-        base._name = base._name or (names and names[0]) or None
+        base._name = base._name or (names[0] if names else None)
 
         # left_steps = left._indexed_steps
         # right_steps = right._indexed_steps
@@ -661,14 +657,17 @@ class Workflow:
             key=lambda s: s[0],
         )
 
-        step_sequence = {}
+        workflow_step_order: dict[str, tuple[int, int | None]] = {}
         for step_id, step in all_steps:
-            step_order = (sequence_order[step.__workflow__.id], step.__sequence_num__)
-            was = step_sequence.get(step_id)
-            if was is None or was > step_order:
-                step_sequence[step_id] = step_order
+            if isinstance(step.__workflow__, Workflow):
+                step_order = (sequence_order[step.__workflow__.id], step.__sequence_num__)
+            else:
+                raise TypeError(f"Expected 'Workflow', got '{type(step.__workflow__).__name__}' instead.")
+            workflow_step = workflow_step_order.get(step_id)
+            if workflow_step is None or workflow_step > step_order:
+                workflow_step_order[step_id] = step_order
                 #print(step.__sequence_num__, step_sequence[step_id], step.id)
-        step_sequence = {step_id: n for (n, (step_id, _)) in enumerate(sorted(step_sequence.items(), key=lambda s: s[1]))}
+        step_sequence: dict[str, int] = {step_id: n for (n, (step_id, _)) in enumerate(sorted(workflow_step_order.items(), key=lambda s: s[1]))}
 
         for _, step in all_steps:
             # for step in list(left_steps.values()) + list(right_steps.values()):
@@ -1235,7 +1234,8 @@ class BaseStep(WorkflowComponent):
     positional_args: dict[str, bool] | None = None
     __sequence_num__: int | None = None
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return a string representation of the step."""
         return " ".join([self.id, " = ", str(self.task), "(", " ".join(f"{k}={v}" for k, v in self.arguments.items()), ")"])
 
     def __init__(
