@@ -298,9 +298,9 @@ class StepDefinition:
         else:
             out = ["out"]
 
-        def _to_ref(param):
-            if isinstance(param, Reference):
-                return ReferenceDefinition.from_reference(param)
+        def _to_ref(param: Reference[Any] | Basic| Raw) -> ReferenceDefinition | Raw:
+            if isinstance(param, (Basic, Reference)):
+                return render_expression(param)
             return param
 
         return cls(
@@ -318,7 +318,7 @@ class StepDefinition:
             serialization.
         """
 
-        def _render(ref):
+        def _render(ref: ReferenceDefinition | Raw) -> dict[str, RawType]:
             return (
                 ref.render()
                 if isinstance(ref, ReferenceDefinition)

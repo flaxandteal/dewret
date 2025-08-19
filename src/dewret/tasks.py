@@ -417,7 +417,7 @@ def task(
         TypeError: if arguments are missing or incorrect, in line with usual
             Python behaviour.
     """
-    def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
+    def _task(fn: Callable[Param, RetType]) -> TaskWrapper[RetType]:
         
         declaration_tb = make_traceback()
         __workflow_sequence_num__: int | None = None

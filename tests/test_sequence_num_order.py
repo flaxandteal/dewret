@@ -1,22 +1,34 @@
 """Check sequential numbers are added in task order."""
 
 import yaml
+from yaml.nodes import MappingNode
 from dewret.tasks import construct, task, workflow
-from dewret.renderers.cwl import render, TransparentOrderedDict
+from dewret.renderers.cwl import render
+from dewret.render import TransparentOrderedDict
 from dewret.workflow import NestedStep, BaseStep, _SEQUENCE_NUM
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dewret.core import SequenceManager, set_configuration
 import time
+from typing import Any, Hashable
 
 class OrderedDictLoader(yaml.SafeLoader):
-    def construct_mapping(self, node):
+    """A YAML loader that constructs mappings as TransparentOrderedDict.
+
+    This loader ensures that the order of keys in YAML mappings is preserved
+    by using TransparentOrderedDict instead of the default Python dictionary.
+    """ 
+    def construct_mapping(self, node: MappingNode, deep: bool = False) -> dict[Hashable, Any]:
+        """Construct a mapping from a YAML node."""
         self.flatten_mapping(node)
-        pairs = self.construct_pairs(node)
+        pairs: list[tuple[Any, Any]] = self.construct_pairs(node) #type: ignore
 
         return TransparentOrderedDict(pairs)
 
 OrderedDictLoader.add_constructor('tag:yaml.org,2002:map', OrderedDictLoader.construct_mapping)
-yaml_ordered_load = lambda yml: yaml.load(yml, Loader=OrderedDictLoader)
+
+def yaml_ordered_load(yml: str) -> Any:
+    """Load YAML string with ordered dictionaries."""
+    return yaml.load(yml, Loader=OrderedDictLoader)
 
 @task()
 def increment(num: int) -> int:
