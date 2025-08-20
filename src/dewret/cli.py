@@ -55,6 +55,13 @@ from .tasks import Backend, construct
     help="Eagerly evaluate tasks at render-time for debugging purposes.",
 )
 @click.option(
+    "--sort-steps",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Sort steps by sequence number in the renderer"
+    )
+@click.option(
     "--backend",
     type=click.Choice(list(Backend.__members__)),
     show_default=True,
@@ -79,6 +86,7 @@ def render(
     renderer: str,
     renderer_args: str,
     output: str,
+    sort_steps: bool
 ) -> None:
     """Render a workflow.
 
@@ -93,7 +101,7 @@ def render(
 
     construct_kwargs = format_user_args(construct_args)
     renderer_kwargs = format_user_args(renderer_args)
-
+    renderer_kwargs['sort_steps'] = sort_steps
     if output == "-":
 
         @contextmanager
