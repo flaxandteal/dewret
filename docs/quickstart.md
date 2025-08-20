@@ -99,7 +99,7 @@ and backends, as well as bespoke serialization or formatting.
 >>> result = increment(num=3)
 >>> workflow = construct(result, simplify_ids=True)
 >>> cwl = render(workflow)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
