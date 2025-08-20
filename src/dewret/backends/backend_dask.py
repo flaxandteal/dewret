@@ -113,6 +113,7 @@ def run(
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
         thread_pool: custom thread pool for executing workflows, copies in correct values for contextvars to each thread before they are accessed by a dask worker.
+        in_nested_task: bool to flag if the task is part of a larger workflow tree
         **kwargs: any configuration arguments for this backend.
     """
     # def _check_delayed was here, but we decided to delegate this to dask

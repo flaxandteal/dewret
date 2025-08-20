@@ -736,7 +736,7 @@ def test_sequence_num_increments_independently_per_thread() -> None:
         
         # Use the sequence context to reset for this thread
         with SequenceManager.sequence_context(_SEQUENCE_NUM):
-            for i in range(iterations):
+            for _i in range(iterations):
                 # Get and increment the sequence number
                 seq_num = SequenceManager.get_sequence_num(_SEQUENCE_NUM)
                 thread_results.append(seq_num)

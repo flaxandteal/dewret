@@ -32,19 +32,17 @@ Typical usage example:
 import inspect
 import importlib
 import sys
-import threading
 from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
 from functools import partial
-from typing import Any, ParamSpec, TypeVar, cast, Generator, Unpack, Literal
+from typing import Any, ParamSpec, TypeVar, cast, Unpack, Literal
 from types import TracebackType
 from attrs import has as attrs_has
 from dataclasses import is_dataclass
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import Context, ContextVar, copy_context
-from contextlib import contextmanager
 
 from .utils import is_firm, make_traceback, is_expr
 from .workflow import (
