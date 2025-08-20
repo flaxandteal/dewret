@@ -823,11 +823,6 @@ def test_render_level_4_workflow_wide_outputs_list_in_order() -> None:
         workflow = construct(level_4_workflow_wide(), simplify_ids=True)
         rendered = render(workflow, sort_steps=True)
     
-    # Test level_1_workflow (deepest level)
-    import json
-    with open('/tmp/1.yaml', 'w') as f:
-        json.dump(rendered, f, indent=2)
-
     rendered_level_1 = rendered["__root__"]
     assert rendered_level_1 == yaml_ordered_load("""
     {
