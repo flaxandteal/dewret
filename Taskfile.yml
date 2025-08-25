@@ -1,0 +1,15 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  build-conda:
+    desc: Build the conda environment, call as build-conda -- <env_name>
+    aliases: [bc]
+    cmds:
+      - cmd: PowerShell.exe -ExecutionPolicy Bypass -File .set_up/dev_set_up.ps1 {{.CLI_ARGS}}
+        platforms: [windows]
+        silent: true
+      - cmd: source .set_up/dev_set_up.sh {{.CLI_ARGS}}
+        platforms: [linux]
+        silent: true
