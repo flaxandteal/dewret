@@ -35,24 +35,27 @@ import sys
 from enum import Enum
 from functools import cached_property
 from collections.abc import Callable
-from typing import Any, ParamSpec, TypeVar, cast, Generator, Unpack, Literal
+from functools import partial
+from typing import Any, ParamSpec, TypeVar, cast, Unpack, Literal
 from types import TracebackType
 from attrs import has as attrs_has
 from dataclasses import is_dataclass
 import traceback
 from concurrent.futures import ThreadPoolExecutor
-from contextvars import ContextVar, copy_context
-from contextlib import contextmanager
+from contextvars import Context, ContextVar, copy_context
 
 from .utils import is_firm, make_traceback, is_expr
 from .workflow import (
     execute_step,
+    in_nested_task,
+    get_active_thread_pool,
+    set_active_thread_pool,
     expr_to_references,
     unify_workflows,
     UNSET,
     Workflow,
     Lazy,
-    LazyEvaluation,
+    TaskWrapper,
     Target,
     LazyFactory,
     Parameter,
@@ -69,12 +72,12 @@ from .core import (
     IteratedGenerator,
     ConstructConfigurationTypedDict,
     Reference,
+    SequenceManager
 )
 
 Param = ParamSpec("Param")
 RetType = TypeVar("RetType")
 T = TypeVar("T")
-
 
 class Backend(Enum):
     """Stringy enum representing available backends."""
@@ -84,7 +87,7 @@ class Backend(Enum):
 
 DEFAULT_BACKEND = Backend.DASK
 
-
+_WORKFLOW_SEQUENCE_NUM: ContextVar[int] = ContextVar("workflow_sequence", default=0)
 class TaskManager:
     """Overarching backend-agnostic task manager.
 
@@ -96,6 +99,16 @@ class TaskManager:
     """
 
     _backend: Backend | None = None
+
+    def __init__(self) -> None:
+        """Initialise the TaskManager with its own sequence number context."""
+        self._sequence_context = SequenceManager.sequence_context(_WORKFLOW_SEQUENCE_NUM)
+        self._sequence_context.__enter__()
+    
+    @property
+    def current_sequence_num(self) -> int:
+        """Dynamically retrieve and increment the current sequence number."""
+        return SequenceManager.get_sequence_num(_WORKFLOW_SEQUENCE_NUM)
 
     def set_backend(self, backend: Backend) -> Backend:
         """Choose a backend.
@@ -148,7 +161,8 @@ class TaskManager:
         self,
         task: Lazy | list[Lazy] | tuple[Lazy, ...],
         __workflow__: Workflow,
-        thread_pool: ThreadPoolExecutor | None = None,
+        in_nested_task: bool = False,
+        reuse_thread_pool: bool = True,
         **kwargs: Any,
     ) -> Any:
         """Evaluate a single task for a known workflow.
@@ -157,16 +171,37 @@ class TaskManager:
             task: the task to evaluate.
             __workflow__: workflow within which this exists.
             thread_pool: existing pool of threads to run this in, or None.
+            in_nested_task: is the task part of a nested task tree.
+            reuse_thread_pool: bool to define if the thread pool can be used.
             **kwargs: any arguments to pass to the task.
         """
-        result = self.backend.run(__workflow__, task, thread_pool=thread_pool, **kwargs)
+        def _initializer(context: Context) -> None:
+            for var, value in context.items():
+                if var.name != 'sequence_num':
+                    var.set(value)
+
+        if (not reuse_thread_pool) or (thread_pool := get_active_thread_pool()) is None:
+            thread_pool = ThreadPoolExecutor()
+            set_active_thread_pool(thread_pool)
+            context = copy_context()
+            thread_pool._initializer = partial(_initializer, context)
+
+        result = self.backend.run(
+            __workflow__,
+            task,
+            thread_pool=thread_pool,
+            in_nested_task=in_nested_task,
+            **kwargs,
+        )
         new_result, collected_workflow = unify_workflows(result, __workflow__)
 
         if collected_workflow is None:
             raise RuntimeError("A new workflow could not be found")
 
         # Then we set the result to be the whole thing
-        collected_workflow.set_result(new_result)
+        if new_result is not None:
+            collected_workflow.set_result(new_result)
+
         return collected_workflow.result
 
     def unwrap(self, task: Lazy) -> Target:
@@ -188,34 +223,34 @@ class TaskManager:
         return self.backend.unwrap(task)
 
     def ensure_lazy(self, task: Any) -> Lazy | None:
-        """Evaluate a single task for a known workflow.
+        """Ensure that a task is lazy-evaluable.
 
-        As we mask our lazy-evaluable functions to appear as their original
-        types to the type system (see `dewret.tasks.task`), we must cast them
-        back, to allow the type-checker to comb the remainder of the code.
+        This function checks if the given task is lazy-evaluable. If the task is 
+        already lazy, it is returned as-is. Otherwise, it returns `None`.
 
         Args:
-            task: the suspected task to check.
+            task: The task to check for laziness.
 
         Returns:
-            Original task, cast to a Lazy, or None.
+            The task cast to a Lazy type if it is lazy, or `None` if it is not.
         """
-        if isinstance(task, LazyEvaluation):
-            return self.ensure_lazy(task._fn)
         return task if self.backend.is_lazy(task) else None
 
     def __call__(
         self,
         task: Any,
         __workflow__: Workflow | None = None,
+        in_nested_task: bool = False,
         **kwargs: Unpack[ConstructConfigurationTypedDict],
     ) -> Workflow:
         """Execute the lazy evalution.
 
-        Arguments:
-            task: the task to evaluate.
-            simplify_ids: when we finish running, make nicer step names?
-            **kwargs: any arguments to pass to the task.
+        Args:
+            task: The task to evaluate.
+            __workflow__: The workflow within which the task exists. If not provided, 
+                a new workflow is created.
+            in_nested_task: Whether the task is part of a nested task tree.
+            **kwargs: Additional configuration options for the workflow.
 
         Returns:
             A reusable reference to this individual step.
@@ -223,15 +258,7 @@ class TaskManager:
         workflow = __workflow__ or Workflow()
 
         with set_configuration(**kwargs):
-            context = copy_context().items()
-
-            def _initializer() -> None:
-                for var, value in context:
-                    var.set(value)
-
-            thread_pool = ThreadPoolExecutor(initializer=_initializer)
-
-            result = self.evaluate(task, workflow, thread_pool=thread_pool, **kwargs)
+            result = self.evaluate(task, workflow, in_nested_task=in_nested_task, reuse_thread_pool=False, **kwargs)
             simplify_ids = bool(get_configuration("simplify_ids"))
         return Workflow.from_result(result, simplify_ids=simplify_ids)
 
@@ -302,38 +329,6 @@ class TaskException(Exception):
         super().__init__(message)
         self.__traceback__ = tb
 
-
-_IN_NESTED_TASK: ContextVar[bool] = ContextVar("in_nested_task")
-_IN_NESTED_TASK.set(False)
-
-
-@contextmanager
-def in_nested_task() -> Generator[None, None, None]:
-    """Informs the builder that we are within a nested task.
-
-    This is only really relevant in the subworkflow context.
-
-    TODO: check impact of ContextVar being thread-sensitive on build.
-    """
-    try:
-        tok = _IN_NESTED_TASK.set(True)
-        yield
-    finally:
-        _IN_NESTED_TASK.reset(tok)
-
-
-def is_in_nested_task() -> bool:
-    """Check if we are within a nested task.
-
-    Used, for example, to see if discovered parameters should be
-    treated as "local" (i.e. should take a default to the step) or
-    global (i.e. should be turned into a workflow parameter) if we
-    are inside or outside a subworkflow, respectively.
-    """
-    try:
-        return _IN_NESTED_TASK.get()
-    except LookupError:
-        return False
 
 
 def factory(fn: Callable[..., RetType]) -> Callable[..., RetType]:
@@ -420,14 +415,17 @@ def task(
         TypeError: if arguments are missing or incorrect, in line with usual
             Python behaviour.
     """
-
     def _task(fn: Callable[Param, RetType]) -> Callable[Param, RetType]:
+        
         declaration_tb = make_traceback()
+        __workflow_sequence_num__: int | None = None
 
         def _fn(
             *args: Any,
             __workflow__: Workflow | None = None,
             __traceback__: TracebackType | None = None,
+            __sequence_num__: int | None = None,
+            __in_nested_task__: bool | None = None,
             **kwargs: Any,
         ) -> RetType:
             if get_configuration("eager"):
@@ -435,6 +433,9 @@ def task(
 
             configuration = None
             allow_positional_args = bool(get_configuration("allow_positional_args"))
+
+            if __in_nested_task__ is None:
+                raise RuntimeError("Bug: Nested task status should always be set internally")
 
             try:
                 # Ensure that all arguments are passed as keyword args and prevent positional args.
@@ -481,14 +482,14 @@ def task(
                     refs += kw_refs
                     kwargs[key] = val
                 # Not realistically going to be other than Workflow.
-                workflows: list[Workflow] = [
-                    cast(Workflow, reference.__workflow__)
+                workflows: list[tuple[Workflow, int]] = [
+                    (cast(Workflow, reference.__workflow__), reference._.step.__sequence_num__ if hasattr(reference._, 'step') else 0)
                     for reference in refs
                     if hasattr(reference, "__workflow__")
                     and reference.__workflow__ is not None
                 ]
                 if __workflow__ is not None:
-                    workflows.insert(0, __workflow__)
+                    workflows.insert(0, (__workflow__, 0))
                 if workflows:
                     workflow = Workflow.assimilate(*workflows)
                 else:
@@ -496,7 +497,7 @@ def task(
 
                 analyser = FunctionAnalyser(fn)
 
-                if not is_in_nested_task():
+                if not __in_nested_task__:
                     for var, value in kwargs.items():
                         if analyser.is_at_construct_arg(var):
                             kwargs[var] = value
@@ -609,13 +610,13 @@ def task(
                         lazy_fn = ensure_lazy(output)
                         if lazy_fn is not None:
                             with in_nested_task():
-                                output = evaluate(lazy_fn, __workflow__=workflow)
+                                output = evaluate(lazy_fn, __workflow__=workflow, in_nested_task=True)
                             # raise TypeError(
                             #    f"Task {fn.__name__} returned output of type {type(output)}, which is not a lazy function for this backend."
                             # )
                         step_reference = output
                     else:
-                        nested_workflow = Workflow(name=fn.__name__)
+                        nested_workflow = Workflow(name=fn.__name__, sequence_num =__workflow_sequence_num__)
                         nested_globals: dict[str, Any] = {
                             var: cast(
                                 Parameter[Any],
@@ -642,7 +643,9 @@ def task(
                                 **nested_kwargs
                             )
                             nested_workflow = _manager(
-                                output, __workflow__=nested_workflow
+                                output,
+                                __workflow__=nested_workflow,
+                                in_nested_task=True
                             )
                         step_reference = workflow.add_nested_step(
                             fn.__name__,
@@ -650,6 +653,7 @@ def task(
                             analyser.return_type,
                             original_kwargs,
                             positional_args,
+                            __sequence_num__=__sequence_num__,
                         )
                     if is_expr(step_reference):
                         return cast(RetType, step_reference)
@@ -661,9 +665,10 @@ def task(
                     workflow.add_step(
                         fn,
                         kwargs,
-                        raw_as_parameter=not is_in_nested_task(),
+                        raw_as_parameter=not __in_nested_task__,
                         is_factory=is_factory,
                         positional_args=positional_args,
+                        __sequence_num__=__sequence_num__,
                     ),
                 )
                 return step
@@ -682,7 +687,11 @@ def task(
 
         _fn.__step_expression__ = True  # type: ignore
         _fn.__original__ = fn  # type: ignore
-        return LazyEvaluation(_fn)
+        if nested and fn.__name__ != None:
+            __workflow_sequence_num__ = _manager.current_sequence_num
+        # i.e. any task or workflow (except a factory) is lazy
+        lz = TaskWrapper(_fn, lazy=not is_factory)
+        return cast(Callable[Param, RetType], lz)
 
     return _task
 

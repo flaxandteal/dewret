@@ -55,7 +55,8 @@ allow-direct-references = true
 [project.optional-dependencies]
 test = ["pytest", "coverage", "ruff", "mypy >= 1.14.1"]
 docs = [
-  "tmp_fat_portray >= v1.8.0"
+  "tmp_fat_portray >= v1.8.0",
+  "tmp_fat_pdocs >= v1.2.1"
 ]
 
 [tool.pixi.project]

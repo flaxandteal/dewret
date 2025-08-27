@@ -65,7 +65,7 @@ In code, this would be:
 ... )
 >>> wkflw = construct(result, simplify_ids=True)
 >>> cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
@@ -148,7 +148,7 @@ This duplication can be avoided by explicitly indicating that the parameters are
 ... )
 >>> wkflw = construct(result, simplify_ids=True)
 >>> cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
@@ -223,7 +223,7 @@ For example:
 >>> result = rotate(num=5)
 >>> wkflw = construct(result, simplify_ids=True)
 >>> cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
@@ -291,7 +291,7 @@ As code:
 ...     result = double_rotate(num=3)
 ...     wkflw = construct(result, simplify_ids=True)
 ...     cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
@@ -402,7 +402,7 @@ As code:
 ... )
 >>> wkflw = construct(red_total, simplify_ids=True)
 >>> cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
@@ -481,7 +481,7 @@ Here, we show the same example with `dataclasses`.
 ... )
 >>> wkflw = construct(red_total, simplify_ids=True)
 >>> cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
@@ -573,7 +573,7 @@ dewret will produce multiple output workflows that reference each other.
 >>> total = sum(left=red_total(), right=black_total())
 >>> wkflw = construct(total, simplify_ids=True)
 >>> cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs: {}
@@ -651,7 +651,7 @@ as a second term.
 >>> total = sum(left=red_total(), right=black_total())
 >>> wkflw = construct(total, simplify_ids=True)
 >>> cwl = render(wkflw)
->>> yaml.dump(cwl["red_total-1"], sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl["red_total-1"], sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs: {}
@@ -729,7 +729,7 @@ Below is the default output, treating `Pack` as a task.
 >>> pack = Pack(hearts=13, spades=13, diamonds=13, clubs=13)
 >>> wkflw = construct(black_total(pack=pack), simplify_ids=True)
 >>> cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:
@@ -819,7 +819,7 @@ types are allowed.
 >>> pack = Pack(hearts=13, spades=13, diamonds=13, clubs=13)
 >>> wkflw = construct(black_total(pack=pack), simplify_ids=True)
 >>> cwl = render(wkflw, allow_complex_types=True, factories_as_params=True)["black_total-1"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
+>>> yaml.safe_dump(cwl, sys.stdout, indent=2)
 class: Workflow
 cwlVersion: 1.2
 inputs:

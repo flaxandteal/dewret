@@ -18,17 +18,22 @@ Basic constructs for describing a workflow.
 """
 
 from __future__ import annotations
+from contextlib import contextmanager
+from contextvars import ContextVar
 import inspect
+from dask.delayed import DelayedLeaf, Delayed, delayed
 from collections.abc import Mapping, MutableMapping, Callable
 from attrs import has as attr_has, resolve_types, fields as attrs_fields
 from dataclasses import is_dataclass, fields as dataclass_fields
 from collections import Counter, OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from typing import (
     Protocol,
     Any,
     ParamSpec,
     TypeVar,
     Generic,
+    Union,
     cast,
     Literal,
     Iterable,
@@ -58,6 +63,7 @@ from .core import (
     WorkflowProtocol,
     WorkflowComponent,
     ExprType,
+    SequenceManager,
 )
 from .utils import hasher, is_raw, make_traceback, is_raw_type, is_expr, Unset
 
@@ -68,6 +74,54 @@ Param = ParamSpec("Param")
 
 CHECK_IDS = False
 AVAILABLE_TYPES = {"int": int, "str": str}
+
+_SEQUENCE_NUM: ContextVar[int] = ContextVar("sequence_num", default=0)
+
+_IN_NESTED_TASK: ContextVar[bool] = ContextVar("in_nested_task")
+_IN_NESTED_TASK.set(False)
+_ACTIVE_THREAD_POOL: ContextVar[ThreadPoolExecutor] = ContextVar("active_thread_pool")
+
+
+def get_active_thread_pool() -> ThreadPoolExecutor | None:
+    """Gets the current thread pool executer."""
+    try:
+        return _ACTIVE_THREAD_POOL.get()
+    except LookupError:
+        return None
+
+
+def set_active_thread_pool(thread_pool: ThreadPoolExecutor) -> None:
+    """Set the active thread pool."""
+    _ACTIVE_THREAD_POOL.set(thread_pool)
+
+
+def is_in_nested_task() -> bool:
+    """Check if we are within a nested task.
+
+    Used, for example, to see if discovered parameters should be
+    treated as "local" (i.e. should take a default to the step) or
+    global (i.e. should be turned into a workflow parameter) if we
+    are inside or outside a subworkflow, respectively.
+    """
+    try:
+        return _IN_NESTED_TASK.get()
+    except LookupError:
+        return False
+
+
+@contextmanager
+def in_nested_task() -> Generator[None, None, None]:
+    """Informs the builder that we are within a nested task.
+
+    This is only really relevant in the subworkflow context.
+
+    TODO: check impact of ContextVar being thread-sensitive on build.
+    """
+    try:
+        tok = _IN_NESTED_TASK.set(True)
+        yield
+    finally:
+        _IN_NESTED_TASK.reset(tok)
 
 
 class Lazy(Protocol):
@@ -80,20 +134,31 @@ class Lazy(Protocol):
         ...
 
 
-class LazyEvaluation(Lazy, Generic[RetType]):
-    """Tracks a single evaluation of a lazy function."""
+class TaskWrapper(DelayedLeaf, Generic[RetType]):
+    """Tracks a single evaluation of a lazy function.
 
-    def __init__(self, fn: Callable[Param, RetType]):
+    @pdocs.ignore
+    """
+
+    def __init__(self, fn: Callable[Param, RetType], lazy: bool = True):
         """Initialize an evaluation.
 
         Args:
             fn: callable returning RetType, which this will return
                 also from it's __call__ method for consistency.
+            lazy: bool to determine whether the task is lazy loaded
         """
-        self._fn: Callable[Param, RetType] = fn
-        self.__name__ = fn.__name__
+        self.__callable__: Union[Callable[Param, RetType], DelayedLeaf, Delayed] = (
+            delayed(fn) if lazy else fn
+        )
+        self._fn = fn
 
-    def __call__(self, *args: Any, **kwargs: Any) -> RetType:
+    @property
+    def __name__(self) -> str:
+        """Return the name of the task."""
+        return self._fn.__name__
+
+    def __call__(self, *args: Any, **kwargs: Any) -> RetType | Delayed:
         """Wrapper around a lazy execution.
 
         Captures a traceback, for debugging if this does not work.
@@ -102,8 +167,20 @@ class LazyEvaluation(Lazy, Generic[RetType]):
         dask distributed to break, if running outside a single process
         is attempted.
         """
+        sequence_num = SequenceManager.get_sequence_num(_SEQUENCE_NUM)
         tb = make_traceback()
-        result = self._fn(*args, **kwargs, __traceback__=tb)  # type: ignore[arg-type]
+        call_kwargs = {
+            "__traceback__": tb,
+            "__sequence_num__": sequence_num,
+            "__in_nested_task__": is_in_nested_task(),
+            **kwargs,
+        }
+
+        if get_configuration("eager"):
+            # If eager will call the _fn directly so that a delayed is not returned
+            result = self._fn(*args, **call_kwargs)
+        else:
+            result = self.__callable__(*args, **call_kwargs)
         return result
 
 
@@ -412,13 +489,16 @@ class Workflow:
     _remapping: dict[str, str] | None
     _name: str | None
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(
+        self, name: str | None = None, sequence_num: int | None = None
+    ) -> None:
         """Initialize a Workflow, by setting `steps` and `tasks` to empty containers."""
         self._steps = []
         self.tasks = {}
         self.result: StepReference[Any] | None = None
         self._remapping = None
         self._name = name
+        self.__sequence_num__: int | None = sequence_num
 
     @property
     def steps(self) -> set[BaseStep]:
@@ -538,8 +618,26 @@ class Workflow:
             sorted(((step.id, step) for step in self.steps), key=lambda x: x[0])
         )
 
+    @property
+    def sequenced_steps(self) -> dict[str, BaseStep]:
+        """Steps mapped by ID, sorted by sequence number.
+
+        Forces generation of IDs and sorts steps by their `__sequence_num__`.
+
+        Returns:
+            Mapping of steps by sequence number.
+        """
+        return OrderedDict(
+            sorted(
+                ((step.id, step) for step in self.steps),
+                key=lambda x: x[1].__sequence_num__
+                if x[1].__sequence_num__ is not None
+                else -1,
+            )
+        )
+
     @classmethod
-    def assimilate(cls, *workflow_args: Workflow) -> "Workflow":
+    def assimilate(cls, *workflow_args: tuple[Workflow, int]) -> "Workflow":
         """Combine two Workflows into one Workflow.
 
         Takes two workflows and unifies them by combining steps
@@ -553,14 +651,16 @@ class Workflow:
 
         j
         """
-        workflows = sorted((w for w in set(workflow_args)), key=lambda w: w.id)
+        sequence_order = {w.id: n for w, n in workflow_args}
+        # print(sequence_order)
+        workflows = sorted((w[0] for w in set(workflow_args)), key=lambda w: w.id)
         base = workflows[0]
 
         if len(workflows) == 1:
             return base
 
         names = sorted({w._name for w in workflows if w._name})
-        base._name = base._name or (names and names[0]) or None
+        base._name = base._name or (names[0] if names else None)
 
         # left_steps = left._indexed_steps
         # right_steps = right._indexed_steps
@@ -569,6 +669,28 @@ class Workflow:
             key=lambda s: s[0],
         )
 
+        workflow_step_order: dict[str, tuple[int, int | None]] = {}
+        for step_id, step in all_steps:
+            if isinstance(step.__workflow__, Workflow):
+                step_order = (
+                    sequence_order[step.__workflow__.id],
+                    step.__sequence_num__,
+                )
+            else:
+                raise TypeError(
+                    f"Expected 'Workflow', got '{type(step.__workflow__).__name__}' instead."
+                )
+            workflow_step = workflow_step_order.get(step_id)
+            if workflow_step is None or workflow_step > step_order:
+                workflow_step_order[step_id] = step_order
+                # print(step.__sequence_num__, step_sequence[step_id], step.id)
+        step_sequence: dict[str, int] = {
+            step_id: n
+            for (n, (step_id, _)) in enumerate(
+                sorted(workflow_step_order.items(), key=lambda s: s[1])
+            )
+        }
+
         for _, step in all_steps:
             # for step in list(left_steps.values()) + list(right_steps.values()):
             step.set_workflow(base)
@@ -576,6 +698,10 @@ class Workflow:
         indexed_steps: dict[str, BaseStep] = {}
         for step_id, step in all_steps:
             indexed_steps.setdefault(step_id, step)
+            # print(step.__sequence_num__, step_sequence[step_id], step.id)
+            # Here is the sequence rekeying that ensures we have
+            # a consistent order, despite dask parallel processing of subworkflows
+            step.__sequence_num__ = step_sequence[step_id]
             if step != indexed_steps[step_id]:
                 raise RuntimeError(
                     f"Two steps have same ID but do not match: {step_id}"
@@ -608,8 +734,8 @@ class Workflow:
             if result is None:
                 return ""
             if isinstance(result, StepReference):
-                return result.id
-            return "|".join(r for r in result)
+                return result._.step.id
+            return "|".join(r._.step.id for r in result)
 
         results = sorted(
             set({w.result for w in hashable_workflows if w.has_result}),
@@ -697,6 +823,7 @@ class Workflow:
         return_type: type | None,
         kwargs: dict[str, Any],
         positional_args: dict[str, bool] | None = None,
+        __sequence_num__: int | None = None,
     ) -> StepReference[Any]:
         """Append a nested step.
 
@@ -712,6 +839,7 @@ class Workflow:
         Returns: a reference to the step that calls out to a new workflow.
         """
         step = NestedStep(self, name, subworkflow, kwargs)
+        step.__sequence_num__ = __sequence_num__
         if positional_args is not None:
             step.positional_args = positional_args
         self._steps.append(step)
@@ -727,6 +855,7 @@ class Workflow:
         raw_as_parameter: bool = False,
         is_factory: bool = False,
         positional_args: dict[str, bool] | None = None,
+        __sequence_num__: int | None = None,
     ) -> StepReference[Any]:
         """Append a step.
 
@@ -742,7 +871,13 @@ class Workflow:
         """
         task = self.register_task(fn)
         step_maker = FactoryCall if is_factory else Step
-        step = step_maker(self, task, kwargs, raw_as_parameter=raw_as_parameter)
+        step = step_maker(
+            self,
+            task,
+            kwargs,
+            raw_as_parameter=raw_as_parameter,
+            __sequence_num__=__sequence_num__,
+        )
         if positional_args is not None:
             step.positional_args = positional_args
         self._steps.append(step)
@@ -1119,6 +1254,20 @@ class BaseStep(WorkflowComponent):
     arguments: Mapping[str, Basic | Reference[Any] | Raw]
     workflow: Workflow
     positional_args: dict[str, bool] | None = None
+    __sequence_num__: int | None = None
+
+    def __str__(self) -> str:
+        """Return a string representation of the step."""
+        return " ".join(
+            [
+                self.id,
+                " = ",
+                str(self.task),
+                "(",
+                " ".join(f"{k}={v}" for k, v in self.arguments.items()),
+                ")",
+            ]
+        )
 
     def __init__(
         self,
@@ -1126,6 +1275,7 @@ class BaseStep(WorkflowComponent):
         task: Task | Workflow,
         arguments: Mapping[str, Reference[Any] | Raw],
         raw_as_parameter: bool = False,
+        __sequence_num__: int | None = None,
     ):
         """Initialize a step.
 
@@ -1138,6 +1288,7 @@ class BaseStep(WorkflowComponent):
         super().__init__(workflow=workflow)
         self.task = task
         self.arguments = {}
+        self.__sequence_num__ = __sequence_num__
         for key, value in arguments.items():
             if (
                 isinstance(value, FactoryCall)
@@ -1401,6 +1552,7 @@ class FactoryCall(Step):
         task: Task | Workflow,
         arguments: Mapping[str, Reference[Any] | Raw],
         raw_as_parameter: bool = False,
+        __sequence_num__: int | None = None,
     ):
         """Initialize a step.
 
@@ -1426,6 +1578,7 @@ class FactoryCall(Step):
             task=task,
             arguments=arguments,
             raw_as_parameter=raw_as_parameter,
+            __sequence_num__=__sequence_num__,
         )
 
     @property
@@ -1819,10 +1972,14 @@ def execute_step(task: Any, **kwargs: Any) -> Any:
         task: the task to evaluate.
         **kwargs: any arguments to pass to the task.
     """
+    from dask.base import is_dask_collection
+
     if isinstance(task, list):
         return [execute_step(t, **kwargs) for t in task]
     elif isinstance(task, tuple):
         return tuple(execute_step(t, **kwargs) for t in task)
+    elif is_dask_collection(task):
+        task = task.compute()
 
     if not isinstance(task, StepReference):
         raise TypeError(
@@ -1862,7 +2019,9 @@ def is_task(task: Lazy) -> bool:
     Returns:
         True if `task` is indeed a task.
     """
-    return isinstance(task, LazyEvaluation)
+    return (hasattr(task, "_obj") and isinstance(task._obj, TaskWrapper)) or isinstance(
+        task, TaskWrapper
+    )
 
 
 def expr_to_references(
@@ -1975,7 +2134,7 @@ def unify_workflows(
                 and new_workflow
             ):
                 collected_workflow = Workflow.assimilate(
-                    collected_workflow, new_workflow
+                    (collected_workflow, 0), (new_workflow, 1)
                 )
 
     # Make sure all the results share it

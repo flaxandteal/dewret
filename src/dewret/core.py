@@ -632,3 +632,28 @@ class Raw:
         else:
             value = str(self.value)
         return f"{type(self.value).__name__}|{value}"
+    
+class SequenceManager:
+    """Manage sequence numbers using ContextVars."""
+
+    @classmethod
+    def get_sequence_num(cls, context_var: ContextVar[int]) -> int:
+        """Get and increment the current sequence number for the given ContextVar."""
+        current = context_var.get()
+        context_var.set(current + 1)
+        return current
+
+    @classmethod
+    def reset_sequence_num(cls, context_var: ContextVar[int]) -> None:
+        """Reset the sequence number for the given ContextVar."""
+        context_var.set(0)
+
+    @classmethod
+    @contextmanager
+    def sequence_context(cls, context_var: ContextVar[int]) -> Generator[None, None, None]:
+        """Create a fresh sequence context for the given ContextVar."""
+        token = context_var.set(0)
+        try:
+            yield
+        finally:
+            context_var.reset(token) 

@@ -21,7 +21,8 @@ from dask.delayed import delayed, DelayedLeaf
 from dask.config import config
 from typing import Protocol, runtime_checkable, Any, cast
 from concurrent.futures import ThreadPoolExecutor
-from dewret.workflow import Workflow, Lazy, StepReference, Target
+from dewret.workflow import Workflow, Lazy, StepReference, Target, _SEQUENCE_NUM
+from dewret.core import SequenceManager
 
 
 @runtime_checkable
@@ -40,7 +41,7 @@ class Delayed(Protocol):
         """Retrieve the dask graph."""
         ...
 
-    def compute(self, __workflow__: Workflow | None) -> StepReference[Any]:
+    def compute(self, __workflow__: Workflow | None, __in_nested_task__: bool = False) -> StepReference[Any]:
         """Evaluate this `dask.delayed`.
 
         Evaluate a delayed (dask lazy-evaluated) function. dewret
@@ -73,7 +74,7 @@ def unwrap(task: Lazy) -> Target:
         RuntimeError: if the task is not a wrapped function.
     """
     if not isinstance(task, DelayedLeaf):
-        raise RuntimeError("Task is not for this backend")
+        raise RuntimeError(f"Task {task} {type(task)} is not for this backend")
     if not callable(task):
         raise RuntimeError("Task is not actually a callable")
     return cast(Target, task._obj)
@@ -96,10 +97,12 @@ def is_lazy(task: Any) -> bool:
 lazy = delayed
 
 
+
 def run(
     workflow: Workflow | None,
     task: Lazy | list[Lazy] | tuple[Lazy, ...],
     thread_pool: ThreadPoolExecutor | None = None,
+    in_nested_task: bool = False,
     **kwargs: Any,
 ) -> Any:
     """Execute a task as the output of a workflow.
@@ -110,6 +113,7 @@ def run(
         workflow: `Workflow` in which to record the execution.
         task: `dask.delayed` function, wrapped by dewret, that we wish to compute.
         thread_pool: custom thread pool for executing workflows, copies in correct values for contextvars to each thread before they are accessed by a dask worker.
+        in_nested_task: bool to flag if the task is part of a larger workflow tree
         **kwargs: any configuration arguments for this backend.
     """
     # def _check_delayed was here, but we decided to delegate this to dask
@@ -119,5 +123,6 @@ def run(
     else:
         computable = delayed(task)
     config["pool"] = thread_pool
-    result = computable.compute(__workflow__=workflow)
+    with SequenceManager.sequence_context(_SEQUENCE_NUM):
+        result = computable.compute(__workflow__=workflow, __in_nested_task__=in_nested_task)
     return result

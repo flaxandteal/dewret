@@ -96,7 +96,7 @@ def test_missing_arguments_throw_error() -> None:
     mismatch, but `mypy` should. You **must** type-check your code to catch these.
     """
     with pytest.raises(TaskException) as exc:
-        add_task(left=3)  # type: ignore
+        construct(add_task(left=3))  # type: ignore
     end_section = str(exc.getrepr())[-500:]
     assert str(exc.value) == "missing a required argument: 'right'"
     assert "Task add_task declared in <module> at " in end_section
@@ -113,8 +113,9 @@ def test_missing_arguments_throw_error_in_subworkflow() -> None:
     mismatch, but `mypy` should. You **must** type-check your code to catch these.
     """
     with pytest.raises(TaskException) as exc:
-        badly_add_task(left=3, right=4)
+        construct(badly_add_task(left=3, right=4))
     end_section = str(exc.getrepr())[-500:]
+    # Currently, this fails because dask tracebacks are much longer
     assert str(exc.value) == "missing a required argument: 'right'"
     assert "def badly_add_task" in end_section
     assert "Task add_task declared in <module> at " in end_section
@@ -128,7 +129,7 @@ def test_positional_arguments_throw_error() -> None:
     to _always_ be named.
     """
     with pytest.raises(TaskException) as exc:
-        add_task(3, right=4)
+        construct(add_task(3, right=4))
     assert (
         str(exc.value)
         .strip()
@@ -144,7 +145,7 @@ def test_nesting_non_subworkflows_throws_error() -> None:
     a task should not be called inside a non-nested task.
     """
     with pytest.raises(TaskException) as exc:
-        badly_wrap_task()
+        construct(badly_wrap_task())
     assert (
         str(exc.value)
         .strip()
@@ -194,7 +195,7 @@ def test_nesting_does_not_identify_imports_as_nesting() -> None:
     # Bug not a feature.
     for tsk in bad:
         with pytest.raises(TaskException) as exc:
-            tsk()
+            construct(tsk())
         assert str(exc.value).strip().startswith("You referenced a task")
     for tsk in good:
         result = tsk()
@@ -211,7 +212,7 @@ def test_normal_objects_cannot_be_used_in_subworkflows() -> None:
     Note: this may be mitigated with sympy support, to some extent.
     """
     with pytest.raises(TaskException) as exc:
-        unacceptable_object_usage()
+        construct(unacceptable_object_usage())
     assert (
         str(exc.value)
         == "Attempted to build a workflow from a return-value/result/expression with no references."
@@ -250,7 +251,7 @@ def test_must_annotate_global() -> None:
         return increment(num=bad_num)
 
     with pytest.raises(TaskException) as exc:
-        check_annotation()
+        construct(check_annotation())
 
     assert (
         str(exc.value)
@@ -262,7 +263,7 @@ def test_must_annotate_global() -> None:
         return increment(num=worse_num)
 
     with pytest.raises(TaskException) as exc:
-        check_annotation_2()
+        construct(check_annotation_2())
 
     assert (
         str(exc.value)
@@ -273,4 +274,4 @@ def test_must_annotate_global() -> None:
     def check_annotation_3() -> int | float:
         return increment(num=good_num)
 
-    check_annotation_3()
+    construct(check_annotation_3())

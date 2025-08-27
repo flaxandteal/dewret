@@ -57,7 +57,7 @@ from dewret.utils import (
     flatten_if_set,
     Unset,
 )
-from dewret.render import base_render
+from dewret.render import base_render, TransparentOrderedDict
 from dewret.core import Reference, get_render_configuration, set_render_configuration
 
 
@@ -162,6 +162,7 @@ class CWLRendererConfiguration(TypedDict):
 
     allow_complex_types: NotRequired[bool]
     factories_as_params: NotRequired[bool]
+    sort_steps: NotRequired[bool]
 
 
 def default_config() -> CWLRendererConfiguration:
@@ -176,6 +177,7 @@ def default_config() -> CWLRendererConfiguration:
     return {
         "allow_complex_types": False,
         "factories_as_params": False,
+        "sort_steps": False,
     }
 
 
@@ -295,18 +297,17 @@ class StepDefinition:
             out = to_output_schema("out", step.return_type)["fields"]
         else:
             out = ["out"]
+
+        def _to_ref(param: Reference[Any] | Basic| Raw) -> ReferenceDefinition | Raw:
+            if isinstance(param, (Basic, Reference)):
+                return render_expression(param)
+            return param
+
         return cls(
             name=step.name,
             run=step.task.name,
             out=out,
-            in_={
-                key: (
-                    ReferenceDefinition.from_reference(param)
-                    if isinstance(param, Reference)
-                    else param
-                )
-                for key, param in step.arguments.items()
-            },
+            in_={key: (_to_ref(param)) for key, param in step.arguments.items()},
         )
 
     def render(self) -> dict[str, RawType]:
@@ -316,20 +317,21 @@ class StepDefinition:
             Reduced form as a native Python dict structure for
             serialization.
         """
+
+        def _render(ref: ReferenceDefinition | Raw) -> dict[str, RawType]:
+            return (
+                ref.render()
+                if isinstance(ref, ReferenceDefinition)
+                else render_expression(ref).render()
+                if isinstance(ref, Basic)
+                else {"default": firm_to_raw(ref.value)}
+                if hasattr(ref, "value")
+                else render_expression(ref).render()
+            )
+
         return {
             "run": self.run,
-            "in": {
-                key: (
-                    ref.render()
-                    if isinstance(ref, ReferenceDefinition)
-                    else render_expression(ref).render()
-                    if isinstance(ref, Basic)
-                    else {"default": firm_to_raw(ref.value)}
-                    if hasattr(ref, "value")
-                    else render_expression(ref).render()
-                )
-                for key, ref in self.in_.items()
-            },
+            "in": {key: _render(ref) for key, ref in self.in_.items()},
             "out": crawl_raw(self.out),
         }
 
@@ -702,7 +704,7 @@ class WorkflowDefinition:
 
     @classmethod
     def from_workflow(
-        cls, workflow: Workflow, name: None | str = None
+        cls, workflow: Workflow, name: None | str = None, sort_steps: bool = False
     ) -> "WorkflowDefinition":
         """Build from a `Workflow`.
 
@@ -711,6 +713,8 @@ class WorkflowDefinition:
         Args:
             workflow: workflow to convert.
             name: name of this workflow, if it should have one.
+            sort_steps: whether to sort the steps based on the sequence number. If True, steps are ordered
+            via the sequence number.
         """
         parameters: list[ParameterReference[Any] | FactoryCall] = list(
             workflow.find_parameters(
@@ -721,10 +725,16 @@ class WorkflowDefinition:
         )
         if get_render_configuration("factories_as_params"):
             parameters += list(workflow.find_factories().values())
+
+        steps_source = (
+            workflow.sequenced_steps if sort_steps else workflow.indexed_steps
+        )
+        #print([s for s in steps_source])
+
         return cls(
             steps=[
                 StepDefinition.from_step(step)
-                for step in workflow.indexed_steps.values()
+                for step in steps_source.values()
                 if not (
                     isinstance(step, FactoryCall)
                     and get_render_configuration("factories_as_params")
@@ -753,7 +763,9 @@ class WorkflowDefinition:
             "class": "Workflow",
             "inputs": self.inputs.render(),
             "outputs": self.outputs.render(),
-            "steps": {step.name: step.render() for step in self.steps},
+            "steps": TransparentOrderedDict(
+                [(step.name, step.render()) for step in self.steps]
+            ),
         }
 
 
@@ -770,10 +782,14 @@ def render(
         Reduced form as a native Python dict structure for
         serialization.
     """
+    sort_steps = kwargs.get("sort_steps", False)
+
     # TODO: Again, convincing mypy that a TypedDict has RawType values.
     with set_render_configuration(kwargs):  # type: ignore
         rendered = base_render(
             workflow,
-            lambda workflow: WorkflowDefinition.from_workflow(workflow).render(),
+            lambda workflow: WorkflowDefinition.from_workflow(
+                workflow, sort_steps=sort_steps
+            ).render(),
         )
     return rendered
