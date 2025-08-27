@@ -119,7 +119,7 @@ Proof-of-concept work that can be extended to full features:
 ## Why Dewret Now?
 
 ### **Industry Trends**
-- Growing adoption of workflow standards (CWL adoption up 300% in life sciences)
+- Growing adoption of workflow standards
 - Increased focus on reproducible research and FAIR data principles
 - Multi-cloud strategies requiring portable workloads
 
