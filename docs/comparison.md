@@ -1,8 +1,14 @@
 # Dewret Comparison Guide
 
+## Synopsis
+
+Dewret occupies a unique position in the workflow ecosystem as a general-purpose **Python-to-workflow compiler**. It's not a replacement for execution engines or orchestrators, but rather a tool that makes writing portable workflows as easy as writing Python code. This makes it ideal for scenarios where workflow portability, standards compliance, and developer productivity are paramount.
+
 ## Overview
 
 This guide compares Dewret with leading workflow creation and orchestration tools, highlighting the unique value proposition and trade-offs of each approach.
+
+As explained above, Dewret is not a workflow execution engine - it uses dask internally - so, strictly, comparisons are between each engine and Dewret-plus-any-execution-backend (e.g. [cwltool](https://cwltool.readthedocs.io/)).
 
 ## Quick Comparison Matrix
 
@@ -252,7 +258,3 @@ This guide compares Dewret with leading workflow creation and orchestration tool
 - Interactive analysis (Dask)
 - Real-time processing
 - No workflow persistence needed
-
-## Conclusion
-
-Dewret occupies a unique position in the workflow ecosystem as a **Python-to-workflow compiler**. It's not a replacement for execution engines or orchestrators, but rather a tool that makes writing portable workflows as easy as writing Python code. This makes it ideal for scenarios where workflow portability, standards compliance, and developer productivity are paramount.
