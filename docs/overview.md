@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-**Dewret** (DEclarative Workflow REndering Tool) is a Python framework that bridges the gap between dynamic, code-based workflows and static, portable workflow specifications. It enables organizations to write complex computational workflows in familiar Python syntax while automatically generating standard workflow formats (CWL) for execution across diverse computing environments.
+**Dewret** (DEclarative Workflow REndering Tool) is a Python framework that bridges the gap between dynamic, code-based workflows and static, portable workflow specifications. It enables organizations to write complex computational workflows in familiar Python syntax while automatically generating standard workflow formats (such as CWL) for execution across diverse computing environments.
 
 ## The Problem
 
