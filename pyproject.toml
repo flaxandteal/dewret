@@ -20,11 +20,6 @@ exclude_source = true
 markdown_extensions = [
   { "pymdownx.superfences" = {} }
 ]
-plugins = [{
-  "literate-nav" = {
-    "navfile" = "SUMMARY.md"
-  }
-}]
 
 [tool.ruff.lint]
 select = ["D", "F", "B"]
