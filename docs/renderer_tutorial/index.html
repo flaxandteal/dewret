@@ -1,0 +1,1623 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.5.4">
+    
+    
+      
+        <title>Renderer Tutorial - dewret</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.80dcb947.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.cbb835fc.min.css">
+        
+          
+          
+          <meta name="theme-color" content="#4cae4f">
+        
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="green" data-md-color-accent="lightgreen">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#step-by-step-guide-to-writing-a-custom-renderer" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="dewret" class="md-header__button md-logo" aria-label="dewret" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            dewret
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Renderer Tutorial
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/flaxandteal/dewret" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dewret
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="dewret" class="md-nav__button md-logo" aria-label="dewret" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    dewret
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/flaxandteal/dewret" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dewret
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comparison/" class="md-nav__link">
+        Comparison
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eager_execution/" class="md-nav__link">
+        Eager Execution
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glossary/" class="md-nav__link">
+        Glossary
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        Quickstart
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Renderer Tutorial
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Renderer Tutorial
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-understand-the-target-workflow-language" class="md-nav__link">
+    1. Understand the Target Workflow Language
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Understand the Target Workflow Language">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    Example:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-create-workflowdefinition" class="md-nav__link">
+    2. Create WorkflowDefinition.
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Create WorkflowDefinition.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    Example:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-ensuring-our-module-is-recognized-as-a-render-module" class="md-nav__link">
+    3.  Ensuring Our Module is Recognized as a Render Module
+  </a>
+  
+    <nav class="md-nav" aria-label="3.  Ensuring Our Module is Recognized as a Render Module">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implementing-baserendermodule" class="md-nav__link">
+    Implementing BaseRenderModule
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementing-either-rawrendermodule-or-structuredrendermodule" class="md-nav__link">
+    Implementing either RawRenderModule or StructuredRenderModule
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-create-a-stepdefinition" class="md-nav__link">
+    4. Create a StepDefinition.
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Create a StepDefinition.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_2" class="md-nav__link">
+    Example:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-create-the-separate-block-definitions" class="md-nav__link">
+    5. Create the Separate block definitions.
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Create the Separate block definitions.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_3" class="md-nav__link">
+    Example:
+  </a>
+  
+    <nav class="md-nav" aria-label="Example:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inputdefinition" class="md-nav__link">
+    InputDefinition:
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rundefinition" class="md-nav__link">
+    RunDefinition:
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outputdefinition" class="md-nav__link">
+    OutputDefinition:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-helper-methods" class="md-nav__link">
+    6. Helper methods.
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Helper methods.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_4" class="md-nav__link">
+    Example:
+  </a>
+  
+    <nav class="md-nav" aria-label="Example:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#type-conversion-helper" class="md-nav__link">
+    Type Conversion Helper:
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#argument-extraction-helper" class="md-nav__link">
+    Argument Extraction Helper:
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relative-path-computation-helper" class="md-nav__link">
+    Relative Path Computation Helper:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#imports-and-custom-types-required-in-the-smk-example" class="md-nav__link">
+    Imports and custom types required in the SMK example:
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#to-run-this-example" class="md-nav__link">
+    To run this example:
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renderers/" class="md-nav__link">
+        Renderers
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workflows/" class="md-nav__link">
+        Workflows
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_10" type="checkbox" id="__nav_10" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_10">
+          Reference
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Reference" data-md-level="1">
+        <label class="md-nav__title" for="__nav_10">
+          <span class="md-nav__icon md-icon"></span>
+          Reference
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_10_1" type="checkbox" id="__nav_10_1" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_10_1">
+          Dewret
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Dewret" data-md-level="2">
+        <label class="md-nav__title" for="__nav_10_1">
+          <span class="md-nav__icon md-icon"></span>
+          Dewret
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/annotations/" class="md-nav__link">
+        Annotations
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/cli/" class="md-nav__link">
+        CLI
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/core/" class="md-nav__link">
+        Core
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/" class="md-nav__link">
+        Index
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/render/" class="md-nav__link">
+        Render
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/tasks/" class="md-nav__link">
+        Tasks
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/utils/" class="md-nav__link">
+        Utils
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/workflow/" class="md-nav__link">
+        Workflow
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_10_1_9" type="checkbox" id="__nav_10_1_9" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_10_1_9">
+          Backends
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Backends" data-md-level="3">
+        <label class="md-nav__title" for="__nav_10_1_9">
+          <span class="md-nav__icon md-icon"></span>
+          Backends
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/backends/backend_dask/" class="md-nav__link">
+        Backend Dask
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/backends/" class="md-nav__link">
+        Index
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_10_1_10" type="checkbox" id="__nav_10_1_10" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_10_1_10">
+          Renderers
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Renderers" data-md-level="3">
+        <label class="md-nav__title" for="__nav_10_1_10">
+          <span class="md-nav__icon md-icon"></span>
+          Renderers
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/renderers/cwl/" class="md-nav__link">
+        Cwl
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/renderers/" class="md-nav__link">
+        Index
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dewret/renderers/snakemake/" class="md-nav__link">
+        Snakemake
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-understand-the-target-workflow-language" class="md-nav__link">
+    1. Understand the Target Workflow Language
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Understand the Target Workflow Language">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    Example:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-create-workflowdefinition" class="md-nav__link">
+    2. Create WorkflowDefinition.
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Create WorkflowDefinition.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    Example:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-ensuring-our-module-is-recognized-as-a-render-module" class="md-nav__link">
+    3.  Ensuring Our Module is Recognized as a Render Module
+  </a>
+  
+    <nav class="md-nav" aria-label="3.  Ensuring Our Module is Recognized as a Render Module">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implementing-baserendermodule" class="md-nav__link">
+    Implementing BaseRenderModule
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementing-either-rawrendermodule-or-structuredrendermodule" class="md-nav__link">
+    Implementing either RawRenderModule or StructuredRenderModule
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-create-a-stepdefinition" class="md-nav__link">
+    4. Create a StepDefinition.
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Create a StepDefinition.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_2" class="md-nav__link">
+    Example:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-create-the-separate-block-definitions" class="md-nav__link">
+    5. Create the Separate block definitions.
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Create the Separate block definitions.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_3" class="md-nav__link">
+    Example:
+  </a>
+  
+    <nav class="md-nav" aria-label="Example:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inputdefinition" class="md-nav__link">
+    InputDefinition:
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rundefinition" class="md-nav__link">
+    RunDefinition:
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outputdefinition" class="md-nav__link">
+    OutputDefinition:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-helper-methods" class="md-nav__link">
+    6. Helper methods.
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Helper methods.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_4" class="md-nav__link">
+    Example:
+  </a>
+  
+    <nav class="md-nav" aria-label="Example:">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#type-conversion-helper" class="md-nav__link">
+    Type Conversion Helper:
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#argument-extraction-helper" class="md-nav__link">
+    Argument Extraction Helper:
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relative-path-computation-helper" class="md-nav__link">
+    Relative Path Computation Helper:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#imports-and-custom-types-required-in-the-smk-example" class="md-nav__link">
+    Imports and custom types required in the SMK example:
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#to-run-this-example" class="md-nav__link">
+    To run this example:
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  <a href="https://github.com/flaxandteal/dewret/edit/main/docs/renderer_tutorial.md" title="Edit this page" class="md-content__button md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
+  </a>
+
+
+<h1 id="step-by-step-guide-to-writing-a-custom-renderer">Step-by-Step Guide to Writing a Custom Renderer</h1>
+<h2 id="1-understand-the-target-workflow-language">1. Understand the Target Workflow Language</h2>
+<p>Before writing any code, it is essential to fully understand the target workflow language. This includes syntax, structure, and specific requirements. By breaking down each key <code>dewret.workflow</code> task into smaller components, you can better map your workflow definitions to the target language.</p>
+<h3 id="example">Example:</h3>
+<p>In Snakemake, a workflow task is generally created by:</p>
+<ol>
+<li>Defining the task. - <code>rule process_data</code></li>
+<li>Defining the input required for the rule to run(dependencies). - <code>input: "data/raw_data.txt"</code></li>
+<li>Defining the output required for the rule to be considered finished. - <code>output: "data/processed_data.txt"</code></li>
+<li>Defining the actual work that the task will do. - in this case:<code>shell: ...</code></li>
+</ol>
+<div class="highlight"><pre><span></span><code>rule<span class="w"> </span>process_data:<span class="w"> </span><span class="c1"># Example Snakemake rule/task</span>
+<span class="w">    </span>input:
+<span class="w">        </span><span class="s2">&quot;data/raw_data.txt&quot;</span>
+<span class="w">    </span>output:
+<span class="w">        </span><span class="nv">output_file</span><span class="o">=</span><span class="s2">&quot;data/processed_data.txt&quot;</span>
+<span class="w">    </span>run:
+<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>output.output_file,<span class="w"> </span><span class="s2">&quot;w&quot;</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>f:
+<span class="w">            </span>f.write<span class="o">(</span><span class="s2">&quot;data&quot;</span><span class="o">)</span>
+
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>output_file
+</code></pre></div>
+<h2 id="2-create-workflowdefinition">2. Create WorkflowDefinition.</h2>
+<p>The WorkflowDefinition class is responsible for transforming each step from a constructed <code>dewret</code> workflow into an executable step in the target workflow language (e.g. a Snakemake rule). This class should encapsulate workflow-level information, such as the list of steps to be executed, and any workflow-scope input/ouput. It should also contain a class method that initializes the <code>WorkflowDefinition</code> from an <code>dewret</code> <code>Workflow</code> (such as <code>from_workflow</code> below), and a method that renders the workflow as a Python dict (as in the <code>render</code> method below).</p>
+<h3 id="example_1">Example:</h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@define</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">WorkflowDefinition</span><span class="p">:</span>
+    <span class="n">steps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">StepDefinition</span><span class="p">]</span>
+
+    <span class="c1"># Returns a WorkflowDefinition instanace.</span>
+    <span class="c1"># Steps contains all of the tasks you want to convert to the target WL tasks.</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_workflow</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="n">Workflow</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;WorkflowDefinition&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="p">[</span><span class="n">StepDefinition</span><span class="o">.</span><span class="n">from_step</span><span class="p">(</span><span class="n">step</span><span class="p">)</span> <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">workflow</span><span class="o">.</span><span class="n">steps</span><span class="p">])</span>
+
+    <span class="c1"># Returns each task as a Snakemake executable rule.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">RawType</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="sa">f</span><span class="s2">&quot;rule </span><span class="si">{</span><span class="n">step</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;_&quot;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">step</span><span class="o">.</span><span class="n">render</span><span class="p">()</span> <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">steps</span>
+        <span class="p">}</span>
+</code></pre></div>
+<h2 id="3-ensuring-our-module-is-recognized-as-a-render-module">3.  Ensuring Our Module is Recognized as a Render Module</h2>
+<p>To have our custom renderer identified by Dewret as a valid renderer, we need to implement the <code>BaseRenderModule</code> along with one of the two protocols: <code>RawRenderModule</code> or <code>StructuredRenderModule</code>.</p>
+<h4 id="implementing-baserendermodule">Implementing BaseRenderModule</h4>
+<p>The <code>BaseRenderModule</code> defines the foundation for a custom renderer. To implement this protocol, we need to define the <code>default_config()</code> method, which provides default configurations for our renderer.</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">default_config</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">CWLRendererConfiguration</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Default configuration for this renderer.</span>
+
+<span class="sd">    This is a hook-like call to give a configuration dict that this renderer</span>
+<span class="sd">    will respect, and sets any necessary default values.</span>
+
+<span class="sd">    Returns: a dict with (preferably) raw type structures to enable easy setting</span>
+<span class="sd">        from YAML/JSON.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;allow_complex_types&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;factories_as_params&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">}</span>
+</code></pre></div>
+<p>After implementing <code>BaseRenderModule</code>, you need to implement either the <code>RawRenderModule</code> or <code>StructuredRenderModule</code> protocol, depending on how you want to handle the workflow rendering.</p>
+<h4 id="implementing-either-rawrendermodule-or-structuredrendermodule">Implementing either RawRenderModule or StructuredRenderModule</h4>
+<p>The <code>StructuredRenderModule</code> is designed for structured workflows that are directly ready to be output in the respective format (e.g., CWL, Snakemake, etc.). The key method to implement is <code>render</code>, which converts a workflow into a structured, serializable format.
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="n">WorkflowProtocol</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">RenderConfiguration</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">RawType</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turn a workflow into a serializable structure.</span>
+
+<span class="sd">        Returns: one or more subworkflows with a `__root__` key representing the outermost workflow, at least.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span>
+</code></pre></div>
+In this method:
+- You receive a workflow and potentially some optional configurations.
+- You return a dictionary where the <code>__root__</code> key holds the primary workflow and any additional subworkflows are nested inside the returned structure.</p>
+<p>If you prefer more flexibility and want the structuring to be handled by the user, you can implement the <code>RawRenderModule</code> protocol. This requires defining the <code>render_raw</code> method, which converts a workflow into raw, flat strings.
+<div class="highlight"><pre><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">render_raw</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="n">WorkflowProtocol</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">RenderConfiguration</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turn a workflow into flat strings.</span>
+
+<span class="sd">        Returns: one or more subworkflows with a `__root__` key representing the outermost workflow, at least.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span>
+</code></pre></div>
+In this method:</p>
+<ul>
+<li>The workflow is rendered as raw, unstructured strings.</li>
+<li>The user is responsible for handling the structuring of the rendered output.</li>
+</ul>
+<h2 id="4-create-a-stepdefinition">4. Create a StepDefinition.</h2>
+<p>Create a StepsDefinition class create each of the code blocks needed for a rule(step) to be executable in Snakemake.
+When you have defined each block in your target workflow language task from <a href="#1-understand-the-target-workflow-language">step 1</a>,
+you can go ahead and create, for each of the code blocks required to run a Snakemake rule, a <code>BlockDefinition</code> to handle the rendering of each block.</p>
+<h3 id="example_2">Example:</h3>
+<p>In the Snakemake example, we have created:
+1. <code>InputDefinition</code> - Handles the input block, which contains what is required for a rule to be executed. It also handles the params block since the code for extracting the input and params blocks is similar.
+2. <code>RunDefinition</code> - Handles the run block which contains the instructions needed for this specific task. 
+3. <code>OutputDefinition</code> - Handles the output block which is required for the rule to be considered successfully finished.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@define</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StepDefinition</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a Snakemake-renderable step definition in a dewret workflow.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        name (str): The name of the step.</span>
+<span class="sd">        run (str): The run block definition for the step.</span>
+<span class="sd">        params (List[str]): The parameter definitions for the step.</span>
+<span class="sd">        output (list[str]: The output definition for the step.</span>
+<span class="sd">        input (List[str]): The input definitions for the step.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        from_step(cls, step: Step) -&gt; &quot;StepDefinition&quot;: Constructs a StepDefinition</span>
+<span class="sd">            object from a Step object, extracting step information and components</span>
+<span class="sd">            from the step and converting them to Snakemake format.</span>
+<span class="sd">        render(self) -&gt; dict[str, MainTypes]: Renders the step definition as a dictionary</span>
+<span class="sd">            suitable for use in Snakemake workflows.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># You can consider each step as a separate rule.</span>
+    <span class="c1"># Each field in this class represents a separate block in the rule definition</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="c1"># name of the rule</span>
+    <span class="nb">input</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="c1"># Input block</span>
+    <span class="n">params</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="c1"># Params block</span>
+    <span class="n">output</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="c1"># Output block</span>
+    <span class="n">run</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="c1"># Run block - where the instructions for the task are</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_step</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="n">Step</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;StepDefinition&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructs a StepDefinition object from a Step.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            step (Step): The Step object from which step information and components</span>
+<span class="sd">                are extracted.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            StepDefinition: A StepDefinition object containing the converted step</span>
+<span class="sd">                information and components.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">input_block</span> <span class="o">=</span> <span class="n">InputDefinition</span><span class="o">.</span><span class="n">from_step</span><span class="p">(</span><span class="n">step</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+        <span class="n">run_block</span> <span class="o">=</span> <span class="n">RunDefinition</span><span class="o">.</span><span class="n">from_task</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">task</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+        <span class="n">output_block</span> <span class="o">=</span> <span class="n">OutputDefinition</span><span class="o">.</span><span class="n">from_step</span><span class="p">(</span><span class="n">step</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">step</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> 
+            <span class="n">run</span><span class="o">=</span><span class="n">run_block</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="n">input_block</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">],</span>
+            <span class="nb">input</span><span class="o">=</span><span class="n">input_block</span><span class="p">[</span><span class="s2">&quot;inputs&quot;</span><span class="p">],</span>
+            <span class="n">output</span><span class="o">=</span><span class="n">output_block</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MainTypes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Renders the step definition as a dictionary.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict[str, MainTypes]: A dictionary containing the components of the step</span>
+<span class="sd">                definition, for use in Snakemake workflows.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;run&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">,</span>
+            <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
+            <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+            <span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">,</span>
+        <span class="p">}</span>
+</code></pre></div>
+<h2 id="5-create-the-separate-block-definitions">5. Create the Separate block definitions.</h2>
+<p>In this step, you'll define classes to handle the rendering of each code block required for a rule (step) to be executable in the target workflow language. Each of these classes will encapsulate the logic for converting parts of a workflow step into the target language format.</p>
+<h3 id="example_3">Example:</h3>
+<p>For the Snakemake workflow language, we will define:</p>
+<ol>
+<li>InputDefinition: Handles the input block and parameter block.</li>
+<li>RunDefinition: Handles the run block.</li>
+<li>OutputDefinition: Handles the output block.</li>
+</ol>
+<h4 id="inputdefinition">InputDefinition:</h4>
+<p>The InputDefinition class is responsible for rendering the inputs and parameters required for a Snakemake rule.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@define</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InputDefinition</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents input and parameter definitions block for a Snakemake-renderable workflow step.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        inputs (List[str]): A list of input definitions.</span>
+<span class="sd">        params (List[str]): A list of parameter definitions.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        from_step(cls, step: Step) -&gt; &quot;InputDefinition&quot;: Constructs an InputDefinition</span>
+<span class="sd">            object from a Step object, extracting inputs and parameters and converting</span>
+<span class="sd">            them to Snakemake-compatible format.</span>
+<span class="sd">        render(self) -&gt; dict[str, str]: Renders the input and parameter definitions</span>
+<span class="sd">            as a dictionary for use in Snakemake Input and Params blocks.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># As we already mention input and params block have similar generation</span>
+    <span class="c1"># So it made sence to encapsulate them into one Definition</span>
+    <span class="n">inputs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">params</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_step</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="n">Step</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;InputDefinition&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructs an InputDefinition object from a Step.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            step (Step): The Step object from which input and parameter block definitions are</span>
+<span class="sd">                extracted.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            InputDefinition: An InputDefinition object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># The keys represent the names of the arguments of the @tasks in our snakemake_workflow.py.</span>
+        <span class="c1"># The params represent the values.</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">step</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># We check if the param is a reference.</span>
+            <span class="c1"># If it is then it&#39;s an input requirement for the rule to run, so we put it in the input block</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">Reference</span><span class="p">):</span>
+                <span class="n">ref</span> <span class="o">=</span> <span class="n">ReferenceDefinition</span><span class="o">.</span><span class="n">from_reference</span><span class="p">(</span><span class="n">param</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span><span class="s2">&quot;_&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;/out&quot;</span><span class="p">,</span> <span class="s2">&quot;.output&quot;</span><span class="p">)</span>
+                <span class="nb">input</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=rules.</span><span class="si">{</span><span class="n">ref</span><span class="si">}</span><span class="s2">.output_file&quot;</span>
+                <span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+                <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">input</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span><span class="p">)</span>
+            <span class="c1"># If it&#39;s not - we put it in the params block for use in the RunDefinition</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">Raw</span><span class="p">):</span>
+                <span class="n">customized</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">to_snakemake_type</span><span class="p">(</span><span class="n">param</span><span class="p">)</span><span class="si">}</span><span class="s2">,&quot;</span>
+                <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">customized</span><span class="p">)</span>
+
+        <span class="c1"># Since the params must be comma separated except the last one - we remove the last comma</span>
+        <span class="k">if</span> <span class="n">params</span><span class="p">:</span>
+            <span class="n">params</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Renders the input and parameter definitions as a dictionary.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict[str, list[MainTypes]]: A dictionary containing the input and parameter definitions,</span>
+<span class="sd">                for use in Snakemake Input and Params blocks.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;inputs&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">}</span>
+</code></pre></div>
+<h4 id="rundefinition">RunDefinition:</h4>
+<p>The RunDefinition class is responsible for rendering the run block, which contains the actual instructions for the task.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@define</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RunDefinition</span><span class="p">:</span>
+    <span class="c1"># This is where we handle the execution of the task itself.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a Snakemake-renderable run block for a dewret workflow step.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        method_name (str): The name of the method to be executed in the snakefile run block.</span>
+<span class="sd">        rel_import (str): The relative import path of the method.</span>
+<span class="sd">        args (List[str]): The arguments to be passed to the method.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        from_task(cls, task: Task) -&gt; &quot;RunDefinition&quot;: Constructs a RunDefinition</span>
+<span class="sd">            object from a Task object, extracting method information and arguments</span>
+<span class="sd">            from the task and converting them to Snakemake-compatible format.</span>
+
+<span class="sd">        render(self) -&gt; list[str]: A list containing the import statement and the method</span>
+<span class="sd">            call statement, for use in Snakemake run block.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">method_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">rel_import</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">args</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_task</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;RunDefinition&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructs a RunDefinition object from a Task.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task (Task): The Task object from which method information and arguments</span>
+<span class="sd">                are extracted.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            RunDefinition: A RunDefinition object containing the converted method</span>
+<span class="sd">                information and arguments.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Since we can import our snakemake_workflow.py @tasks we need the relative path</span>
+        <span class="n">relative_path</span> <span class="o">=</span> <span class="n">get_method_rel_path</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+        <span class="c1"># If we need to make any customization to the import</span>
+        <span class="n">rel_import</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">relative_path</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="n">args</span> <span class="o">=</span> <span class="n">get_method_args</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+        <span class="n">signature</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2">=params.</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">method_name</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">rel_import</span><span class="o">=</span><span class="n">rel_import</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">signature</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Renders the run block as a list of strings.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[str]: A list containing the import statement and the method</span>
+<span class="sd">                call statement, for use in Snakemake run block.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">signature</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arg</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+        <span class="c1"># The comma after the last element is mandatory for the structure of rule onces it&#39;s used in yaml.dump</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;import </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rel_import</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rel_import</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">method_name</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">signature</span><span class="si">}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+</code></pre></div>
+<h4 id="outputdefinition">OutputDefinition:</h4>
+<p>The OutputDefinition class is responsible for rendering the output block, which specifies the output files or results that indicate the rule has successfully completed.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@define</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">OutputDefinition</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents the output definition block for a Snakemake-renderable workflow step.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        output_file (str): The output file definition.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        from_step(cls, step: Step) -&gt; &quot;OutputDefinition&quot;: Constructs an OutputDefinition</span>
+<span class="sd">            object from a Step object, extracting and converting the output file definition</span>
+<span class="sd">            to Snakemake-compatible format.</span>
+
+<span class="sd">        render(self) -&gt; list[str]: Renders the output definition as a list</span>
+<span class="sd">            suitable for use in Snakemake Output block.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">output_file</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_step</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="n">Step</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;OutputDefinition&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructs an OutputDefinition object from a Step.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            step (Step): The Step object from which the output file definition is extracted.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            OutputDefinition: An OutputDefinition object, for use in Snakemake Output block.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Since snakemake commonly communicates using files.</span>
+        <span class="c1"># Output file must always be called - `output_file`</span>
+        <span class="c1"># Further code could be added to handled if it&#39;s a reference in case we want take care of multiple tasks writing to the same output file.</span>
+        <span class="n">output_file</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">arguments</span><span class="p">[</span><span class="s2">&quot;output_file&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">Raw</span><span class="p">):</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">to_snakemake_type</span><span class="p">(</span><span class="n">output_file</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">output_file</span><span class="o">=</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Renders the output definition as a list.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[str]: A list containing the output file definition, for use in a Snakemake Output block.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># The comma after the last element is mandatory for the structure of rule onces it&#39;s used in yaml.dump</span>
+        <span class="c1"># It adds the new line to the output block</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;output_file=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+</code></pre></div>
+<p>Integrate these block definitions into the StepDefinition class as demonstrated in <a href="#3-create-a-stepsdefinition">Step 3</a>. Each StepDefinition will use these block definitions to render the complete step in the target workflow language.</p>
+<h2 id="6-helper-methods">6. Helper methods.</h2>
+<p>In this step, you'll define helper methods that will assist you in converting workflow components into the target workflow language format. In our case these methods will handle type conversion, extracting method arguments, and computing relative paths.</p>
+<h3 id="example_4">Example:</h3>
+<p>We'll define the following helper methods for our Snakemake renderer:</p>
+<ol>
+<li>to_snakemake_type(param: Raw) -&gt; str: Converts a raw type to a Snakemake-compatible Python type.</li>
+<li>get_method_args(func: Lazy) -&gt; inspect.Signature: Retrieves the argument names and types of a lazy-evaluatable function.</li>
+<li>get_method_rel_path(func: Lazy) -&gt; str: Computes the relative path of the module containing the given function.</li>
+</ol>
+<h4 id="type-conversion-helper">Type Conversion Helper:</h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Basic types returned from dewret will look like this &quot;str|valueOfParam&quot;.</span>
+<span class="c1"># We&#39;ll need to convert them.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">to_Snakemake_type</span><span class="p">(</span><span class="n">param</span><span class="p">:</span> <span class="n">Raw</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">typ</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">typ</span><span class="o">.</span><span class="fm">__contains__</span><span class="p">(</span><span class="s2">&quot;str&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;&quot;</span><span class="si">{</span><span class="n">typ</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;str|&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
+    <span class="k">elif</span> <span class="n">typ</span><span class="o">.</span><span class="fm">__contains__</span><span class="p">(</span><span class="s2">&quot;bool&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">typ</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;bool|&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">typ</span><span class="o">.</span><span class="fm">__contains__</span><span class="p">(</span><span class="s2">&quot;dict&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">typ</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;dict|&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">typ</span><span class="o">.</span><span class="fm">__contains__</span><span class="p">(</span><span class="s2">&quot;list&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">typ</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;list|&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">typ</span><span class="o">.</span><span class="fm">__contains__</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">typ</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;float|&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">typ</span><span class="o">.</span><span class="fm">__contains__</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">typ</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;int|&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot render complex type (</span><span class="si">{</span><span class="n">typ</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="argument-extraction-helper">Argument Extraction Helper:</h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># We need to get the signature of the method. </span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_method_args</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Lazy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Signature</span><span class="p">:</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">args</span>
+</code></pre></div>
+<h4 id="relative-path-computation-helper">Relative Path Computation Helper:</h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Computes the relative path</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_method_rel_path</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Lazy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">source_file</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getsourcefile</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">source_file</span><span class="p">:</span>
+        <span class="n">relative_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">source_file</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">())</span>
+        <span class="n">module_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">relative_path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">module_name</span>
+</code></pre></div>
+<h2 id="imports-and-custom-types-required-in-the-smk-example">Imports and custom types required in the SMK example:</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">typing</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">attrs</span><span class="w"> </span><span class="kn">import</span> <span class="n">define</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dewret.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Raw</span><span class="p">,</span> <span class="n">BasicType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dewret.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lazy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dewret.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Reference</span><span class="p">,</span> <span class="n">Workflow</span><span class="p">,</span> <span class="n">Step</span><span class="p">,</span> <span class="n">Task</span>
+
+<span class="n">RawType</span> <span class="o">=</span> <span class="n">BasicType</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="s2">&quot;RawType&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;RawType&quot;</span><span class="p">]</span>
+</code></pre></div>
+<h2 id="to-run-this-example">To run this example:</h2>
+<ol>
+<li>Import the snakemake renderer into your @tasks file</li>
+<li>There's an example in <a href="../example/snakemake_renderer/basic_example/snakemake_tasks.py">snakemake_tasks.py</a></li>
+<li>Run it:
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>snakemake_tasks.py
+</code></pre></div></li>
+</ol>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        
+<footer class="md-footer">
+    
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="../quickstart/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quickstart" rel="prev">
+            <div class="md-footer__button md-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <div class="md-ellipsis">
+                <span class="md-footer__direction">
+                  Previous
+                </span>
+                Quickstart
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../renderers/" class="md-footer__link md-footer__link--next" aria-label="Next: Renderers" rel="next">
+            <div class="md-footer__title">
+              <div class="md-ellipsis">
+                <span class="md-footer__direction">
+                  Next
+                </span>
+                Renderers
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+    <div class="md-footer-meta md-typeset">
+      <div class="md-footer-meta__inner md-grid">
+        <div class="md-footer-copyright">
+            
+            Powered by
+            <a href="http://timothycrosley.github.io/portray">portray.</a>
+            You too can
+            <a href="http://timothycrosley.github.io/portray">
+              portray</a>
+            your Python project well using automatic documentation.
+          </div>
+        
+      </div>
+    </div>
+  </footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.5bf1dace.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.078830c0.min.js"></script>
+      
+    
+  </body>
+</html>
