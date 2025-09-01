@@ -749,7 +749,7 @@ class WorkflowDefinition:
             serialization.
         """
         return {
-            "cwlVersion": 1.2,
+            "cwlVersion": "v1.2",
             "class": "Workflow",
             "inputs": self.inputs.render(),
             "outputs": self.outputs.render(),

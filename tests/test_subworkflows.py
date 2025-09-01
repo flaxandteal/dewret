@@ -89,7 +89,7 @@ def test_cwl_for_pairs() -> None:
     rendered = render(wkflw)["__root__"]
 
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs: {}
         outputs: [
@@ -125,7 +125,7 @@ def test_subworkflows_can_use_globals() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           CONSTANT:
             label: CONSTANT
@@ -176,7 +176,7 @@ def test_subworkflows_can_use_factories() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -221,7 +221,7 @@ def test_subworkflows_can_use_global_factories() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -273,7 +273,7 @@ def test_subworkflows_can_return_lists() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -316,7 +316,7 @@ def test_subworkflows_can_return_lists() -> None:
         "add_constant-1-1",
         yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -354,7 +354,7 @@ def test_subworkflows_can_return_lists() -> None:
         "get_global_queues-1",
         yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           CONSTANT:
             default: 3
@@ -415,7 +415,7 @@ def test_can_merge_workflows() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -473,7 +473,7 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           CONSTANT:
             default: 3
@@ -514,7 +514,7 @@ def test_subworkflows_can_use_globals_in_right_scope() -> None:
         "add_constants-1",
         yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           num:
             label: num
@@ -575,7 +575,7 @@ def test_combining_attrs_and_factories() -> None:
     cwl = render(wkflw, allow_complex_types=True, factories_as_params=True)
     assert cwl["__root__"] == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           PackResult-1:
             label: PackResult-1
@@ -597,7 +597,7 @@ def test_combining_attrs_and_factories() -> None:
 
     assert cwl["black_total-1"] == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           pack:
             label: pack

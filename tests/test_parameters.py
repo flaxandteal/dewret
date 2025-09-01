@@ -26,7 +26,7 @@ def test_cwl_parameters() -> None:
     rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           INPUT_NUM:
@@ -65,7 +65,7 @@ def test_complex_parameters() -> None:
     rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           INPUT_NUM:

@@ -87,7 +87,7 @@ def test_subworkflow() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs: {}
         outputs:
           out:
@@ -122,7 +122,7 @@ def test_field_of_subworkflow() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs: {}
         outputs:
           first:
@@ -150,7 +150,7 @@ def test_field_of_subworkflow_into_dataclasses() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs: {}
         outputs:
           first:
@@ -179,7 +179,7 @@ def test_complex_field_of_subworkflow() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs: {}
         outputs:
           out:
@@ -217,7 +217,7 @@ def test_complex_field_of_subworkflow_with_dataclasses() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs: {}
         outputs:
           out:
@@ -254,7 +254,7 @@ def test_pair_can_be_returned_from_step() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs: {}
         outputs:
           out:
@@ -296,7 +296,7 @@ def test_list_can_be_returned_from_step() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs: {}
         outputs:
           out:

@@ -99,7 +99,8 @@ def render(
         @contextmanager
         # mode here is ignored
         def _opener(key: str, mode: str) -> Generator[IO[Any], None, None]:
-            print(" ------ ", key, " ------ ")
+            if key:
+                print(" ------ ", key, " ------ ")
             yield sys.stdout
             print()
 

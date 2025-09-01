@@ -62,7 +62,7 @@ $ python -m dewret --pretty workflow.py increment num:3
 
 ```yaml
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 outputs:
   out:
     outputSource: increment-e138626779553199eb2bd678356b640f-num
@@ -101,7 +101,7 @@ and backends, as well as bespoke serialization or formatting.
 >>> cwl = render(workflow)["__root__"]
 >>> yaml.dump(cwl, sys.stdout, indent=2)
 class: Workflow
-cwlVersion: 1.2
+cwlVersion: v1.2
 inputs:
   increment-1-num:
     default: 3
