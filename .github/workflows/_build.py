@@ -49,6 +49,28 @@ def _mkdocs_render(config: dict[str, Any]) -> Any:
 render.mkdocs = _mkdocs_render
 
 if __name__ == "__main__":
+    import sys
+    import subprocess
+    from pathlib import Path
     from portray.cli import cli  # type: ignore
 
+    # Run the standard portray build
     cli()
+
+    # If we're building for GitHub Pages, also generate the presentation PDF
+    if len(sys.argv) > 1 and "on-github-pages" in sys.argv:
+        script_dir = Path(__file__).parent
+        pdf_script = script_dir / "generate_presentation_pdf.py"
+        output_pdf = Path("site") / "presentation.pdf"
+
+        print("Generating presentation PDF...")
+
+        # Install playwright browsers if needed
+        subprocess.run(
+            [sys.executable, "-m", "playwright", "install", "chromium"], check=True
+        )
+
+        # Generate the PDF
+        subprocess.run([sys.executable, str(pdf_script), str(output_pdf)], check=True)
+
+        print(f"Presentation PDF generated at: {output_pdf}")

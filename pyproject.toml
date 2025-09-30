@@ -56,7 +56,8 @@ allow-direct-references = true
 test = ["pytest", "coverage", "ruff", "mypy >= 1.14.1"]
 docs = [
   "tmp_fat_portray >= v1.8.0",
-  "mkdocs-literate-nav"
+  "mkdocs-literate-nav",
+  "playwright >= 1.40.0"
 ]
 
 [tool.pytest.ini_options]
