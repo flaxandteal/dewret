@@ -571,6 +571,7 @@ class InputsDefinition:
         parameters = list(parameters_dedup) + [
             p for p in parameters if not isinstance(p, ParameterReference)
         ]
+        default: RawType | Unset
         return cls(
             inputs={
                 input.name: cls.CommandInputParameter(
