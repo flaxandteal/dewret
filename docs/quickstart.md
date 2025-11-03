@@ -27,13 +27,15 @@ Dewret lets you have your cake and eat it too, by providing you with the benefit
 - **Continuous Integration and Testing**: complex dynamic workflows can be rapidly sense-checked in CI without needing all the hardware and internal algorithms present to run them.
 - **Rapid Prototyping**: Can prototype and run code locally.
 - **Consistency**: offers a consistent interface for defining tasks and workflows.
+- **Conciseness**: yaml tends to be much more verbose than Python which increases cognitive load.
 - **Customization**: dewret offers the ability to create custom renderers for workflows in desired languages. This includes default support for CWL and Snakemake workflow languages. The capability to render a single workflow into multiple declarative languages enables users to experiment with different workflow engines.
 - **Built-in Renderers**: Snakemake and CWL.
 
 #### Advantages of producing a static representation of a workflow
 
+- **Reproducibility and Portability**: workflows are declarative, explicitly defining inputs, outputs, and dependencies, which ensures that workflows can be reproduced accurately across different environments
 - **Optimization**: creating a declarative workflow opens up possibilities for static analysis and refactoring before execution.
-- **Git-versionable workflows**: while code can be versioned, changes in a dynamic workflow may not clearly correspond to changes in the executed workflow. By defining a static workflow that is rendered from the dynamic or programmatic workflow, we maintain a precise and trackable history.
+- **Version controlled execution**: while code can be versioned, changes in a dynamic workflow may not clearly correspond to changes in the executed workflow. By defining a static workflow that is rendered from the dynamic or programmatic workflow, we maintain a precise and trackable history.
 - **Debugging**: a number of classes of workflow planning bugs will not appear until late in a simulation run that might take days or weeks. Having a declarative and static workflow definition document post-render provides enhanced possibilities for static analysis, helping to catch these issues before startup.
 
 ## Installation for pure users
