@@ -4,8 +4,13 @@
 
 ### Description 
 
-Dewret is a tool designed for creating complex workflows, written in a dynamic style, to be rendered to a static representation. Dewret provides a programmatic python interface to multiple declarative workflow engines, where workflows are often written in a yaml-like syntax. It makes it easier for users to define tasks and organize them into workflows. Currently, Dewret supports two renderers: Snakemake and CWL, which generate yamls in the corresponding workflow languages.
+Dewret is a tool designed for creating complex workflows, written in a dynamic language, to be compiled (transpiled) to a static representation. Dewret provides a programmatic Python interface to multiple declarative workflow engines, where workflows are often written in a yaml-like syntax. Workflow engines can be "plugged"-in by writing a specific [renderer](#todo).
+![Flowchart from writing to execution](assets/dewret_flowchart.png)
 
+ Currently, Dewret supports two renderers: [Snakemake] and [CWL], which generate yamls in the corresponding workflow languages.
+
+[Snakemake]: https://snakemake.readthedocs.io/en/stable/
+[CWL]: https://www.commonwl.org/
 ### What are Workflows?
 
 Workflows are a collection of tasks or steps designed to automate complex processes. These processes are common in fields like data science, scientific computing and software development, where you can ensure automation. Traditionally, managing workflows can be challenging due to the diversity of backend systems and the complexity of configurations involved.
