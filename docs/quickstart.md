@@ -4,10 +4,11 @@
 
 ### Description 
 
-Dewret is a tool designed for creating complex workflows, written in a dynamic language, to be compiled (transpiled) to a static representation. Dewret provides a programmatic Python interface to multiple declarative workflow engines, where workflows are often written in a yaml-like syntax. Workflow engines can be "plugged"-in by writing a specific [renderer](#todo).
+Dewret is a tool designed for creating complex workflows, written in a dynamic language, to be compiled (transpiled) to a static representation. Dewret provides a programmatic Python interface to multiple declarative workflow engines, where workflows are often written in a yaml-like syntax. Workflow engines can be "plugged"-in by writing a specific [renderer](renderers.md).
 ![Flowchart from writing to execution](assets/dewret_flowchart.png)
 
  Currently, Dewret supports two renderers: [Snakemake] and [CWL], which generate yamls in the corresponding workflow languages.
+
 
 [Snakemake]: https://snakemake.readthedocs.io/en/stable/
 [CWL]: https://www.commonwl.org/
@@ -25,7 +26,7 @@ Dewret lets you have your cake and eat it too, by providing you with the benefit
 - **Type Checking**: by using lightly annotated Python one can catch mistakes very easily
 - **IDE Integration**: Syntax highlighting, code completion, etc.
 - **Continuous Integration and Testing**: complex dynamic workflows can be rapidly sense-checked in CI without needing all the hardware and internal algorithms present to run them.
-- **Rapid Prototyping**: Can prototype and run code locally.
+- **Rapid Prototyping**: Can prototype and run code [locally](eager_execution.md).
 - **Consistency**: offers a consistent interface for defining tasks and workflows.
 - **Conciseness**: yaml tends to be much more verbose than Python which increases cognitive load.
 - **Customization**: dewret offers the ability to create custom renderers for workflows in desired languages. This includes default support for CWL and Snakemake workflow languages. The capability to render a single workflow into multiple declarative languages enables users to experiment with different workflow engines.
