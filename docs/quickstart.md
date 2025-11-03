@@ -1,4 +1,18 @@
-# Quickstart
+# Quickstart <!-- omit in toc --> 
+- [Introduction](#introduction)
+  - [Description](#description)
+  - [What are Workflows?](#what-are-workflows)
+  - [What Makes Dewret Unique? Why should I use Dewret?](#what-makes-dewret-unique-why-should-i-use-dewret)
+    - [Advantages of writing workflows in Python with Dewret](#advantages-of-writing-workflows-in-python-with-dewret)
+    - [Advantages of producing a static representation of a workflow](#advantages-of-producing-a-static-representation-of-a-workflow)
+- [Installation for pure users](#installation-for-pure-users)
+  - [From PyPI:](#from-pypi)
+  - [From Conda:](#from-conda)
+- [Installation for developers](#installation-for-developers)
+- [Usage](#usage)
+  - [Programmatic Usage](#programmatic-usage)
+- [Next Steps](#next-steps)
+
 
 ## Introduction 
 
@@ -139,3 +153,12 @@ steps:
     run: increment
 
 ```
+
+## Next Steps
+
+* Renderer Resources
+  * Writing your own [renderer](renderer_tutorial.md)
+  * [Available renderers](available_renderers.md)
+* [Eager execution](eager_execution.md)
+* Writing a [workflow](workflows.md)
+* [Glossary](glossary.md)
