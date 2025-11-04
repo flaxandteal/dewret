@@ -20,7 +20,7 @@
 
 Dewret is a tool designed for creating complex workflows, written in a dynamic language, to be compiled (transpiled) to a static representation. Dewret provides a programmatic Python interface to multiple declarative workflow engines, where workflows are often written in a yaml-like syntax. Workflow engines can be "plugged"-in by writing a specific [renderer](renderers.md).
 <!-- ![Flowchart from writing to execution](assets/dewret_flowchart.png) -->
-
+<!-- This diagram was drawn by first getting a version on canva, then using an LLM to get some code, and then tweaking it, it doesn't display well on markdown preview on vscode but it displays well on github -->
 ```mermaid
 graph LR;
     A["<b>my_workflow.py</b><br>Lightly Annotated Python"]
