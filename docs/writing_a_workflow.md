@@ -386,6 +386,7 @@ As code:
 >>> from dewret.tasks import task, construct
 >>> from dewret.renderers.cwl import render
 >>> @define
+>>> # @dataclass # works here too
 ... class PackResult:
 ...     hearts: int
 ...     clubs: int
@@ -404,85 +405,6 @@ As code:
 >>> @task()
 ... def sum(left: int, right: int) -> int:
 ...    return left + right
->>> red_total = sum(
-...     left=shuffle(max_cards_per_suit=13).hearts,
-...     right=shuffle(max_cards_per_suit=13).diamonds
-... )
->>> wkflw = construct(red_total, simplify_ids=True)
->>> cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
-class: Workflow
-cwlVersion: 1.2
-inputs:
-  shuffle-1-max_cards_per_suit:
-    default: 13
-    label: max_cards_per_suit
-    type: int
-outputs:
-  out:
-    label: out
-    outputSource: sum-1/out
-    type: int
-steps:
-  shuffle-1:
-    in:
-      max_cards_per_suit:
-        source: shuffle-1-max_cards_per_suit
-    out:
-      clubs:
-        label: clubs
-        type: int
-      diamonds:
-        label: diamonds
-        type: int
-      hearts:
-        label: hearts
-        type: int
-      spades:
-        label: spades
-        type: int
-    run: shuffle
-  sum-1:
-    in:
-      left:
-        source: shuffle-1/hearts
-      right:
-        source: shuffle-1/diamonds
-    out:
-    - out
-    run: sum
-
-```
-
-Here, we show the same example with `dataclasses`.
-
-```python 
->>> import sys
->>> import yaml
->>> from dataclasses import dataclass
->>> from numpy import random
->>> from dewret.tasks import task, construct
->>> from dewret.renderers.cwl import render
->>> @dataclass
-... class PackResult:
-...     hearts: int
-...     clubs: int
-...     spades: int
-...     diamonds: int
->>>
->>> @task()
-... def shuffle(max_cards_per_suit: int) -> PackResult:
-...    """Fill a random pile from a card deck, suit by suit."""
-...    return PackResult(
-...        hearts=random.randint(max_cards_per_suit),
-...        clubs=random.randint(max_cards_per_suit),
-...        spades=random.randint(max_cards_per_suit),
-...        diamonds=random.randint(max_cards_per_suit)
-...    )
->>> @task()
-... def sum(left: int, right: int) -> int:
-...    return left + right
->>>
 >>> red_total = sum(
 ...     left=shuffle(max_cards_per_suit=13).hearts,
 ...     right=shuffle(max_cards_per_suit=13).diamonds
