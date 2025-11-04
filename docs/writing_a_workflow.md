@@ -1,8 +1,16 @@
-# Workflows
+# Writing a Workflow <!-- omit in toc -->
+- [Description](#description)
+- [Setup](#setup)
+- [Dependencies](#dependencies)
+- [Parameters](#parameters)
+- [Nested tasks](#nested-tasks)
+- [Step Output Fields](#step-output-fields)
+- [Subworkflow](#subworkflow)
+- [Input Factories](#input-factories)
 
 ## Description
 
-A dewret workflow is composed of one or more steps that may make use of both local and global parameters. Each step is defined by a dewret task that is created by using the @task() decorator, and each task may be used by multiple steps.
+A dewret workflow is composed of one or more steps that may make use of both local and global parameters. Each step is defined by a dewret task that is created by using the `@task()` decorator, and each task may be used by multiple steps.
 
 ## Setup
 
@@ -25,7 +33,7 @@ calls. The output series of steps is not guaranteed to be in order of execution.
 Dewret hashes the parameters to identify and unify steps. This lets you do, for example:
 
 ```mermaid
-graph TD;
+graph TD
     A[increment] --> B[double]
     A[increment] --> C[mod10]
     B[double] --> D[sum]

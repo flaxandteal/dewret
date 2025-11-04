@@ -179,5 +179,5 @@ steps:
   * Writing your own [renderer](renderer_tutorial.md)
   * [Available renderers](available_renderers.md)
 * [Eager execution](eager_execution.md)
-* Writing a [workflow](workflows.md)
+* Writing a [workflow](writing_a_workflow.md)
 * [Glossary](glossary.md)
