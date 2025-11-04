@@ -25,7 +25,7 @@ calls. The output series of steps is not guaranteed to be in order of execution.
 Dewret hashes the parameters to identify and unify steps. This lets you do, for example:
 
 ```mermaid
-graph TD
+graph TD;
     A[increment] --> B[double]
     A[increment] --> C[mod10]
     B[double] --> D[sum]

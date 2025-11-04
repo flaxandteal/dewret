@@ -19,8 +19,32 @@
 ### Description 
 
 Dewret is a tool designed for creating complex workflows, written in a dynamic language, to be compiled (transpiled) to a static representation. Dewret provides a programmatic Python interface to multiple declarative workflow engines, where workflows are often written in a yaml-like syntax. Workflow engines can be "plugged"-in by writing a specific [renderer](renderers.md).
-![Flowchart from writing to execution](assets/dewret_flowchart.png)
+<!-- ![Flowchart from writing to execution](assets/dewret_flowchart.png) -->
 
+```mermaid
+graph LR;
+    A["<b>my_workflow.py</b><br>Lightly Annotated Python"]
+    B(Dewret)
+    C["<b>my_workflow.yaml</b><br>Static Rendered Workflow"]
+    D["Workflow language<br>specific<br>renderer - e.g.<br>CWL"]
+    E{Execute Workflow}
+
+    A --> B
+    B --> C
+    C -- Workflow Engine --> E
+    D --> B
+
+    style B fill:#fff,stroke:#fff,stroke-width:0px,color:#000
+    classDef python fill:#e0d8f7,stroke:#9a8ac9,stroke-width:1px;
+    classDef yaml fill:#faf3bf,stroke:#b3a369,stroke-width:1px;
+    classDef exec fill:#e88080,stroke:#d14949,stroke-width:1px;
+    classDef renderer fill:#cdeaf7,stroke:#6baed6,stroke-width:1px;
+
+    class A python;
+    class C yaml;
+    class E exec;
+    class D renderer;
+```
  Currently, Dewret supports two renderers: [Snakemake] and [CWL], which generate yamls in the corresponding workflow languages.
 
 
