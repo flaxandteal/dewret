@@ -1,16 +1,22 @@
 # Writing a Workflow <!-- omit in toc -->
 - [Description](#description)
 - [Setup](#setup)
-- [Dependencies](#dependencies)
+- [Dewret decorators](#dewret-decorators)
 - [Parameters](#parameters)
+- [Chaining steps together and caching of steps](#chaining-steps-together-and-caching-of-steps)
+- [Render-time vs run-time](#render-time-vs-run-time)
 - [Nested tasks](#nested-tasks)
-- [Step Output Fields](#step-output-fields)
-- [Subworkflow](#subworkflow)
-- [Input Factories](#input-factories)
+- [Output from steps](#output-from-steps)
+- [Chaining workflows together](#chaining-workflows-together)
+- [Complex input types and factories](#complex-input-types-and-factories)
+  - [Input factories as task](#input-factories-as-task)
+  - [Input factories as a parameter](#input-factories-as-a-parameter)
 
 ## Description
 
 A dewret workflow is composed of one or more steps that may make use of both local and global parameters. Each step is defined by a dewret task that is created by using the `@task()` decorator, and each task may be used by multiple steps.
+
+Programming a workflow in dewret looks very similar to vanilla Python. Dewret has an intuitive execution model and syntax: code has to be lightly annotated and steps consist of normal functions that have been decorated. 
 
 ## Setup
 
@@ -22,14 +28,77 @@ We can pull in dewret tools to produce CWL with a small number of imports.
 >>> from dewret.tasks import task, construct
 >>> from dewret.workflow import param
 >>> from dewret.renderers.cwl import render
-
 ```
 
-## Dependencies
+## Dewret decorators
 
-Specifying step interdependencies is possible by combining lazy-evaluated function
-calls. The output series of steps is not guaranteed to be in order of execution.
+Dewret uses the following decorators to mark functions as steps to be evaluated by the workflow engine:
 
+* `@task()`: basib building step that defines a step
+* `@workflow()`: defines the entry point for the workflow
+* [`@factory()`](): allows for complex inputs to be created at run time
+
+## Parameters
+
+Dewret will spot global variables that you have used when building your tasks,
+and treat them as parameters. It will try to get the type from the typehint, or
+the value that you have set it to. This only works for basic types (and dict/lists of
+those).
+
+While global variables are implicit input to the Python function **note that**:
+
+1. in CWL, they will be rendered as explicit global input to a step
+2. as input, they are read-only, and must not be updated
+
+For example:
+```python
+>>> import sys
+>>> import yaml
+>>> from dewret.workflow import param
+>>> from dewret.tasks import task, construct
+>>> from dewret.renderers.cwl import render
+>>> INPUT_NUM = 3
+>>> @task()
+... def rotate(num: int) -> int:
+...    """Rotate an integer."""
+...    return (num + INPUT_NUM) % INPUT_NUM
+>>>
+>>> result = rotate(num=5)
+>>> wkflw = construct(result, simplify_ids=True)
+>>> cwl = render(wkflw)["__root__"]
+>>> yaml.dump(cwl, sys.stdout, indent=2)
+class: Workflow
+cwlVersion: 1.2
+inputs:
+  INPUT_NUM:
+    default: 3
+    label: INPUT_NUM
+    type: int
+  rotate-1-num:
+    default: 5
+    label: num
+    type: int
+outputs:
+  out:
+    label: out
+    outputSource: rotate-1/out
+    type: int
+steps:
+  rotate-1:
+    in:
+      INPUT_NUM:
+        source: INPUT_NUM
+      num:
+        source: rotate-1-num
+    out:
+    - out
+    run: rotate
+
+```
+## Chaining steps together and caching of steps
+
+The output of one `@task()` can be the input of another one. 
+Steps in the rendered output yaml are not guaranteed to be in order of execution.
 Dewret hashes the parameters to identify and unify steps. This lets you do, for example:
 
 ```mermaid
@@ -120,7 +189,10 @@ steps:
 
 ```
 
-Notice that the `increment` tasks appears twice in the CWL workflow definition, being referenced twice in the python code above. 
+Notice two things:
+
+* `@workflow()`s are equivalent to `@task()`s;  `@task()` can be used as the entry point to a workflow (`sum` in this case).
+* The `increment` tasks appears twice in the CWL workflow definition, being referenced twice in the python code above. 
 This duplication can be avoided by explicitly indicating that the parameters are the same, with the `param` function.
 
 ```python
@@ -203,80 +275,17 @@ steps:
 
 ```
 
-## Parameters
+## Render-time vs run-time
 
-The tool will spot global variables that you have used when building your tasks,
-and treat them as parameters. It will try to get the type from the typehint, or
-the value that you have set it to. This only works for basic types (and dict/lists of
-those).
-
-While global variables are implicit input to the Python function **note that**:
-
-1. in CWL, they will be rendered as explicit global input to a step
-2. as input, they are read-only, and must not be updated
-
-For example:
-```python
->>> import sys
->>> import yaml
->>> from dewret.workflow import param
->>> from dewret.tasks import task, construct
->>> from dewret.renderers.cwl import render
->>> INPUT_NUM = 3
->>> @task()
-... def rotate(num: int) -> int:
-...    """Rotate an integer."""
-...    return (num + INPUT_NUM) % INPUT_NUM
->>>
->>> result = rotate(num=5)
->>> wkflw = construct(result, simplify_ids=True)
->>> cwl = render(wkflw)["__root__"]
->>> yaml.dump(cwl, sys.stdout, indent=2)
-class: Workflow
-cwlVersion: 1.2
-inputs:
-  INPUT_NUM:
-    default: 3
-    label: INPUT_NUM
-    type: int
-  rotate-1-num:
-    default: 5
-    label: num
-    type: int
-outputs:
-  out:
-    label: out
-    outputSource: rotate-1/out
-    type: int
-steps:
-  rotate-1:
-    in:
-      INPUT_NUM:
-        source: INPUT_NUM
-      num:
-        source: rotate-1-num
-    out:
-    - out
-    run: rotate
-
-```
 
 ## Nested tasks
+
+Dewret can handle arbitrarily nested steps as `@task()` decorated functions can call each other within their body.
 
 When you wish to combine tasks together programmatically,
 you can use nested tasks. These are run at _render_ time, not
 execution time. In other words, they do not appear in the
-final graph, and so must only combine other tasks.
-
-For example:
-
-```mermaid
-graph TD
-    A[rotate] --> B[rotate]
-    B[rotate] --> C[double_rotate]
-```
-
-As code:
+final graph, and so must only combine other tasks. or contain other render time code.
 
 ```python
 >>> import sys
@@ -355,11 +364,13 @@ def double_rotate(num: int) -> int:
    return rotate(num=rotate(num=num))
 ```
 
-## Step Output Fields
+## Output from steps
 
 Each step, by default, is treated as having
 a single result. However, we allow a mechanism
-for specifying multiple fields, using `attrs` or `dataclasses`.
+for specifying multiple fields, using `attrs` or `dataclasses`. 
+
+**Question**: Can one return a list? if so can it be indexed? if not make analogy with kubeflow pipelines
 
 Where needed, fields can be accessed outside of tasks
 by dot notation and dewret will map that access to a
@@ -455,11 +466,16 @@ steps:
 
 ```
 
-## Subworkflow
+## Chaining workflows together
 
-A special form of nested task is available to help divide up
+As `@workflow()`s are essentially syntactic sugar for `@task()`s they can be chained together.
+
+* **Question**: is the output different from the case when they are `@task()`?
+
+
+<!-- A special form of nested task is available to help divide up
 more complex workflows: the *subworkflow*. By wrapping logic in subflows,
-dewret will produce multiple output workflows that reference each other.
+dewret will produce multiple output workflows that reference each other. -->
 
 ```python
 >>> import sys
@@ -621,13 +637,15 @@ steps:
 
 ```
 
-## Input Factories
+## Complex input types and factories 
 
-Sometimes we want to take complex Python input, not just raw types.
+Sometimes we want to take complex Python input, not just basic types.
 Not all serialization support this, but the `factory` function lets us
 wrap a simple call, usually a constructor, that takes _only_ raw arguments.
 This can then rendered as either a step or a parameter depending on whether
 the chosen renderer has the capability.
+
+### Input factories as task
 
 Below is the default output, treating `Pack` as a task.
 
@@ -719,6 +737,8 @@ steps:
 
 ```
 
+### Input factories as a parameter
+
 The CWL renderer is also able to treat `pack` as a parameter, if complex
 types are allowed.
 
@@ -771,5 +791,4 @@ steps:
     out:
     - out
     run: sum
-
 ```
