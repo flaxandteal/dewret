@@ -1,10 +1,12 @@
 # Writing a Workflow <!-- omit in toc -->
 - [Description](#description)
-- [Setup](#setup)
+- [Imports](#imports)
 - [Dewret decorators](#dewret-decorators)
 - [Parameters](#parameters)
 - [Chaining steps together and caching of steps](#chaining-steps-together-and-caching-of-steps)
-- [Render-time vs run-time](#render-time-vs-run-time)
+- [Render-time vs execution-time](#render-time-vs-execution-time)
+  - [Global annotation](#global-annotation)
+  - [Annotation in function (`@task`) signature](#annotation-in-function-task-signature)
 - [Nested tasks](#nested-tasks)
 - [Output from steps](#output-from-steps)
 - [Chaining workflows together](#chaining-workflows-together)
@@ -16,9 +18,32 @@
 
 A dewret workflow is composed of one or more steps that may make use of both local and global parameters. Each step is defined by a dewret task that is created by using the `@task()` decorator, and each task may be used by multiple steps.
 
-Programming a workflow in dewret looks very similar to vanilla Python. Dewret has an intuitive execution model and syntax: code has to be lightly annotated and steps consist of normal functions that have been decorated. 
+Programming a workflow in dewret looks very similar to vanilla Python. Dewret has an intuitive execution model and syntax: code has to be lightly annotated and steps consist of normal functions that have been decorated.
 
-## Setup
+The output of Dewret is a static representation of a computational graph, in yaml, of connected steps (their names, to be resolved by the worflow engine) along with their static inputs.
+
+<!-- This diagram was drawn by first getting a version on canva, then using an LLM to get some code, and then tweaking it, it doesn't display well on markdown preview on vscode but it displays well on github -->
+```mermaid
+graph LR;
+    A["<b>my_workflow.py</b><br>Lightly Annotated Python"]
+    B(Dewret)
+    C["<b>my_workflow.yaml</b><br>Static Rendered Workflow"]
+    D["Workflow language<br>specific<br>renderer - e.g.<br>CWL"]
+    E{Execute Workflow}
+
+    A --> B
+    B --> C
+    C -- Workflow Engine --> E
+    D --> B
+
+    style A fill:#e0d8f7,stroke:#e0d8f7,stroke-width:1px,color:#000
+    style B fill:#fff,stroke:#fff,stroke-width:0px,color:#000
+    style C fill:#faf3bf,stroke:#faf3bf,stroke-width:1px,color:#000
+    style D fill:#cdeaf7,stroke:#cdeaf7,stroke-width:1px,color:#000
+    style E fill:#e88080,stroke:#d14949,stroke-width:1px,color:#000
+```
+
+## Imports
 
 We can pull in dewret tools to produce CWL with a small number of imports.
 
@@ -275,8 +300,51 @@ steps:
 
 ```
 
-## Render-time vs run-time
+## Render-time vs execution-time
 
+Unlike normal Python code, Dewret code is designed to be compiled (transpiled) to an intermediate representation which is run by a third party workflow engine. Analogous to other compiled languages, Dewret has a way to specify whether code will run at compilation time (by Python at "rendering" time in Dewret jargon) or workflow execution time (by the workflow engine).
+
+* The main mechanism for controlling whether an expression is evaluated at render time is the `AtRender` annotation.
+* When calling a function we wish to evaluate at render time within a `@task` or `@workflow`, we have to import within the calling `@task` or `@workflow`.
+
+### Global annotation
+
+```py
+from dewret.annotations import AtRender
+
+# for a parameter that is consumed as a global variable, the AtRender annotation has to appear when defining the variable
+DEBUG: AtRender[bool] = True
+
+@workflow()
+def train(...) -> None:
+    ...
+    # this will fail without the AtRender annotation
+    if DEBUG:
+      # debug stuff 
+      ...
+```
+
+### Annotation in function (`@task`) signature
+
+Alternatively, the annotation can be passed as a parameter 
+
+```py
+from dewret.annotations import AtRender
+
+@workflow()
+def train(debug: AtRender[bool]) -> None:
+    ...
+    # this will fail without the AtRender annotation
+    if debug:
+      # debug stuff 
+      ...
+```
+
+without the annotation, we get an the following error (note that "construction" refers to a substep of the rendering process):
+
+```sh
+dewret.tasks.TaskException: This reference, switch, cannot be evaluated during construction.
+```
 
 ## Nested tasks
 
