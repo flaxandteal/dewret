@@ -7,12 +7,14 @@
 - [Render-time vs execution-time](#render-time-vs-execution-time)
   - [Global annotation](#global-annotation)
   - [Annotation in function (`@task`) signature](#annotation-in-function-task-signature)
+  - [Import for render time function calls](#import-for-render-time-function-calls)
 - [Nested tasks](#nested-tasks)
 - [Output from steps](#output-from-steps)
 - [Chaining workflows together](#chaining-workflows-together)
 - [Complex input types and factories](#complex-input-types-and-factories)
   - [Input factories as task](#input-factories-as-task)
   - [Input factories as a parameter](#input-factories-as-a-parameter)
+- [Fixed](#fixed)
 
 ## Description
 
@@ -61,7 +63,9 @@ Dewret uses the following decorators to mark functions as steps to be evaluated 
 
 * `@task()`: basib building step that defines a step
 * `@workflow()`: defines the entry point for the workflow
-* [`@factory()`](): allows for complex inputs to be created at run time
+* [`@factory()`](): allows for complex inputs to be created at run time.
+
+We will refer to these as the dewret decorators
 
 ## Parameters
 
@@ -345,6 +349,45 @@ without the annotation, we get an the following error (note that "construction" 
 ```sh
 dewret.tasks.TaskException: This reference, switch, cannot be evaluated during construction.
 ```
+
+### Import for render time function calls
+
+As workflows represent a graph of functions designed to be run by a workflow engine, If you call a function intended to run at render time (i.e. not a dewret decorator) from within a dewret decorator (to be run at execution time), Dewret will assume you have made a mistake and complain.
+
+If this is indeed what you wanted to you can either:
+
+* Define the function within the dewret decorator itself
+
+```py
+from dewret.tasks import task
+from dewret.annotations import AtRender
+
+var: AtRender[int] = 1
+
+@task()
+def some_task()
+  def render_time_fun(int)
+    ...
+  temp = render_time_fun(var)
+```
+
+* Locally import if from another module, within the dewret decorator.
+
+```py
+from dewret.tasks import task
+from dewret.annotations import AtRender
+
+var: AtRender[int] = 1
+
+@task()
+def some_task()
+  from utilities import render_time_fun
+  
+  temp = render_time_fun(var)
+  ...
+```
+The inputs must be annotated with `AtRender`
+
 
 ## Nested tasks
 
@@ -860,3 +903,5 @@ steps:
     - out
     run: sum
 ```
+
+## Fixed
