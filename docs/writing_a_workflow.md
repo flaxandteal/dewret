@@ -8,13 +8,13 @@
   - [Global annotation](#global-annotation)
   - [Annotation in function (`@task`) signature](#annotation-in-function-task-signature)
   - [Import for render time function calls](#import-for-render-time-function-calls)
+- [`Fixed` and looping over lists](#fixed-and-looping-over-lists)
 - [Nested tasks](#nested-tasks)
 - [Output from steps](#output-from-steps)
 - [Chaining workflows together](#chaining-workflows-together)
 - [Complex input types and factories](#complex-input-types-and-factories)
   - [Input factories as task](#input-factories-as-task)
   - [Input factories as a parameter](#input-factories-as-a-parameter)
-- [`Fixed` and looping over lists](#fixed-and-looping-over-lists)
 
 ## Description
 
@@ -388,6 +388,84 @@ def some_task()
 ```
 The inputs must be annotated with `AtRender`
 
+## `Fixed` and looping over lists
+
+As looping over a list can affect the shape of the execution graph it presents a problem when trying to represent the execution graph statically which a requirement for most workflow engines. These lists can be either inputs to the workflow or outputs from other steps
+
+Dewret has a feature to explicitly specify that a list will have a fixed length. The length determines the "shape" of the execution graph which can then be statically rendered, even if we don't know the values of the list at render time.
+
+To instruct Dewret that a list has a fixed length we use the `Fixed` annotation. Similarly to the `AtRender` annotation it can be placed either in a global variable declaration or in the signature of a parameter
+
+```py
+from dewret.renderers.cwl import render
+from dewret.tasks import construct, workflow, task
+from dewret.annotations import Fixed
+
+@task()
+def work(arg: int) -> int:
+    # do work
+    return arg # need to return something or the loop is optimized away
+
+@workflow()
+def loop_work(list: Fixed[list[int]]) -> list[int]:
+    result = []
+    for i in list:
+        work(arg = i)
+        result.append(i) 
+
+    return result
+
+result = loop_work(list=[1,2])
+workflow = construct(result, simplify_ids=True)
+cwl = render(workflow)
+```
+The steps look like this:
+```py
+cwl['loop_work-1']['steps']
+```
+```json
+{
+'work-1-1': 
+  {'run': 'work', 'in': {'arg': {'source': 'list[1]'}}, 'out': ['out']},
+'work-1-2': 
+  {'run': 'work', 'in': {'arg': {'source': 'list[0]'}}, 'out': ['out']}
+}
+```
+
+It is worth noting that if a loop is annotated as `AtRender` it doesn't need to be annotated as `Fixed`:
+
+```py
+from dewret.renderers.cwl import render
+from dewret.tasks import construct, workflow, task
+from dewret.annotations import AtRender
+
+@task()
+def work(arg: int) -> int:
+    # do work
+    return arg # need to return something or the loop is optimized away
+
+@workflow()
+def loop_work(list: AtRender[list[int]]) -> list[int]:
+    result = []
+    for i in list:
+        res = work(arg = i)
+        result.append(res) 
+
+    return result
+
+result = loop_work(list=[1,2])
+workflow = construct(result, simplify_ids=True)
+cwl = render(workflow)
+```
+As expected the steps in the output don't reference the list any more:
+
+```py
+cwl['loop_work-1']['steps']
+```
+```json
+{'work-1-1': {'run': 'work', 'in': {'arg': {'default': 1}}, 'out': ['out']},
+ 'work-1-2': {'run': 'work', 'in': {'arg': {'default': 2}}, 'out': ['out']}}
+```
 
 ## Nested tasks
 
@@ -904,47 +982,3 @@ steps:
     run: sum
 ```
 
-## `Fixed` and looping over lists
-
-As looping over a list can affect the shape of the execution graph it presents a problem when trying to represent the execution graph statically which a requirement for most workflow engines. These lists can be either inputs to the workflow or outputs from other steps
-
-Dewret has a feature to explicitly specify that a list will have a fixed length. The length determines the "shape" of the execution graph which can then be statically rendered, even if we don't know the values of the list at render time.
-
-To instruct Dewret that a list has a fixed length we use the `Fixed` annotation. Similarly to the `AtRender` annotation it can be placed either in a global variable declaration or in the signature of a parameter
-
-```py
-from dewret.renderers.cwl import render
-from dewret.tasks import construct, workflow, task
-from dewret.annotations import Fixed
-
-@task()
-def work(arg: int) -> int:
-    # do work
-    return arg # need to return something or the loop is optimized away
-
-@workflow()
-def loop_work(list: Fixed[list[int]]) -> list[int]:
-    result = []
-    for i in list:
-        work(arg = i)
-        result.append(i) 
-    # result = [work(arg = i) for i in list]
-
-    return result
-
-result = loop_work(list=[1,2])
-workflow = construct(result, simplify_ids=True)
-cwl = render(workflow)
-```
-The steps look like this:
-```py
-cwl['loop_work-1']['steps']
-```
-```json
-{
-'work-1-1': 
-  {'run': 'work', 'in': {'arg': {'source': 'list[1]'}}, 'out': ['out']},
-'work-1-2': 
-  {'run': 'work', 'in': {'arg': {'source': 'list[0]'}}, 'out': ['out']}
-}
-```
