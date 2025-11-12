@@ -40,3 +40,16 @@ or
 ```sh
 source .set_up/dev_set_up.sh <env-name>
 ```
+
+### Notebooks
+
+When modifying the notebooks, one must run:
+```sh
+jupytext --sync docs/notebooks/**/*.ipynb
+```
+This will sync the notebooks that live in the `.md` subfolder. The main advantage of these notebooks is having access to a clean diff. When commiting changes we can look only at diff of the `.md` file. 
+
+#### Todo
+
+* Explore diffs with nbdime
+* Set up pre-commit hooks for syncing notebooks
