@@ -47,7 +47,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
 ]
 requires-python = ">=3.11"
-dependencies = ["dask >= 2022", "pyyaml", "attrs", "click", "setuptools >= 65.5.1", "numpy", "sympy"]
+dependencies = ["dask >= 2022", "pyyaml", "attrs", "click", "setuptools >= 65.5.1", "numpy", "sympy", "jupytext"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -61,3 +61,6 @@ docs = [
 [tool.pixi.project]
 channels = ["conda-forge"]
 platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[tool.jupytext]
+formats = "ipynb,.md//md"
