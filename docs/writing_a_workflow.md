@@ -390,6 +390,8 @@ The inputs must be annotated with `AtRender`
 
 ## `Fixed` and looping over lists
 
+See this [notebook](notebooks/fixed.ipynb) for more examples.
+
 As looping over a list can affect the shape of the execution graph it presents a problem when trying to represent the execution graph statically which a requirement for most workflow engines. These lists can be either inputs to the workflow or outputs from other steps
 
 Dewret has a feature to explicitly specify that a list will have a fixed length. The length determines the "shape" of the execution graph which can then be statically rendered, even if we don't know the values of the list at render time.
