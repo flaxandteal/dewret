@@ -28,7 +28,7 @@ def test_subworkflow() -> None:
         rendered = render(workflow)["__root__"]
 
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           JUMP:

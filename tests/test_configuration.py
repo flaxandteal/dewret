@@ -43,7 +43,7 @@ def test_cwl_with_parameter() -> None:
     assert num_param
 
     assert rendered == yaml.safe_load("""
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         class: Workflow
         inputs:
           num:

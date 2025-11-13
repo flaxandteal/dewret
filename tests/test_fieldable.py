@@ -40,7 +40,7 @@ def test_fields_of_parameters_usable() -> None:
 
     assert rendered == yaml.safe_load("""
       class: Workflow
-      cwlVersion: 1.2
+      cwlVersion: v1.2
       inputs:
         SIDES:
           label: SIDES
@@ -99,7 +99,7 @@ def test_can_get_field_reference_from_parameter() -> None:
     rendered = render(wkflw, allow_complex_types=True)["__root__"]
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           my_param:
             label: my_param
@@ -250,7 +250,7 @@ def test_can_iterate() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs: {}
         outputs:
           out:
@@ -321,7 +321,7 @@ def test_can_iterate() -> None:
 
     assert rendered == yaml.safe_load("""
         class: Workflow
-        cwlVersion: 1.2
+        cwlVersion: v1.2
         inputs:
           param:
             default:
