@@ -306,6 +306,8 @@ steps:
 
 ## Render-time vs execution-time
 
+* See this [notebook](notebooks/at_render.ipynb) for more examples.
+
 Unlike normal Python code, Dewret code is designed to be compiled (transpiled) to an intermediate representation which is run by a third party workflow engine. Analogous to other compiled languages, Dewret has a way to specify whether code will run at compilation time (by Python at "rendering" time in Dewret jargon) or workflow execution time (by the workflow engine).
 
 * The main mechanism for controlling whether an expression is evaluated at render time is the `AtRender` annotation.
@@ -388,9 +390,11 @@ def some_task()
 ```
 The inputs must be annotated with `AtRender`
 
+* See the examples in `docs/demos/render_time_imports`: for a working example run `python import_render_function.py`
+
 ## `Fixed` and looping over lists
 
-See this [notebook](notebooks/fixed.ipynb) for more examples.
+* See this [notebook](notebooks/fixed.ipynb) for more examples.
 
 As looping over a list can affect the shape of the execution graph it presents a problem when trying to represent the execution graph statically which a requirement for most workflow engines. These lists can be either inputs to the workflow or outputs from other steps
 
