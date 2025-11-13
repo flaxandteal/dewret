@@ -51,5 +51,4 @@ This will sync the notebooks that live in the `.md` subfolder. The main advantag
 
 #### Todo
 
-* Explore diffs with nbdime
-* Set up pre-commit hooks for syncing notebooks
+The diffs in VSCode are actually decent so perhaps we could drop the jupytext syncing completely. If we keep it I should set up the pre-commit hooks.
