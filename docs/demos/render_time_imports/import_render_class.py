@@ -13,38 +13,39 @@ from dewret.renderers.cwl import render
 from dewret.tasks import task, construct, workflow
 from dewret.annotations import AtRender
 
-# import the class to annotate inputs
-from render_time_module import MyStr  # type: ignore[import-not-found]
+# Run demo only when executed as a script (prevents pytest collection from executing it)
+if __name__ == "__main__":
+    # import the class to annotate inputs
+    from render_time_module import MyStr  # type: ignore[import-not-found]
 
+    # need at least one task to render
+    @task()
+    def concat_strings(str1: str, str2: str) -> str:
+        """Concatenate two strings.
 
-# need at least one task to render
-@task()
-def concat_strings(str1: str, str2: str) -> str:
-    """Concatenate two strings.
+        This simple task is used by the demo workflow. It's intentionally
+        trivial: it just returns the concatenation of ``str1`` and ``str2``.
+        """
+        return str1 + str2
 
-    This simple task is used by the demo workflow. It's intentionally
-    trivial: it just returns the concatenation of ``str1`` and ``str2``.
-    """
-    return str1 + str2
+    @workflow()
+    def create_greeting_in_all_caps(
+        prefix: AtRender[MyStr], name: AtRender[MyStr]
+    ) -> str:
+        """Create a greeting by uppercasing prefix and name at render time.
 
+        The inputs ``prefix`` and ``name`` are annotated with
+        ``AtRender[MyStr]``, which means they are available during render-time
+        processing. Methods called on those objects (for example ``.upper()``) are
+        executed while the workflow is being rendered rather than at runtime.
+        """
+        prefix_cap = prefix.upper()
+        name_cap = name.upper()
+        return concat_strings(str1=prefix_cap, str2=name_cap)
 
-@workflow()
-def create_greeting_in_all_caps(prefix: AtRender[MyStr], name: AtRender[MyStr]) -> str:
-    """Create a greeting by uppercasing prefix and name at render time.
+    result = create_greeting_in_all_caps(prefix=MyStr("Hello to "), name=MyStr("John"))
 
-    The inputs ``prefix`` and ``name`` are annotated with
-    ``AtRender[MyStr]``, which means they are available during render-time
-    processing. Methods called on those objects (for example ``.upper()``) are
-    executed while the workflow is being rendered rather than at runtime.
-    """
-    prefix_cap = prefix.upper()
-    name_cap = name.upper()
-    return concat_strings(str1=prefix_cap, str2=name_cap)
+    workflow = construct(result, simplify_ids=True)
+    cwl = render(workflow)
 
-
-result = create_greeting_in_all_caps(prefix=MyStr("Hello to "), name=MyStr("John"))
-
-workflow = construct(result, simplify_ids=True)
-cwl = render(workflow)
-
-print(cwl)
+    print(cwl)

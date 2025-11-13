@@ -29,9 +29,11 @@ def create_greeting_in_all_caps(prefix: AtRender[str], name: AtRender[str]) -> s
     return concat_strings(str1=prefix_cap, str2=name_cap)
 
 
-result = create_greeting_in_all_caps(prefix="Hello to ", name="John")
+# Run demo only when executed as a script (prevents pytest collection from executing it)
+if __name__ == "__main__":
+    result = create_greeting_in_all_caps(prefix="Hello to ", name="John")
 
-workflow = construct(result, simplify_ids=True)
-cwl = render(workflow)
+    workflow = construct(result, simplify_ids=True)
+    cwl = render(workflow)
 
-print(cwl)
+    print(cwl)
