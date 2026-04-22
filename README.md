@@ -29,4 +29,26 @@ For further information, see the [documentation](https://flaxandteal.github.io/d
 
 ## Developer Set up
 
-For development with conda, run the relevant script in `.set_up`
+For development with conda, run the relevant script in `.set_up`:
+
+```powershell
+.set_up/dev_set_up.ps1 <env-name>
+```
+
+or
+
+```sh
+source .set_up/dev_set_up.sh <env-name>
+```
+
+### Notebooks
+
+When modifying the notebooks, one must run:
+```sh
+jupytext --sync docs/notebooks/**/*.ipynb
+```
+This will sync the notebooks that live in the `.md` subfolder. The main advantage of these notebooks is having access to a clean diff. When commiting changes we can look only at diff of the `.md` file. 
+
+#### Todo
+
+The diffs in VSCode are actually decent so perhaps we could drop the jupytext syncing completely. If we keep it I should set up the pre-commit hooks.
