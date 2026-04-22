@@ -39,7 +39,7 @@ def create_greeting_in_all_caps(prefix: AtRender[str], name: AtRender[str]) -> s
 if __name__ == "__main__":
     result = create_greeting_in_all_caps(prefix="Hello to ", name="John")
 
-    workflow = construct(result, simplify_ids=True)
-    cwl = render(workflow)
+    wkflw = construct(result, simplify_ids=True)
+    cwl = render(wkflw)
 
     print(cwl)

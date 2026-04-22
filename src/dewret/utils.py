@@ -291,6 +291,7 @@ def hasher(construct: FirmType) -> str:
             raise TypeError("Could not hash arguments")
         return construct
 
+    hashed_construct: Hashable
     if isinstance(construct, Hashable):
         hashed_construct = construct
     else:

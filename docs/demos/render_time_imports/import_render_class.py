@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     result = create_greeting_in_all_caps(prefix=MyStr("Hello to "), name=MyStr("John"))
 
-    workflow = construct(result, simplify_ids=True)
-    cwl = render(workflow)
+    wkflw = construct(result, simplify_ids=True)
+    cwl = render(wkflw)
 
     print(cwl)
